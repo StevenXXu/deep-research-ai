@@ -1,5 +1,13 @@
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
+import dotenv from 'dotenv';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Load local, uncommitted secrets if present (works even for Scheduled Task / service contexts)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 const user = process.env.JOY_GMAIL_USER || 'joyai8009@gmail.com';
 const pass = process.env.JOY_GMAIL_APP_PASSWORD;

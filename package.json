@@ -11,6 +11,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "dotenv": "^17.2.3",
     "imapflow": "^1.2.8",
     "mailparser": "^3.9.3"
   }
