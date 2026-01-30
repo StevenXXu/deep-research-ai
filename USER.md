@@ -4,7 +4,7 @@
 - **What to call them:** Steven
 - **Pronouns:** 
 - **Timezone:** Australia/Sydney
-- **Notes:** Prefers the assistant to be calm/efficient and warm.
+- **Notes:** Prefers the assistant to be calm/efficient and warm. Never message people first (no proactive outbound messages) unless explicitly asked.
 
 ## Context
 
