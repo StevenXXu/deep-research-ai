@@ -56,7 +56,11 @@ try {
 
   console.log(`Unread: ${unseen.length} (showing up to ${uids.length})`);
 
+  const processedUids = [];
+
   for await (const msg of client.fetch(uids, { uid: true, envelope: true, source: true, flags: true, internalDate: true }, { uid: true })) {
+    processedUids.push(msg.uid);
+
     const env = msg.envelope || {};
     const from = (env.from && env.from[0]) ? `${env.from[0].name || env.from[0].address || ''}${env.from[0].name && env.from[0].address ? ' <' + env.from[0].address + '>' : ''}` : '';
     const subject = env.subject || '(no subject)';
@@ -76,6 +80,11 @@ try {
     console.log(`Time: ${when}`);
     if (snippet) console.log(`Snippet: ${snippet}`);
     console.log('Suggested next step: (triage)');
+  }
+
+  // Mark fetched unseen messages as read
+  if (processedUids.length) {
+    await client.messageFlagsAdd(processedUids, ['\\Seen'], { uid: true });
   }
 } finally {
   try { if (lock) lock.release(); } catch {}
