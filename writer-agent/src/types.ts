@@ -9,6 +9,15 @@ export enum ToneMode {
 }
 
 /**
+ * Supported output formats for content generation.
+ */
+export enum OutputFormat {
+  LinkedIn = 'LinkedIn',
+  PortfolioUpdate = 'PortfolioUpdate',
+  InternalMemo = 'InternalMemo'
+}
+
+/**
  * Target audience for the content.
  */
 export enum Audience {
