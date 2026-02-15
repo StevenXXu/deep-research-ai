@@ -1,37 +1,71 @@
-import { parseArgs } from '../src/cli';
+import { run } from '../src/cli';
+import * as fs from 'fs';
+import { WriterAgent } from '../src/WriterAgent';
+import { OutputFormat, Audience, ToneMode } from '../src/types';
 
-describe('CLI Argument Parser', () => {
-  it('should parse valid arguments correctly', () => {
-    const args = ['--input', 'test.txt', '--format', 'update', '--audience', 'internal'];
-    const options = parseArgs(args);
-    
-    expect(options.input).toBe('test.txt');
-    expect(options.format).toBe('update');
-    expect(options.audience).toBe('internal');
+jest.mock('fs');
+jest.mock('../src/WriterAgent');
+
+describe('CLI Handler', () => {
+  const mockProcess = jest.fn();
+  
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (WriterAgent as jest.Mock).mockImplementation(() => ({
+      process: mockProcess
+    }));
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    (fs.readFileSync as jest.Mock).mockReturnValue('mock content');
+    mockProcess.mockResolvedValue('Generated Content');
   });
 
-  it('should handle optional arguments missing', () => {
-    const args = ['--input', 'file.txt', '--format', 'memo'];
-    const options = parseArgs(args);
+  test('should process valid input correctly', async () => {
+    const args = ['input.txt', 'LinkedIn', 'Public', 'Steven Xu'];
+    const result = await run(args);
     
-    expect(options.input).toBe('file.txt');
-    expect(options.format).toBe('memo');
-    expect(options.audience).toBeUndefined();
+    expect(fs.existsSync).toHaveBeenCalled();
+    expect(fs.readFileSync).toHaveBeenCalled();
+    expect(WriterAgent).toHaveBeenCalled();
+    expect(mockProcess).toHaveBeenCalledWith(
+      'mock content',
+      'LinkedIn',
+      Audience.Public,
+      ToneMode.StrategicBridge
+    );
+    expect(result).toBe('Generated Content');
   });
 
-  it('should handle flags at end of string', () => {
-    const args = ['--format', 'linkedin', '--input', 'test.txt'];
-    const options = parseArgs(args);
-    
-    expect(options.input).toBe('test.txt');
-    expect(options.format).toBe('linkedin');
+  test('should throw error if arguments are missing', async () => {
+    await expect(run(['input.txt'])).rejects.toThrow('Usage:');
+  });
+
+  test('should throw error if input file does not exist', async () => {
+    (fs.existsSync as jest.Mock).mockReturnValue(false);
+    await expect(run(['missing.txt', 'LinkedIn'])).rejects.toThrow('Input file not found');
+  });
+
+  test('should throw error for invalid format', async () => {
+    await expect(run(['input.txt', 'InvalidFormat'])).rejects.toThrow('Invalid format');
+  });
+
+  test('should support internal memo format', async () => {
+    const args = ['input.txt', 'InternalMemo', 'Internal'];
+    await run(args);
+    expect(mockProcess).toHaveBeenCalledWith(
+      'mock content',
+      'Memo',
+      Audience.Internal,
+      undefined
+    );
   });
   
-  it('should ignore non-flag arguments not following a flag', () => {
-     // This parser is simple and might not handle positional args well if mixed, 
-     // but for our strict usage:
-     const args = ['random', '--input', 'test.txt']; 
-     const options = parseArgs(args);
-     expect(options.input).toBe('test.txt');
+  test('should handle tone mapping correctly', async () => {
+      // Test different tone mappings
+      await run(['input.txt', 'LinkedIn', 'Public', 'INP Institutional']);
+      expect(mockProcess).toHaveBeenCalledWith(expect.any(String), expect.any(String), expect.any(String), ToneMode.Institutional);
+      
+      mockProcess.mockClear();
+      await run(['input.txt', 'LinkedIn', 'Public', 'Portfolio Amplifier']);
+      expect(mockProcess).toHaveBeenCalledWith(expect.any(String), expect.any(String), expect.any(String), ToneMode.PortfolioAmplifier);
   });
 });

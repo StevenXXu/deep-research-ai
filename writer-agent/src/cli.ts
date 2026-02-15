@@ -1,103 +1,76 @@
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 import { WriterAgent } from './WriterAgent';
-import { Audience, ToneMode } from './types';
+import { OutputFormat, Audience, ToneMode } from './types';
 
-// Map CLI format argument to WriterAgent intent
-const formatMap: Record<string, 'Update' | 'LinkedIn' | 'Memo'> = {
-  'update': 'Update',
-  'linkedin': 'LinkedIn',
-  'memo': 'Memo'
-};
+export async function run(args: string[]): Promise<string> {
+  if (args.length < 2) {
+    throw new Error('Usage: node dist/cli.js <input-file> <format> [audience] [tone]\n' +
+      'Formats: LinkedIn, PortfolioUpdate, InternalMemo\n' +
+      'Audience: Public, Internal, LP (default: Public)\n' +
+      'Tone: Steven Xu, INP Institutional, Portfolio Amplifier, Technical/Analyst (optional)');
+  }
 
-const audienceMap: Record<string, Audience> = {
-  'public': Audience.Public,
-  'internal': Audience.Internal,
-  'lp': Audience.LP
-};
+  const [inputFile, formatStr, audienceStr, toneStr] = args;
 
-const toneMap: Record<string, ToneMode> = {
-  'strategic': ToneMode.StrategicBridge,
-  'institutional': ToneMode.Institutional,
-  'amplifier': ToneMode.PortfolioAmplifier,
-  'technical': ToneMode.TechnicalAnalyst
-};
+  // Validate Input File
+  const absolutePath = path.resolve(process.cwd(), inputFile);
+  if (!fs.existsSync(absolutePath)) {
+    throw new Error(`Error: Input file not found at ${absolutePath}`);
+  }
 
-function parseArgs(args: string[]): Record<string, string> {
-  const options: Record<string, string> = {};
-  for (let i = 0; i < args.length; i++) {
-    if (args[i].startsWith('--')) {
-      const key = args[i].substring(2);
-      // Check if next arg exists and is not a flag
-      if (i + 1 < args.length && !args[i + 1].startsWith('--')) {
-        options[key] = args[i + 1];
-        i++; // Skip the value
-      } else {
-        // Flag without value (boolean true, stored as 'true')
-        options[key] = 'true';
-      }
+  // Validate Format
+  if (!Object.values(OutputFormat).includes(formatStr as OutputFormat)) {
+    throw new Error(`Error: Invalid format "${formatStr}". Supported: ${Object.values(OutputFormat).join(', ')}`);
+  }
+  const format = formatStr as OutputFormat;
+
+  // Validate Audience
+  let audience: Audience = Audience.Public;
+  if (audienceStr) {
+    if (Object.values(Audience).includes(audienceStr as Audience)) {
+      audience = audienceStr as Audience;
+    } else {
+      throw new Error(`Error: Invalid audience "${audienceStr}". Supported: ${Object.values(Audience).join(', ')}`);
     }
   }
-  return options;
-}
 
-async function main() {
-  const options = parseArgs(process.argv.slice(2));
-
-  if (!options.input || !options.format) {
-    console.log('Usage: node cli.js --input <file> --format <update|linkedin|memo> [--audience <public|internal|lp>] [--tone <strategic|institutional|amplifier|technical>]');
-    process.exit(1);
-  }
-
-  const inputPath = path.resolve(process.cwd(), options.input);
-  if (!fs.existsSync(inputPath)) {
-    console.error(`Error: Input file not found at ${inputPath}`);
-    process.exit(1);
-  }
-
-  const text = fs.readFileSync(inputPath, 'utf-8');
-
-  const formatKey = options.format.toLowerCase();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const format = (formatMap as any)[formatKey];
-  if (!format) {
-    console.error(`Error: Invalid format "${options.format}". Must be one of: update, linkedin, memo`);
-    process.exit(1);
-  }
-
-  const audienceKey = (options.audience || 'public').toLowerCase();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const audience = (audienceMap as any)[audienceKey];
-  if (!audience) {
-    console.error(`Error: Invalid audience "${options.audience}". Must be one of: public, internal, lp`);
-    process.exit(1);
-  }
-
+  // Validate Tone
   let tone: ToneMode | undefined;
-  if (options.tone) {
-    const toneKey = options.tone.toLowerCase();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mappedTone = (toneMap as any)[toneKey];
-    if (!mappedTone) {
-      console.error(`Error: Invalid tone "${options.tone}". Must be one of: strategic, institutional, amplifier, technical`);
-      process.exit(1);
+  if (toneStr) {
+    if (Object.values(ToneMode).includes(toneStr as ToneMode)) {
+      tone = toneStr as ToneMode;
+    } else {
+       const lower = toneStr.toLowerCase();
+       if (lower.includes('steven')) tone = ToneMode.StrategicBridge;
+       else if (lower.includes('institutional')) tone = ToneMode.Institutional;
+       else if (lower.includes('amplifier')) tone = ToneMode.PortfolioAmplifier;
+       else if (lower.includes('technical') || lower.includes('analyst')) tone = ToneMode.TechnicalAnalyst;
+       else {
+         throw new Error(`Error: Invalid tone "${toneStr}". Supported: ${Object.values(ToneMode).join(', ')}`);
+       }
     }
-    tone = mappedTone;
   }
 
+  const rawInput = fs.readFileSync(absolutePath, 'utf-8');
   const agent = new WriterAgent();
-
-  try {
-    const result = await agent.process(text, format, audience, tone);
-    console.log(result);
-  } catch (error) {
-    console.error('Error processing content:', error);
-    process.exit(1);
+  
+  let intent: 'Update' | 'LinkedIn' | 'Memo';
+  switch (format) {
+      case OutputFormat.LinkedIn: intent = 'LinkedIn'; break;
+      case OutputFormat.PortfolioUpdate: intent = 'Update'; break;
+      case OutputFormat.InternalMemo: intent = 'Memo'; break;
+      default: throw new Error('Unknown format mapping');
   }
+
+  return await agent.process(rawInput, intent, audience, tone);
 }
 
 if (require.main === module) {
-  main();
+  run(process.argv.slice(2))
+    .then(console.log)
+    .catch((err) => {
+      console.error(err.message);
+      process.exit(1);
+    });
 }
-
-export { main, parseArgs }; // Export for testing

@@ -8,6 +8,7 @@ Started: 2026-02-15
 - **Generators:** Generators take raw input and a service dependency to produce formatted output.
 - **Testing:** Jest/ts-jest used for unit testing.
 - **Types:** Shared types in `writer-agent/src/types.ts`.
+- **CLI:** Separate `run` logic from entry point for testability.
 
 ---
 ## 2026-02-15 - US-001: Writer Agent - Project Setup & Infrastructure
@@ -69,4 +70,11 @@ Started: 2026-02-15
 - Updated `index.ts` to use new `process` API and CLI args.
 - Added extensive tests in `WriterAgent.test.ts` covering redaction/tone/intent scenarios.
 - **Learnings:** Orchestrator pattern simplifies complex dependency management by centralizing control flow.
+---
+
+## 2026-02-16 - US-010: Writer Agent - CLI Interface
+- Implemented `src/cli.ts` with `run` function exporting logic for testability.
+- Added argument parsing for input file, format, audience, and tone.
+- Added `tests/cli.test.ts` to verify CLI handler logic without spawning processes.
+- **Learnings:** separating `run` logic from `process.argv` execution makes CLI tools unit-testable.
 ---
