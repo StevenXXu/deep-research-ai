@@ -55,3 +55,18 @@ Started: 2026-02-15
 - Updated tests to cover DI and formatting logic.
 - **Learnings:** Injecting `ToneService` ensures future extensibility when LLM integration is added, enforcing tone consistency at the structural level.
 ---
+## 2026-02-15 - US-008: Writer Agent - Output Generator: Internal Memo
+- Implemented `MemoGenerator` class in `writer-agent/src/services/MemoGenerator.ts`.
+- Implemented `generate` method with standard memo formatting (TO/FROM/DATE).
+- Integrated `ConfidentialityService` to handle Internal audience (no redaction).
+- Added `MemoGenerator.test.ts` to verify output format and redaction behavior.
+- Updated `WriterAgent.ts` to use `MemoGenerator` for `InternalMemo` format.
+- **Learnings:** Dependency Injection continues to be effective for managing confidential redaction policies across different generators.
+---
+## 2026-02-15 - US-009: Writer Agent - Main Orchestrator (Integration)
+- Implemented `WriterAgent` class with `process` method as main orchestrator.
+- Integrated `InputParser`, `ConfidentialityService`, `ToneService` and 3 Generators.
+- Updated `index.ts` to use new `process` API and CLI args.
+- Added extensive tests in `WriterAgent.test.ts` covering redaction/tone/intent scenarios.
+- **Learnings:** Orchestrator pattern simplifies complex dependency management by centralizing control flow.
+---
