@@ -61,7 +61,9 @@ export class InputParser {
         isParsingHeaders = false;
         contentLines.push(line);
       } else {
-        contentLines.push(line);
+        // For content lines, we might want to trim trailing whitespace but keep indentation?
+        // Let's trim the right side to be safe.
+        contentLines.push(line.trimEnd());
       }
     }
 
