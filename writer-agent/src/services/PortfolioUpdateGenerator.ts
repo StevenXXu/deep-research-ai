@@ -15,12 +15,8 @@ export class PortfolioUpdateGenerator {
     let content = input.rawText;
 
     // Redact sensitive data if audience is Public
-    if (audience === Audience.Public) {
-        content = confidentiality.redact(content, Audience.Public);
-    } else {
-        // Still use confidentiality service for other audiences if necessary (e.g. Internal might have different rules later)
-        content = confidentiality.redact(content, audience);
-    }
+    // Or just delegate entirely to ConfidentialityService as it handles audience logic
+    content = confidentiality.redact(content, audience);
     
     return `${header}\n\n${content}`;
   }
