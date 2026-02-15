@@ -1,0 +1,59 @@
+# Progress Log
+Run: b7228e51-9fbd-4e50-a86f-65522e31cf6e
+Task: Implement US-002: Writer Agent - Core Domain Models & Types
+Started: 2026-02-15 18:22:00
+
+## Codebase Patterns
+- This project is a TypeScript monorepo setup (kind of), with agents in subdirectories.
+- Tests use `jest` with `ts-jest`.
+- Types are defined in `src/types.ts`.
+- Enums are used for Tone and Audience.
+- Services are located in `src/services/`.
+
+---
+## 2026-02-15 18:35 - US-002: Writer Agent - Core Domain Models & Types
+- Implemented core domain models: ToneMode, Audience, ContentInput, WriterOutput in src/types.ts
+- Added JSDoc documentation to types.
+- Verified functionality with comprehensive tests in tests/types.test.ts.
+- **Learnings:** Existing setup uses Jest + ts-jest; types were partially present but needed documentation/verification.
+---
+## 2026-02-15 18:50 - US-003: Writer Agent - Confidentiality Layer (Redaction Logic)
+- Implemented `ConfidentialityService` in `src/services/ConfidentialityService.ts`.
+- Implemented `redact` method handling Public, Internal, and LP audiences.
+- Added logic to redact currency amounts and keywords (Revenue, Cap Table) for Public audience.
+- Verified functionality with tests in `tests/ConfidentialityService.test.ts`.
+- **Learnings:** Services pattern established in `src/services`; regex needed for currency detection.
+---
+## 2026-02-15 18:52 - US-004: Writer Agent - Tone Engine (Strategy Pattern)
+- Implemented ToneService in src/services/ToneService.ts.
+- Implemented ToneProfile interface in src/services/ToneProfile.ts.
+- Implemented 4 tone profiles (StrategicBridge, Institutional, PortfolioAmplifier, TechnicalAnalyst) in src/services/profiles/.
+- Verified tone retrieval and instruction formatting with tests in tests/ToneService.test.ts.
+- **Learnings:** Strategy pattern works well for handling different tone modes; separated profiles into individual files for better organization.
+---
+## 2026-02-15 19:35 - US-005: Writer Agent - Input Parser (Text Normalization)
+- Implemented `InputParser` in `src/services/InputParser.ts`.
+- Implemented `parse` method to handle raw text cleanup and metadata extraction.
+- Handled metadata extraction for known headers (From, To, Subject, Date, Source, Author, Title).
+- Verified functionality with tests in `tests/InputParser.test.ts`.
+- **Learnings:** Simple regex parsing for headers is effective but needs strict boundaries (e.g., stopping at first non-header line).
+---
+## 2026-02-15 19:55 - US-005: Writer Agent - Input Parser (Text Normalization) - Refinement
+- Refined InputParser to trim trailing whitespace on content lines.
+- Verified functionality with existing tests in tests/InputParser.test.ts.
+- **Learnings:** Content trimming should respect line structure but remove excess end-of-line whitespace.
+---
+## 2026-02-15 20:30 - US-005: Writer Agent - Input Parser (Text Normalization) - Final Verification
+- Verified `InputParser` implementation for `ContentInput` parsing.
+- Verified metadata extraction logic (headers: From, To, Subject, etc.).
+- Updated and ran tests in `tests/InputParser.test.ts`.
+- Passed all typechecks and tests.
+- **Learnings:** Header extraction logic needs to be strict to avoid false positives in body content.
+---
+## 2026-02-15 20:45 - US-006: Writer Agent - Output Generator: Portfolio Update
+- Implemented `PortfolioUpdateGenerator` in `src/services/PortfolioUpdateGenerator.ts`.
+- Implemented `generate` method with audience-aware redaction.
+- Verified strict adherence to "PORTFOLIO UPDATE" header format.
+- Verified redaction logic for Public audience using `ConfidentialityService`.
+- **Learnings:** Generator needs to bridge raw input and confidentiality services, defaulting to safer (Public) audience if unspecified.
+---
