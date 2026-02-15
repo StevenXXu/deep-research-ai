@@ -58,6 +58,7 @@ try {
   console.log(`Unread: ${unseen.length} (showing up to ${uids.length})`);
 
   const processedUids = [];
+  const out = [];
 
   for await (const msg of client.fetch(uids, { uid: true, envelope: true, source: true, flags: true, internalDate: true }, { uid: true })) {
     processedUids.push(msg.uid);
@@ -75,6 +76,8 @@ try {
       snippet = '';
     }
 
+    out.push({ uid: msg.uid, from, subject, timeSydney: when, snippet });
+
     console.log('\n---');
     console.log(`From: ${from}`);
     console.log(`Subject: ${subject}`);
@@ -82,6 +85,13 @@ try {
     if (snippet) console.log(`Snippet: ${snippet}`);
     console.log('Suggested next step: (triage)');
   }
+
+  // Write machine-readable output for downstream triage/briefing
+  try {
+    const fs = await import('node:fs');
+    const p = path.join(__dirname, 'gmail_unread_latest.json');
+    fs.writeFileSync(p, JSON.stringify({ generatedAtSydney: fmtDate(new Date()), count: out.length, items: out }, null, 2), 'utf8');
+  } catch {}
 
   // Mark fetched unseen messages as read
   if (processedUids.length) {

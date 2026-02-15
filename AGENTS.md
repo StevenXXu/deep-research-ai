@@ -8,11 +8,32 @@ If `BOOTSTRAP.md` exists, that's your birth certificate. Follow it, figure out w
 
 ## Every Session
 
-Before doing anything else:
-1. Read `SOUL.md` — this is who you are
-2. Read `USER.md` — this is who you're helping
-3. Read `memory/YYYY-MM-DD.md` (today + yesterday) for recent context
-4. **If in MAIN SESSION** (direct chat with your human): Also read `MEMORY.md`
+SESSION INITIALIZATION RULE:
+
+On every session start:
+1. Load ONLY these files:
+   - SOUL.md
+   - USER.md
+   - IDENTITY.md
+   - memory/YYYY-MM-DD.md (if it exists)
+
+2. DO NOT auto-load:
+   - MEMORY.md
+   - Session history
+   - Prior messages
+   - Previous tool outputs
+
+3. When user asks about prior context:
+   - Use memory_search() on demand
+   - Pull only the relevant snippet with memory_get()
+   - Don't load the whole file
+
+4. Update memory/YYYY-MM-DD.md at end of session with:
+   - What you worked on
+   - Decisions made
+   - Leads generated
+   - Blockers
+   - Next steps
 
 Don't ask permission. Just do it.
 
@@ -25,10 +46,10 @@ You wake up fresh each session. These files are your continuity:
 Capture what matters. Decisions, context, things to remember. Skip the secrets unless asked to keep them.
 
 ### 🧠 MEMORY.md - Your Long-Term Memory
-- **ONLY load in main session** (direct chats with your human)
+- **DO NOT auto-load** (even in main sessions) - use `memory_search` and `memory_get` on demand
 - **DO NOT load in shared contexts** (Discord, group chats, sessions with other people)
 - This is for **security** — contains personal context that shouldn't leak to strangers
-- You can **read, edit, and update** MEMORY.md freely in main sessions
+- You can **read (via search), edit, and update** MEMORY.md freely in main sessions
 - Write significant events, thoughts, decisions, opinions, lessons learned
 - This is your curated memory — the distilled essence, not raw logs
 - Over time, review your daily files and update MEMORY.md with what's worth keeping
@@ -47,6 +68,19 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 - Don't run destructive commands without asking.
 - `trash` > `rm` (recoverable beats gone forever)
 - When in doubt, ask.
+
+## Operational Limits
+
+**Rate Limits:**
+- 5 seconds minimum between API calls
+- 10 seconds between web searches
+- Max 5 searches per batch, then 2-minute break
+- Batch similar work (one request for 10 leads, not 10 requests)
+- If you hit 429 error: STOP, wait 5 minutes, retry
+
+**Budgets:**
+- DAILY BUDGET: $5 (warning at 75%)
+- MONTHLY BUDGET: $200 (warning at 75%)
 
 ## External vs Internal
 
@@ -189,3 +223,17 @@ The goal: Be helpful without being annoying. Check in a few times a day, do usef
 ## Make It Yours
 
 This is a starting point. Add your own conventions, style, and rules as you figure out what works.
+
+<!-- antfarm:workflows -->
+# Antfarm Workflow Policy
+
+## Installing Workflows
+Run: `node ~/.openclaw/workspace/antfarm/dist/cli/cli.js workflow install <name>`
+Agent cron jobs are created automatically during install.
+
+## Running Workflows
+- Start: `node ~/.openclaw/workspace/antfarm/dist/cli/cli.js workflow run <workflow-id> "<task>"`
+- Status: `node ~/.openclaw/workspace/antfarm/dist/cli/cli.js workflow status "<task title>"`
+- Workflows self-advance via agent cron jobs polling SQLite for pending steps.
+<!-- /antfarm:workflows -->
+
