@@ -1,11 +1,14 @@
 import { LinkedInGenerator } from '../src/services/LinkedInGenerator';
+import { ToneService } from '../src/services/ToneService';
 import { ToneMode, ContentInput } from '../src/types';
 
 describe('LinkedInGenerator', () => {
   let generator: LinkedInGenerator;
+  let toneService: ToneService;
 
   beforeEach(() => {
-    generator = new LinkedInGenerator();
+    toneService = new ToneService();
+    generator = new LinkedInGenerator(toneService);
   });
 
   it('should generate a LinkedIn post with proper formatting', () => {
