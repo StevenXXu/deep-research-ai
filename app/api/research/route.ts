@@ -9,9 +9,8 @@ export async function POST(req: Request) {
 
     if (!url || !email) return NextResponse.json({ error: "URL and Email required" }, { status: 400 });
 
-    // Path to the shared skill script
-    // We assume the skills folder is at the root of the workspace (../../skills)
-    const scriptPath = path.resolve(process.cwd(), '../../skills/deep-research/research_writer.py');
+    // Path to the bundled script (Inside the repo now)
+    const scriptPath = path.resolve(process.cwd(), 'backend/research_writer.py');
     
     // Command
     const command = `python "${scriptPath}" "${url}" "${email}"`;
