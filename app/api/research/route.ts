@@ -9,7 +9,7 @@ export async function POST(req: Request) {
 
     // FORWARD TO LOCAL PYTHON BACKEND (via Tunnel)
     // Ngrok or Localtunnel URL
-    const BACKEND_URL = "https://social-cycles-beg.loca.lt/research";
+    const BACKEND_URL = "https://tough-dots-admire.loca.lt/research";
     
     console.log(`[API] Forwarding to: ${BACKEND_URL}`);
     

@@ -14,6 +14,7 @@ sys.path.append(root_dir)
 from llm_gateway import gateway
 import discord_connector as dc
 from exa_py import Exa
+import markdown
 
 # Deep Research Writer
 # 1. Navigates to a URL (Playwright)
@@ -35,25 +36,30 @@ def run_research(url, target_email=None):
     site_name = url.split("//")[-1].replace("/", "_")
     screenshot_path = os.path.abspath(f"{OUTPUT_DIR}/{site_name}_{timestamp}.png")
     
-    # 1. Browser Automation (Node.js wrapper for Playwright)
-    # We will create a small temporary JS script to do the heavy lifting
+    # 1. Browser Automation
     js_script = f"""
     const {{ chromium }} = require('playwright');
-    const fs = require('fs');
 
     (async () => {{
       const browser = await chromium.launch();
       const page = await browser.newPage();
       try {{
         console.log("Navigating...");
-        await page.goto('{url}', {{ waitUntil: 'networkidle' }});
+        await page.goto('{url}', {{ waitUntil: 'domcontentloaded', timeout: 60000 }});
+        await page.waitForTimeout(3000); // Wait for JS hydration
         
         console.log("Screenshotting...");
-        await page.screenshot({{ path: '{screenshot_path.replace(os.sep, "/")}', fullPage: true }});
+        await page.screenshot({{ path: '{screenshot_path.replace(os.sep, "/")}', fullPage: false }}); // Capture Fold only for cleaner email
         
+        // Extract Text + Meta
+        const title = await page.title();
+        const metaDesc = await page.$eval("meta[name='description']", element => element.content).catch(() => "");
         const content = await page.innerText('body');
+        
         console.log("__CONTENT_START__");
-        console.log(content);
+        console.log("Title: " + title);
+        console.log("Meta: " + metaDesc);
+        console.log("\\n" + content);
         console.log("__CONTENT_END__");
       }} catch (e) {{
         console.error(e);
@@ -93,10 +99,10 @@ def run_research(url, target_email=None):
                 domain = url.split("//")[-1].split("/")[0]
                 
                 # Search for News & Competitors
+                # Removing use_autoprompt as it caused error in SDK 2.4.0
                 search_response = exa.search_and_contents(
                     f"{domain} startup funding competitors news",
                     type="neural",
-                    use_autoprompt=True,
                     num_results=3,
                     text=True
                 )
@@ -112,61 +118,73 @@ def run_research(url, target_email=None):
             except Exception as exa_e:
                 print(f"[WARN] Exa failed: {exa_e}")
         
-        # 3. AI Analysis (Weaver/Analyst Role)
+        # 3. AI Analysis
         prompt = f"""
-        You are an Investment Analyst and Tech Writer.
+        You are a VC Associate writing a "Deck Prescreener" memo.
         
         Target URL: {url}
         
-        [INTERNAL LANDING PAGE SCRAPE]:
-        {raw_text[:6000]} (Truncated)
+        [LANDING PAGE DATA]:
+        {raw_text[:8000]}
         
-        [EXTERNAL MARKET CONTEXT (EXA)]:
+        [MARKET INTELLIGENCE]:
         {exa_context}
         
-        Task: Write a "Deep Dive" analysis of this product.
+        Task: Write a structured Investment Memo.
+        Style: High conviction, dense information, no fluff.
         
         Structure:
-        1. **The Hook:** What is this? Why is it interesting?
-        2. **Value Prop:** What problem does it solve?
-        3. **Market Signal:** What are people/news saying? (Use Exa context if available)
-        4. **Bull Case:** Why could this be huge?
-        5. **Bear Case:** What are the risks?
+        # One-Liner
+        (A single sentence describing the company)
         
-        Tone: Professional, Insightful, "VC Twitter" style.
-        Format: Markdown.
+        ## 1. Problem & Solution
+        (What is the pain point? How do they solve it?)
+        
+        ## 2. Market Opportunity
+        (Who buys this? Competitors? Market size?)
+        
+        ## 3. Traction & Signals
+        (Any news, funding, or user reviews found?)
+        
+        ## 4. Verdict
+        (Bull/Bear case summary)
         """
         
-        analysis = gateway.generate(prompt, "You are a top-tier tech analyst.")
+        analysis = gateway.generate(prompt, "You are a VC analyst.")
+        
+        # Convert Markdown to HTML
+        analysis_html = markdown.markdown(analysis)
         
         # 3. Generate HTML Report (Premium Style)
         html_content = f"""
         <html>
         <head>
             <style>
-                body {{ font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }}
-                h1 {{ color: #2563eb; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }}
-                h2 {{ color: #1e293b; margin-top: 30px; }}
-                strong {{ color: #0f172a; }}
-                .meta {{ font-size: 12px; color: #64748b; margin-bottom: 20px; }}
-                .highlight {{ background: #f0f9ff; padding: 15px; border-left: 4px solid #0ea5e9; border-radius: 4px; margin: 20px 0; }}
-                .screenshot {{ width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; margin-top: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }}
-                .footer {{ margin-top: 50px; font-size: 12px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px; }}
+                body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1f2937; max-width: 800px; margin: 0 auto; padding: 40px; background-color: #f9fafb; }}
+                .container {{ background: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }}
+                h1 {{ font-size: 24px; font-weight: 800; color: #111827; border-bottom: 2px solid #e5e7eb; padding-bottom: 16px; margin-bottom: 24px; }}
+                h2 {{ font-size: 18px; font-weight: 700; color: #374151; margin-top: 32px; margin-bottom: 12px; }}
+                p {{ margin-bottom: 16px; color: #4b5563; }}
+                ul {{ margin-bottom: 16px; padding-left: 20px; }}
+                li {{ margin-bottom: 8px; }}
+                strong {{ color: #111827; font-weight: 600; }}
+                .meta {{ font-size: 11px; font-weight: 600; letter-spacing: 1px; color: #6b7280; text-transform: uppercase; margin-bottom: 8px; }}
+                .hero {{ width: 100%; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 32px; }}
+                .footer {{ margin-top: 40px; text-align: center; font-size: 12px; color: #9ca3af; }}
             </style>
         </head>
         <body>
-            <div class="meta">GENERATED BY DEEP RESEARCH AI • {datetime.now().strftime('%B %d, %Y')}</div>
-            <h1>Deep Dive: {url}</h1>
-            
-            <div class="highlight">
-                <strong>Executive Summary:</strong>
-                See attached screenshot for visual verification.
-            </div>
-            
-            {analysis.replace('**', '<b>').replace('**', '</b>').replace('\n', '<br>')}
-            
-            <div class="footer">
-                © 2026 INP Capital. Confidential & Proprietary.
+            <div class="container">
+                <div class="meta">CONFIDENTIAL • PRE-SCREEN MEMO</div>
+                <h1>{site_name}</h1>
+                
+                <img src="cid:screenshot" class="hero" alt="Landing Page Screenshot">
+                
+                {analysis_html}
+                
+                <div class="footer">
+                    Generated by Deep Research AI • {datetime.now().strftime('%Y-%m-%d')}
+                </div>
             </div>
         </body>
         </html>
@@ -193,15 +211,18 @@ def run_research(url, target_email=None):
             root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
             email_script = os.path.join(root_dir, "skills/smtp-send/scripts/send_email.py")
             
-            # Send HTML body + Attach Screenshot + Attach Markdown
+            # Send HTML body + Inline Screenshot
+            # Format for inline: "path|cid" (Pipe separator for Windows safety)
+            inline_arg = f"{screenshot_path}|screenshot"
+            
             email_cmd = [
                 "python", email_script,
                 "--to", target_email,
                 "--subject", f"🎯 Deep Dive: {site_name}",
                 "--body", html_content, 
-                "--html", # Enable HTML flag
-                "--attachment", screenshot_path,
-                "--attachment", report_path
+                "--html", 
+                "--inline", inline_arg,
+                "--attachment", report_path # Keep MD as backup attachment
             ]
             subprocess.run(email_cmd)
             print(f"[EMAIL] Sent.")
