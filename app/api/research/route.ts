@@ -9,26 +9,37 @@ export async function POST(req: Request) {
 
     if (!url || !email) return NextResponse.json({ error: "URL and Email required" }, { status: 400 });
 
-    // Path to the bundled script (Inside the repo now)
-    const scriptPath = path.resolve(process.cwd(), 'backend/research_writer.py');
+    // FORWARD TO LOCAL PYTHON BACKEND (via Tunnel)
+    const BACKEND_URL = "https://good-chicken-pay.loca.lt/research";
     
-    // Command
-    const command = `python "${scriptPath}" "${url}" "${email}"`;
+    console.log(`[API] Forwarding to: ${BACKEND_URL}`);
     
-    console.log(`[SAAS-API] Triggering: ${command}`);
-    
-    // Fire and Forget (Async)
-    exec(command, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`[SAAS-API] Error: ${error}`);
-            return;
+    // We send the request to the Python backend
+    // Fire and forget is tricky with HTTP, so we'll await a quick acknowledgement
+    try {
+        const response = await fetch(BACKEND_URL, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Bypass-Tunnel-Reminder': 'true' // Bypass Localtunnel warning
+            },
+            body: JSON.stringify({ url, email })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Backend responded with ${response.status}`);
         }
-        console.log(`[SAAS-API] Success: ${stdout}`);
-    });
-
-    return NextResponse.json({ status: "started", message: "Agent dispatched. Report arriving via email soon." });
-
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
-  }
+        
+        const data = await response.json();
+        return NextResponse.json(data);
+        
+    } catch (err: any) {
+        console.error(`[API] Proxy Error: ${err.message}`);
+        return NextResponse.json({ error: "Backend unavailable. Is the tunnel running?" }, { status: 502 });
+    }
 }
+/*
+    // Path to the bundled script (Inside the repo now)
+    // const scriptPath = path.resolve(process.cwd(), 'backend/research_writer.py');
+    // ...
+*/
