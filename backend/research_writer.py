@@ -4,9 +4,12 @@ import json
 import time
 from datetime import datetime
 import subprocess
+from dotenv import load_dotenv
 
 # Add Root to Path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
+# This is required to import llm_gateway and find .env
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
+sys.path.append(root_dir)
 
 from llm_gateway import gateway
 import discord_connector as dc
@@ -21,7 +24,6 @@ OUTPUT_DIR = "workspace/research_output"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Load Exa Key from Root Env
-# The root_dir logic handles loading .env.google, but we need .env too
 load_dotenv(os.path.join(root_dir, ".env"))
 EXA_KEY = os.getenv("EXA_API_KEY")
 
