@@ -10,15 +10,20 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
 
 from llm_gateway import gateway
 import discord_connector as dc
+from exa_py import Exa
 
 # Deep Research Writer
-# 1. Navigates to a URL
-# 2. Takes a full-page screenshot
-# 3. Scrapes text
-# 4. Generates an "Investment Grade" Analysis
+# 1. Navigates to a URL (Playwright)
+# 2. Searches for Context (Exa)
+# 3. Generates "Investment Grade" Analysis
 
 OUTPUT_DIR = "workspace/research_output"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# Load Exa Key from Root Env
+# The root_dir logic handles loading .env.google, but we need .env too
+load_dotenv(os.path.join(root_dir, ".env"))
+EXA_KEY = os.getenv("EXA_API_KEY")
 
 def run_research(url, target_email=None):
     print(f"[RESEARCH] Analyzing: {url}")
@@ -76,20 +81,53 @@ def run_research(url, target_email=None):
         print(f"[RESEARCH] Extracted {len(raw_text)} chars.")
         dc.post("cipher", "PROGRESS", f"Scraped site. Screenshot saved.")
 
-        # 2. AI Analysis (Weaver/Analyst Role)
+        # 2. Exa Search (Context Augmentation)
+        exa_context = "No external context found."
+        if EXA_KEY:
+            try:
+                print("[RESEARCH] Querying Exa for context...")
+                exa = Exa(EXA_KEY)
+                # Extract domain name for query
+                domain = url.split("//")[-1].split("/")[0]
+                
+                # Search for News & Competitors
+                search_response = exa.search_and_contents(
+                    f"{domain} startup funding competitors news",
+                    type="neural",
+                    use_autoprompt=True,
+                    num_results=3,
+                    text=True
+                )
+                
+                exa_results = []
+                for res in search_response.results:
+                    exa_results.append(f"Source: {res.title} ({res.url})\nSummary: {res.text[:500]}...")
+                
+                exa_context = "\n\n".join(exa_results)
+                print(f"[RESEARCH] Found {len(exa_results)} external sources.")
+                dc.post("cipher", "PROGRESS", f"Found {len(exa_results)} external sources via Exa.")
+                
+            except Exception as exa_e:
+                print(f"[WARN] Exa failed: {exa_e}")
+        
+        # 3. AI Analysis (Weaver/Analyst Role)
         prompt = f"""
         You are an Investment Analyst and Tech Writer.
         
         Target URL: {url}
-        Raw Content Scraped from Landing Page:
-        {raw_text[:8000]} (Truncated)
+        
+        [INTERNAL LANDING PAGE SCRAPE]:
+        {raw_text[:6000]} (Truncated)
+        
+        [EXTERNAL MARKET CONTEXT (EXA)]:
+        {exa_context}
         
         Task: Write a "Deep Dive" analysis of this product.
         
         Structure:
         1. **The Hook:** What is this? Why is it interesting?
         2. **Value Prop:** What problem does it solve?
-        3. **Mechanism:** How does it work? (Infer from text)
+        3. **Market Signal:** What are people/news saying? (Use Exa context if available)
         4. **Bull Case:** Why could this be huge?
         5. **Bear Case:** What are the risks?
         
@@ -112,9 +150,16 @@ def run_research(url, target_email=None):
         # Email Logic
         if target_email:
             print(f"[EMAIL] Sending report to {target_email}...")
-            # Use the existing smtp-send logic (calling via subprocess)
+            
+            # Use Absolute Path to reach the original skills folder
+            # We assume we are in C:\Users\StevenDesk\clawd\workspace\deep-research-saas\backend
+            # Skills are in C:\Users\StevenDesk\clawd\skills
+            
+            root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
+            email_script = os.path.join(root_dir, "skills/smtp-send/scripts/send_email.py")
+            
             email_cmd = [
-                "python", "skills/smtp-send/scripts/send_email.py",
+                "python", email_script,
                 "--to", target_email,
                 "--subject", f"Deep Research: {site_name}",
                 "--body", f"Your research report for {url} is attached.",
