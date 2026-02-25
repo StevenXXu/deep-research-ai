@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 import threading
 import sys
@@ -10,6 +10,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
 
 from research_writer import run_research
+from pypdf import PdfReader
 
 app = FastAPI()
 
@@ -24,6 +25,41 @@ async def start_research(req: ResearchRequest):
     thread.start()
     
     return {"status": "started", "message": "Agent dispatched locally."}
+
+@app.post("/research-upload")
+async def start_research_with_file(
+    url: str = Form(...),
+    email: str = Form(...),
+    file: UploadFile = File(None)
+):
+    document_text = None
+
+    if file is not None:
+        try:
+            filename = (file.filename or "").lower()
+            raw = await file.read()
+
+            if filename.endswith(".pdf"):
+                import io
+                reader = PdfReader(io.BytesIO(raw))
+                pages = []
+                for p in reader.pages[:30]:
+                    pages.append(p.extract_text() or "")
+                document_text = "\n".join(pages)
+            else:
+                # fallback: treat as utf-8 text
+                document_text = raw.decode("utf-8", errors="ignore")
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"File parse failed: {e}")
+
+    thread = threading.Thread(target=run_research, args=(url, email, document_text))
+    thread.start()
+
+    return {
+        "status": "started",
+        "message": "Agent dispatched with optional document context.",
+        "hasDocument": bool(document_text)
+    }
 
 @app.get("/")
 def home():

@@ -15,51 +15,61 @@ from llm_gateway import gateway
 import discord_connector as dc
 from exa_py import Exa
 import markdown
+from research_engine import ResearchEngine # NEW
+import subprocess
+
+# Add root to path to find consult_notebooklm
+sys.path.append(os.path.abspath(os.path.join(root_dir)))
+try:
+    import consult_notebooklm
+except ImportError:
+    consult_notebooklm = None
 
 # Deep Research Writer
 # 1. Navigates to a URL (Playwright)
-# 2. Searches for Context (Exa)
+# 2. Uses ResearchEngine (Exa/Tavily/Brave + LLM)
 # 3. Generates "Investment Grade" Analysis
 
 OUTPUT_DIR = "workspace/research_output"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# Load Exa Key from Root Env
+# Load Keys from Root Env
 load_dotenv(os.path.join(root_dir, ".env"))
-EXA_KEY = os.getenv("EXA_API_KEY")
+NOTEBOOK_ID = os.getenv("NOTEBOOK_ID") # For Deal Flow Memory
 
-def run_research(url, target_email=None):
+def run_research(url, target_email=None, document_text=None):
     print(f"[RESEARCH] Analyzing: {url}")
-    dc.post("cipher", "START", f"Starting Deep Research on {url}")
+    dc.post("cipher", "START", f"Starting Deep Research (Premium) on {url}")
     
     timestamp = int(time.time())
     site_name = url.split("//")[-1].replace("/", "_")
     screenshot_path = os.path.abspath(f"{OUTPUT_DIR}/{site_name}_{timestamp}.png")
     
-    # 1. Browser Automation
+    # 0. Check Memory (NotebookLM)
+    memory_context = ""
+    if NOTEBOOK_ID and consult_notebooklm:
+        print("[RESEARCH] Checking Deal Memory (NotebookLM)...")
+        dc.post("cipher", "PROGRESS", "Querying NotebookLM for historical context...")
+        query = f"What do we know about {site_name} or this sector? Have we looked at similar competitors?"
+        memory_context = consult_notebooklm.query_notebooklm(query, notebook_id=NOTEBOOK_ID)
+        print(f"[RESEARCH] Memory Context: {memory_context[:200]}...")
+
+    # 1. Browser Automation (Screenshot + Text)
+    # ... (Keep existing Playwright JS script generation) ...
     js_script = f"""
     const {{ chromium }} = require('playwright');
-
     (async () => {{
       const browser = await chromium.launch();
       const page = await browser.newPage();
       try {{
         console.log("Navigating...");
         await page.goto('{url}', {{ waitUntil: 'domcontentloaded', timeout: 60000 }});
-        await page.waitForTimeout(3000); // Wait for JS hydration
+        await page.waitForTimeout(3000); 
+        await page.screenshot({{ path: '{screenshot_path.replace(os.sep, "/")}', fullPage: false }}); 
         
-        console.log("Screenshotting...");
-        await page.screenshot({{ path: '{screenshot_path.replace(os.sep, "/")}', fullPage: false }}); // Capture Fold only for cleaner email
-        
-        // Extract Text + Meta
-        const title = await page.title();
-        const metaDesc = await page.$eval("meta[name='description']", element => element.content).catch(() => "");
         const content = await page.innerText('body');
-        
         console.log("__CONTENT_START__");
-        console.log("Title: " + title);
-        console.log("Meta: " + metaDesc);
-        console.log("\\n" + content);
+        console.log(content);
         console.log("__CONTENT_END__");
       }} catch (e) {{
         console.error(e);
@@ -73,89 +83,54 @@ def run_research(url, target_email=None):
     with open(js_path, "w", encoding="utf-8") as f:
         f.write(js_script)
         
-    # Execute Node
     try:
         print("[RESEARCH] Browsing site...")
         result = subprocess.run(["node", js_path], capture_output=True, text=True, encoding="utf-8")
         
-        # Extract Content
         output = result.stdout
+        raw_text = ""
         if "__CONTENT_START__" in output:
             raw_text = output.split("__CONTENT_START__")[1].split("__CONTENT_END__")[0]
         else:
-            raw_text = "No content extracted."
             print(f"[ERROR] Browser Output: {output}")
             
-        print(f"[RESEARCH] Extracted {len(raw_text)} chars.")
+        print(f"[RESEARCH] Extracted landing page text.")
         dc.post("cipher", "PROGRESS", f"Scraped site. Screenshot saved.")
 
-        # 2. Exa Search (Context Augmentation)
-        exa_context = "No external context found."
-        if EXA_KEY:
-            try:
-                print("[RESEARCH] Querying Exa for context...")
-                exa = Exa(EXA_KEY)
-                # Extract domain name for query
-                domain = url.split("//")[-1].split("/")[0]
-                
-                # Search for News & Competitors
-                # Removing use_autoprompt as it caused error in SDK 2.4.0
-                search_response = exa.search_and_contents(
-                    f"{domain} startup funding competitors news",
-                    type="neural",
-                    num_results=3,
-                    text=True
-                )
-                
-                exa_results = []
-                for res in search_response.results:
-                    exa_results.append(f"Source: {res.title} ({res.url})\nSummary: {res.text[:500]}...")
-                
-                exa_context = "\n\n".join(exa_results)
-                print(f"[RESEARCH] Found {len(exa_results)} external sources.")
-                dc.post("cipher", "PROGRESS", f"Found {len(exa_results)} external sources via Exa.")
-                
-            except Exception as exa_e:
-                print(f"[WARN] Exa failed: {exa_e}")
+        # 2. Research Engine (The New Brain)
+        print("[RESEARCH] Engaging Research Engine (Exa+Tavily+Brave)...")
+        engine = ResearchEngine(url, document_content=document_text)
         
-        # 3. AI Analysis
-        prompt = f"""
-        You are a VC Associate writing a "Deck Prescreener" memo.
+        # Inject Landing Page + Memory Context
+        engine.sources.append({"title": "Landing Page", "url": url, "content": raw_text[:2000], "source": "Landing Page"})
+        if memory_context:
+            engine.sources.append({"title": "Internal Memory (NotebookLM)", "url": "internal", "content": memory_context, "source": "NotebookLM"})
         
-        Target URL: {url}
-        
-        [LANDING PAGE DATA]:
-        {raw_text[:8000]}
-        
-        [MARKET INTELLIGENCE]:
-        {exa_context}
-        
-        Task: Write a structured Investment Memo.
-        Style: High conviction, dense information, no fluff.
-        
-        Structure:
-        # One-Liner
-        (A single sentence describing the company)
-        
-        ## 1. Problem & Solution
-        (What is the pain point? How do they solve it?)
-        
-        ## 2. Market Opportunity
-        (Who buys this? Competitors? Market size?)
-        
-        ## 3. Traction & Signals
-        (Any news, funding, or user reviews found?)
-        
-        ## 4. Verdict
-        (Bull/Bear case summary)
-        """
-        
-        analysis = gateway.generate(prompt, "You are a VC analyst.")
-        
-        # Convert Markdown to HTML
-        analysis_html = markdown.markdown(analysis)
-        
+        # Execute Phases 1-4
+        engine.phase_1_broad_scan()
+        engine.phase_2_gap_analysis()
+        engine.phase_3_deep_dive()
+        analysis = engine.phase_4_synthesis() # Returns Markdown Report
+
         # 3. Generate HTML Report (Premium Style)
+        # Convert Markdown to HTML
+        # Pre-process: Fix common table formatting issues & Strip Filler
+        import re
+        
+        # Strip Chatty Intro (Remove everything before the first Header #)
+        if "# " in analysis:
+            # Keep the header and everything after
+            analysis = "# " + analysis.split("# ", 1)[1]
+            
+        # Fix: ensure |---| separator line exists and is clean
+        analysis = re.sub(r'\| *:?-+:? *\|', lambda m: m.group(0).strip(), analysis) 
+        
+        # Convert
+        analysis_html = markdown.markdown(
+            analysis, 
+            extensions=['tables', 'fenced_code', 'nl2br']
+        )
+        
         html_content = f"""
         <html>
         <head>
@@ -167,15 +142,49 @@ def run_research(url, target_email=None):
                 p {{ margin-bottom: 16px; color: #4b5563; }}
                 ul {{ margin-bottom: 16px; padding-left: 20px; }}
                 li {{ margin-bottom: 8px; }}
+                table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
+                th, td {{ border: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; }}
+                th {{ background-color: #f3f4f6; font-weight: 600; }}
                 strong {{ color: #111827; font-weight: 600; }}
+                /* Table Styling */
+                table {{ 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    margin: 24px 0; 
+                    font-size: 14px; 
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+                    border-radius: 6px; 
+                    overflow: hidden; 
+                }}
+                th {{ 
+                    background-color: #f3f4f6; 
+                    color: #374151; 
+                    font-weight: 700; 
+                    text-transform: uppercase; 
+                    font-size: 11px; 
+                    letter-spacing: 0.5px; 
+                    padding: 12px 16px; 
+                    text-align: left; 
+                    border-bottom: 2px solid #e5e7eb; 
+                }}
+                td {{ 
+                    border-bottom: 1px solid #f3f4f6; 
+                    padding: 12px 16px; 
+                    color: #4b5563; 
+                    vertical-align: top;
+                }}
+                tr:last-child td {{ border-bottom: none; }}
+                tr:nth-child(even) {{ background-color: #f9fafb; }}
+                
                 .meta {{ font-size: 11px; font-weight: 600; letter-spacing: 1px; color: #6b7280; text-transform: uppercase; margin-bottom: 8px; }}
                 .hero {{ width: 100%; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 32px; }}
                 .footer {{ margin-top: 40px; text-align: center; font-size: 12px; color: #9ca3af; }}
+                .ref {{ font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 40px; }}
             </style>
         </head>
         <body>
             <div class="container">
-                <div class="meta">CONFIDENTIAL • PRE-SCREEN MEMO</div>
+                <div class="meta">CONFIDENTIAL • DEEP RESEARCH MEMO</div>
                 <h1>{site_name}</h1>
                 
                 <img src="cid:screenshot" class="hero" alt="Landing Page Screenshot">
@@ -183,7 +192,7 @@ def run_research(url, target_email=None):
                 {analysis_html}
                 
                 <div class="footer">
-                    Generated by Deep Research AI • {datetime.now().strftime('%Y-%m-%d')}
+                    Generated by Deep Research AI (Premium) • {datetime.now().strftime('%Y-%m-%d')}
                 </div>
             </div>
         </body>
@@ -192,17 +201,21 @@ def run_research(url, target_email=None):
         
         # Save Report
         report_path = f"{OUTPUT_DIR}/{site_name}_{timestamp}_Analysis.md"
-        # We also save .html for debugging
-        html_path = f"{OUTPUT_DIR}/{site_name}_{timestamp}_Report.html"
         
         with open(report_path, "w", encoding="utf-8") as f:
-            f.write(analysis) # Keep raw MD
+            f.write(analysis) 
             
-        with open(html_path, "w", encoding="utf-8") as f:
-            f.write(html_content)
-            
-        print(f"[SUCCESS] Reports saved: {report_path}, {html_path}")
-        dc.post("cipher", "DONE", f"Research Complete. Generated HTML Report.")
+        # 4. Generate PDF
+        pdf_path = f"{OUTPUT_DIR}/{site_name}_{timestamp}_Memo.pdf"
+        try:
+            print("[RESEARCH] Generating PDF...")
+            subprocess.run(f"markdown-pdf \"{report_path}\" -o \"{pdf_path}\"", shell=True)
+        except Exception as pdf_e:
+            print(f"[WARN] PDF Gen failed: {pdf_e}")
+            pdf_path = None
+
+        print(f"[SUCCESS] Reports saved: {report_path}")
+        dc.post("cipher", "DONE", f"Research Complete. Generated Premium Report.")
         
         # Email Logic
         if target_email:
@@ -211,25 +224,25 @@ def run_research(url, target_email=None):
             root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
             email_script = os.path.join(root_dir, "skills/smtp-send/scripts/send_email.py")
             
-            # Send HTML body + Inline Screenshot
-            # Format for inline: "path|cid" (Pipe separator for Windows safety)
             inline_arg = f"{screenshot_path}|screenshot"
             
             email_cmd = [
                 "python", email_script,
                 "--to", target_email,
-                "--subject", f"🎯 Deep Dive: {site_name}",
+                "--subject", f"📋 Prescreen Memo with deep research: {site_name}",
                 "--body", html_content, 
                 "--html", 
                 "--inline", inline_arg,
-                "--attachment", report_path # Keep MD as backup attachment
+                "--attachment", report_path
             ]
+            
+            if pdf_path and os.path.exists(pdf_path):
+                email_cmd.extend(["--attachment", pdf_path])
+
             subprocess.run(email_cmd)
             print(f"[EMAIL] Sent.")
         
-        # Cleanup
         os.remove(js_path)
-        
         return report_path
 
     except Exception as e:

@@ -7,17 +7,29 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
+  const [file, setFile] = useState<File | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Safety Check: File Size
+    if (file && file.size > 10 * 1024 * 1024) {
+        setStatus("Error: File exceeds 10MB limit.");
+        return;
+    }
+
     setLoading(true);
     setStatus("Initiating Deep Research... (This takes 2-3 mins)");
 
     try {
+      const formData = new FormData();
+      formData.append("url", url);
+      formData.append("email", email);
+      if (file) formData.append("file", file);
+
       const res = await fetch("/api/research", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, email }),
+        body: formData,
       });
       const data = await res.json();
       setStatus(data.message || "Agent Dispatched. Check your email shortly.");
@@ -66,6 +78,17 @@ export default function Home() {
                 placeholder="Where should we send the report?"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="deck" className="block text-xs text-neutral-400 mb-2">Optional: Upload Deck / Project File (PDF, TXT, MD)</label>
+              <input
+                id="deck"
+                name="deck"
+                type="file"
+                accept=".pdf,.txt,.md"
+                className="block w-full text-sm text-neutral-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-neutral-700 file:text-neutral-200 hover:file:bg-neutral-600"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
               />
             </div>
           </div>
