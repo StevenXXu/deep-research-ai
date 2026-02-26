@@ -224,13 +224,18 @@ def run_research(url, target_email=None, document_text=None):
             root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
             email_script = os.path.join(root_dir, "skills/smtp-send/scripts/send_email.py")
             
+            # Write HTML body to temp file to avoid CLI length limits
+            body_file = f"{OUTPUT_DIR}/{site_name}_{timestamp}_body.html"
+            with open(body_file, "w", encoding="utf-8") as f:
+                f.write(html_content)
+            
             inline_arg = f"{screenshot_path}|screenshot"
             
             email_cmd = [
                 "python", email_script,
                 "--to", target_email,
                 "--subject", f"📋 Prescreen Memo with deep research: {site_name}",
-                "--body", html_content, 
+                "--body-file", body_file, 
                 "--html", 
                 "--inline", inline_arg,
                 "--attachment", report_path
@@ -241,6 +246,10 @@ def run_research(url, target_email=None, document_text=None):
 
             subprocess.run(email_cmd)
             print(f"[EMAIL] Sent.")
+            
+            # Cleanup body file
+            try: os.remove(body_file)
+            except: pass
         
         os.remove(js_path)
         return report_path
