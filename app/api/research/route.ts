@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     }
 
     // FORWARD TO LOCAL PYTHON BACKEND (via Tunnel)
-    const BACKEND_URL = "https://wicked-cars-do.loca.lt/research-upload";
+    const BACKEND_URL = "https://funny-places-tie.loca.lt/research-upload";
 
     const backendForm = new FormData();
     backendForm.append("url", url);
