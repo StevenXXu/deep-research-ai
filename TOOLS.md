@@ -1,40 +1,33 @@
 # TOOLS.md - Local Notes
 
-Skills define _how_ tools work. This file is for _your_ specifics — the stuff that's unique to your setup.
+## Email
+- Joy inbox: joyai8009@gmail.com
+- Policy: Joy may read/triage inbox and report results to Steven.
+- Steven emails (allowed outbound recipients): steve.x.xu@gmail.com, steven@inp-capital.com
+- Outbound: Joy may only send emails to Steven at the addresses above (never to third parties) and only when explicitly asked.
+- Auth: Gmail IMAP with App Password (2FA enabled).
 
-## What Goes Here
-
-Things like:
-
-- Camera names and locations
-- SSH hosts and aliases
-- Preferred voices for TTS
-- Speaker/room names
-- Device nicknames
-- Anything environment-specific
-
-## Examples
-
-```markdown
-### Cameras
-
-- living-room → Main area, 180° wide angle
-- front-door → Entrance, motion-triggered
-
-### SSH
-
-- home-server → 192.168.1.100, user: admin
-
-### TTS
-
-- Preferred voice: "Nova" (warm, slightly British)
-- Default speaker: Kitchen HomePod
-```
-
-## Why Separate?
-
-Skills are shared. Your setup is yours. Keeping them apart means you can update skills without losing your notes, and share skills without leaking your infrastructure.
+## LinkedIn
+- Account: steve.x.xu@gmail.com
+- Daily Flywheel (review/check/post): use **isolated browser** (OpenClaw profile="openclaw") by default.
+- Do **not** assume Chrome Relay is attached; only use Relay when Steven explicitly asks.
 
 ---
 
-Add whatever helps you do your job. This is your cheat sheet.
+(Keep credentials out of this repo; prefer environment variables or a secrets store.)
+
+<!-- antfarm:workflows -->
+# Antfarm Workflows
+
+Antfarm CLI (always use full path to avoid PATH issues):
+`node ~/.openclaw/workspace/antfarm/dist/cli/cli.js`
+
+Commands:
+- Install: `node ~/.openclaw/workspace/antfarm/dist/cli/cli.js workflow install <name>`
+- Run: `node ~/.openclaw/workspace/antfarm/dist/cli/cli.js workflow run <workflow-id> "<task>"`
+- Status: `node ~/.openclaw/workspace/antfarm/dist/cli/cli.js workflow status "<task title>"`
+- Logs: `node ~/.openclaw/workspace/antfarm/dist/cli/cli.js logs`
+
+Workflows are self-advancing via per-agent cron jobs. No manual orchestration needed.
+<!-- /antfarm:workflows -->
+
