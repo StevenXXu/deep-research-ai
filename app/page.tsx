@@ -27,13 +27,27 @@ export default function Home() {
       formData.append("email", email);
       if (file) formData.append("file", file);
 
-      const res = await fetch("/api/research", {
+      // BYPASS VERCEL: Upload directly to Local Tunnel
+      // Vercel Serverless has 4.5MB limit. Tunnel allows more.
+      const DIRECT_ENDPOINT = "https://tasty-crabs-sing.loca.lt/research-upload";
+      
+      const res = await fetch(DIRECT_ENDPOINT, {
         method: "POST",
+        // 'Bypass-Tunnel-Reminder' is critical for loca.lt
+        headers: {
+            'Bypass-Tunnel-Reminder': 'true'
+        },
         body: formData,
       });
+      
+      if (!res.ok) {
+        throw new Error(`Server responded with ${res.status}`);
+      }
+
       const data = await res.json();
       setStatus(data.message || "Agent Dispatched. Check your email shortly.");
     } catch (err) {
+      console.error(err);
       setStatus("Error: " + err);
     }
     setLoading(false);

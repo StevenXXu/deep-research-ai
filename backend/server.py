@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import threading
 import sys
@@ -13,6 +14,16 @@ from research_writer import run_research
 from pypdf import PdfReader
 
 app = FastAPI()
+
+# Enable CORS for Direct-to-Backend Uploads
+# This bypasses Vercel's 4.5MB request body limit
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (Vercel, local, etc.)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class ResearchRequest(BaseModel):
     url: str
