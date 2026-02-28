@@ -12,18 +12,23 @@ export async function POST(req: Request) {
     }
 
     // FORWARD TO LOCAL PYTHON BACKEND (via Tunnel)
-    const BACKEND_URL = "https://whole-news-float.loca.lt/research-upload";
+    // Updated: 2026-02-28
+    const TUNNEL_URL = "https://tasty-crabs-sing.loca.lt";
+    const BACKEND_ENDPOINT = `${TUNNEL_URL}/research-upload`;
 
     const backendForm = new FormData();
-    backendForm.append("url", url);
-    backendForm.append("email", email);
+    backendForm.append("url", url as string);
+    backendForm.append("email", email as string);
     if (file) backendForm.append("file", file);
 
     try {
-      const response = await fetch(BACKEND_URL, {
+      console.log(`[PROXY] Forwarding to ${BACKEND_ENDPOINT}...`);
+      
+      const response = await fetch(BACKEND_ENDPOINT, {
         method: 'POST',
+        // 'Bypass-Tunnel-Reminder' is critical for loca.lt to avoid the "Click to Continue" page blocking the API
         headers: {
-          'Bypass-Tunnel-Reminder': 'true'
+          'Bypass-Tunnel-Reminder': 'true' 
         },
         body: backendForm
       });
