@@ -14,7 +14,8 @@ if not APIFY_TOKEN:
 
 # 1. RAG Web Browser (For deep website content extraction)
 # Great for turning a URL into LLM-ready Markdown
-RAG_BROWSER_ACTOR = "apify/rag-web-browser"
+# ID: 3ox4R101TgZz67sLr (apify/rag-web-browser)
+RAG_BROWSER_ACTOR = "3ox4R101TgZz67sLr"
 RAG_BROWSER_URL = f"https://api.apify.com/v2/acts/{RAG_BROWSER_ACTOR}/runs?waitForFinish=120"
 
 # 2. LinkedIn Scraper
