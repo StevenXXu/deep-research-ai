@@ -12,10 +12,9 @@ if not APIFY_TOKEN:
 
 # --- ACTOR CONFIGURATION ---
 
-# 1. RAG Web Browser (For deep website content extraction)
-# Great for turning a URL into LLM-ready Markdown
-# ID: 3ox4R101TgZz67sLr (apify/rag-web-browser)
-RAG_BROWSER_ACTOR = "3ox4R101TgZz67sLr"
+# 1. Website Content Crawler (For deep website content extraction)
+# Replaced RAG Browser with dedicated Crawler for stability (ID: aIG300CPZ8149eLw5)
+RAG_BROWSER_ACTOR = "aIG300CPZ8149eLw5"
 RAG_BROWSER_URL = f"https://api.apify.com/v2/acts/{RAG_BROWSER_ACTOR}/runs?waitForFinish=120"
 
 # 2. LinkedIn Scraper
@@ -62,29 +61,27 @@ def _run_actor(run_url, payload, label="Actor"):
 
 def scrape_website_content(url):
     """
-    Uses Apify RAG Web Browser to crawl the target site and extract clean Markdown.
-    Best for getting the 'official' truth from the company's own pages.
+    Uses Apify Website Content Crawler to extract clean Markdown.
     """
     payload = {
         "startUrls": [{"url": url}],
-        "maxDepth": 1, # Keep shallow for speed/cost (Home + 1 click)
-        "maxPagesPerCrawl": 5, # Limit pages to avoid huge bills
-        "returnMarkdown": True,
-        "returnHtml": False,
+        "maxCrawlDepth": 1, # Valid param for Crawler
+        "maxCrawlPages": 5, # Valid param for Crawler
+        "saveMarkdown": True,
         "proxyConfiguration": {"useApifyProxy": True}
     }
     
-    items = _run_actor(RAG_BROWSER_URL, payload, label="Website Crawler (RAG)")
+    items = _run_actor(RAG_BROWSER_URL, payload, label="Website Crawler")
     
     results = []
     for item in items:
-        # Extract markdown content
-        markdown = item.get("markdown", "")
+        # Crawler returns 'text' or 'markdown'
+        markdown = item.get("markdown") or item.get("text")
         if markdown:
             results.append({
                 "title": item.get("metadata", {}).get("title", "Official Site Page"),
                 "url": item.get("url", url),
-                "content": markdown[:3000], # Truncate for context window safety
+                "content": markdown[:3000],
                 "source": "Official Website (Deep Crawl)"
             })
     return results
