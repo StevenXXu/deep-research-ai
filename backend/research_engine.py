@@ -241,6 +241,51 @@ class ResearchEngine:
             
         self.log(f"Total Sources: {len(self.sources)}")
 
+    def phase_audit_consistency(self):
+        """Phase 3.5: Audit sources for identity mismatch (e.g. wrong company with same name)"""
+        self.log("Phase 3.5: Auditing Sources for Consistency...")
+        
+        # Prepare context for LLM Audit
+        # We limit to title/url/snippet to save context window
+        source_list = []
+        for i, s in enumerate(self.sources):
+            source_list.append(f"ID {i}: Title='{s.get('title')}' URL='{s.get('url')}' Snippet='{s.get('content', '')[:200]}'")
+        
+        audit_prompt = f"""
+        You are a QA Lead Auditor.
+        Target Company: {self.company}
+        Target URL: {self.url}
+        
+        Task: Review the list of gathered sources. Identify any source that clearly refers to a DIFFERENT company (e.g. same name but wrong industry/country).
+        
+        Sources:
+        {json.dumps(source_list, indent=2)}
+        
+        Output JSON ONLY:
+        {{
+            "exclude_ids": [integer indices of bad sources],
+            "reason": "Brief explanation of why"
+        }}
+        If all look correct, return {{ "exclude_ids": [], "reason": "All clear" }}.
+        """
+        
+        try:
+            resp = gateway.generate(audit_prompt, "Return valid JSON only.")
+            # Clean JSON
+            resp = resp.replace("```json", "").replace("```", "").strip()
+            audit_result = json.loads(resp)
+            
+            exclude_ids = audit_result.get("exclude_ids", [])
+            if exclude_ids:
+                self.log(f"AUDIT ALERT: Excluding {len(exclude_ids)} bad sources. Reason: {audit_result.get('reason')}")
+                # Filter sources
+                self.sources = [s for i, s in enumerate(self.sources) if i not in exclude_ids]
+            else:
+                self.log("Audit Passed: No identity conflicts detected.")
+                
+        except Exception as e:
+            self.log(f"Audit Warning: Failed to run consistency check. {e}")
+
     def phase_4_synthesis(self):
         self.log("Phase 4: Writing 2000+ Word Report...")
         
@@ -305,6 +350,7 @@ class ResearchEngine:
         self.phase_1_broad_scan()
         self.phase_2_gap_analysis()
         self.phase_3_deep_dive()
+        self.phase_audit_consistency() # New Audit Step
         return self.phase_4_synthesis()
 
 if __name__ == "__main__":
