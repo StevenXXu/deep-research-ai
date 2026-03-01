@@ -13,7 +13,7 @@ export async function POST(req: Request) {
 
     // FORWARD TO LOCAL PYTHON BACKEND (via Tunnel)
     // Updated: 2026-02-28
-    const TUNNEL_URL = "https://tasty-crabs-sing.loca.lt";
+    const TUNNEL_URL = "https://plenty-crews-run.loca.lt";
     const BACKEND_ENDPOINT = `${TUNNEL_URL}/research-upload`;
 
     const backendForm = new FormData();
