@@ -13,7 +13,7 @@ export async function POST(req: Request) {
 
     // FORWARD TO LOCAL PYTHON BACKEND (via Tunnel)
     // Updated: Dynamically load from ENV
-    const TUNNEL_URL = process.env.NEXT_PUBLIC_API_URL;
+    const TUNNEL_URL = process.env.NEXT_PUBLIC_API_URL || "https://tent-comparing-treatments-dakota.trycloudflare.com";
     if (!TUNNEL_URL) {
        return NextResponse.json({ error: "Configuration Error: API URL missing" }, { status: 500 });
     }
