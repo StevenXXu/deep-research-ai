@@ -29,7 +29,7 @@ export default function Home() {
 
       // BYPASS VERCEL: Upload directly to Local Tunnel
       // Vercel Serverless has 4.5MB limit. Tunnel allows more.
-      const DIRECT_ENDPOINT = "https://yellow-needles-hug.loca.lt/research-upload";
+      const DIRECT_ENDPOINT = "https://chilly-signs-relate.loca.lt/research-upload";
       
       const res = await fetch(DIRECT_ENDPOINT, {
         method: "POST",
