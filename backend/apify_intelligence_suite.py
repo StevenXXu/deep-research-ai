@@ -8,55 +8,107 @@ load_dotenv()
 APIFY_TOKEN = os.getenv("APIFY_TOKEN")
 if not APIFY_TOKEN:
     print("Error: APIFY_TOKEN not found.")
-    exit(1)
+    # We don't exit here to allow import without crashing, but methods will fail/warn.
 
-# LinkedIn Company Scraper (Free Tier compatible if available, or lightweight profile scraper)
-# Using: 'linkedin-company-scraper' (vanity) or specific ID
-# NOTE: LinkedIn scraping is high-risk/expensive. We use a safe, pay-per-result actor if possible.
-# Actor: 'curious_coder/linkedin-company-scraper' or similar. 
-# For prototype, we'll use a reliable one: "dev_fusion/linkedin-company-scraper" or generic wrapper.
-# Let's use a known reliable one for "Company Data".
-ACTOR_ID = "kfiW6xK8x7" # Placeholder ID for a generic LinkedIn Scraper, will resolve dynamically if needed.
-# Actually, let's use the one we found in search: "scraper-engine/linkedin-company-scraper" 
-ACTOR_NAME = "scraper-engine/linkedin-company-employees-scraper"
+# --- ACTOR CONFIGURATION ---
 
-RUN_URL = f"https://api.apify.com/v2/acts/{ACTOR_NAME}/runs?waitForFinish=120"
+# 1. RAG Web Browser (For deep website content extraction)
+# Great for turning a URL into LLM-ready Markdown
+RAG_BROWSER_ACTOR = "apify/rag-web-browser"
+RAG_BROWSER_URL = f"https://api.apify.com/v2/acts/{RAG_BROWSER_ACTOR}/runs?waitForFinish=120"
 
-def scrape_linkedin_company(company_url):
-    print(f"🚀 Launching LinkedIn Scraper for: {company_url}...")
-    payload = {
-        "startUrls": [{"url": company_url}],
-        "maxItems": 20 # Limit to save credits
-    }
-    
+# 2. LinkedIn Scraper
+# Using a specific actor for company data. 
+# Note: 'scraper-engine/linkedin-company-employees-scraper' is one option.
+LINKEDIN_ACTOR = "scraper-engine/linkedin-company-employees-scraper"
+LINKEDIN_RUN_URL = f"https://api.apify.com/v2/acts/{LINKEDIN_ACTOR}/runs?waitForFinish=120"
+
+# 3. Reddit Scraper
+REDDIT_ACTOR = "trudax/reddit-scraper"
+REDDIT_RUN_URL = f"https://api.apify.com/v2/acts/{REDDIT_ACTOR}/runs?waitForFinish=120"
+
+
+def _run_actor(run_url, payload, label="Actor"):
+    """Helper to run an Apify actor and fetch results"""
+    if not APIFY_TOKEN:
+        print(f"⚠️  Skipping {label}: No APIFY_TOKEN")
+        return []
+        
+    print(f"🚀 Launching {label}...")
     try:
+        # 1. Start Run
         response = requests.post(
-            RUN_URL,
+            run_url,
             headers={"Authorization": f"Bearer {APIFY_TOKEN}", "Content-Type": "application/json"},
-            json=payload
+            json=payload,
+            timeout=130 # Slightly longer than wait param
         )
         response.raise_for_status()
         run_data = response.json()['data']
         dataset_id = run_data['defaultDatasetId']
         
-        # Fetch Results
-        DATASET_URL = f"https://api.apify.com/v2/datasets/{dataset_id}/items?clean=true&format=json"
-        data_response = requests.get(DATASET_URL, headers={"Authorization": f"Bearer {APIFY_TOKEN}"})
+        # 2. Fetch Results
+        dataset_url = f"https://api.apify.com/v2/datasets/{dataset_id}/items?clean=true&format=json"
+        data_response = requests.get(dataset_url, headers={"Authorization": f"Bearer {APIFY_TOKEN}"})
         data_response.raise_for_status()
         
         items = data_response.json()
-        print(f"✅ Fetched {len(items)} LinkedIn records.")
+        print(f"✅ {label}: Fetched {len(items)} items.")
         return items
     except Exception as e:
-        print(f"❌ LinkedIn Scraper Error: {e}")
+        print(f"❌ {label} Error: {e}")
         return []
 
-def scrape_reddit_search(query):
-    print(f"🚀 Launching Reddit Scraper for: {query}...")
-    # Actor: 'trudax/reddit-scraper'
-    REDDIT_ACTOR = "trudax/reddit-scraper"
-    REDDIT_URL = f"https://api.apify.com/v2/acts/{REDDIT_ACTOR}/runs?waitForFinish=120"
+def scrape_website_content(url):
+    """
+    Uses Apify RAG Web Browser to crawl the target site and extract clean Markdown.
+    Best for getting the 'official' truth from the company's own pages.
+    """
+    payload = {
+        "startUrls": [{"url": url}],
+        "maxDepth": 1, # Keep shallow for speed/cost (Home + 1 click)
+        "maxPagesPerCrawl": 5, # Limit pages to avoid huge bills
+        "returnMarkdown": True,
+        "returnHtml": False,
+        "proxyConfiguration": {"useApifyProxy": True}
+    }
     
+    items = _run_actor(RAG_BROWSER_URL, payload, label="Website Crawler (RAG)")
+    
+    results = []
+    for item in items:
+        # Extract markdown content
+        markdown = item.get("markdown", "")
+        if markdown:
+            results.append({
+                "title": item.get("metadata", {}).get("title", "Official Site Page"),
+                "url": item.get("url", url),
+                "content": markdown[:3000], # Truncate for context window safety
+                "source": "Official Website (Deep Crawl)"
+            })
+    return results
+
+def scrape_linkedin_company(linkedin_url):
+    """
+    Scrapes structured data from a LinkedIn Company Page.
+    Requires a direct URL (e.g., https://www.linkedin.com/company/openai).
+    """
+    if "linkedin.com/company" not in linkedin_url:
+        print(f"⚠️  Invalid LinkedIn URL provided: {linkedin_url}")
+        return []
+
+    payload = {
+        "startUrls": [{"url": linkedin_url}],
+        "maxItems": 1 # We just need the main company profile
+    }
+    
+    items = _run_actor(LINKEDIN_RUN_URL, payload, label="LinkedIn Scraper")
+    return items
+
+def scrape_reddit_search(query):
+    """
+    Searches Reddit for brand sentiment/discussions.
+    """
     payload = {
         "searches": [query],
         "maxItems": 10,
@@ -64,34 +116,11 @@ def scrape_reddit_search(query):
         "time": "all"
     }
     
-    try:
-        response = requests.post(
-            REDDIT_URL,
-            headers={"Authorization": f"Bearer {APIFY_TOKEN}", "Content-Type": "application/json"},
-            json=payload
-        )
-        response.raise_for_status()
-        run_data = response.json()['data']
-        dataset_id = run_data['defaultDatasetId']
-        
-        DATASET_URL = f"https://api.apify.com/v2/datasets/{dataset_id}/items?clean=true&format=json"
-        data_response = requests.get(DATASET_URL, headers={"Authorization": f"Bearer {APIFY_TOKEN}"})
-        data_response.raise_for_status()
-        
-        items = data_response.json()
-        print(f"✅ Fetched {len(items)} Reddit threads.")
-        return items
-    except Exception as e:
-        print(f"❌ Reddit Scraper Error: {e}")
-        return []
+    # Reddit scraper returns flat items usually
+    return _run_actor(REDDIT_RUN_URL, payload, label="Reddit Scraper")
 
 if __name__ == "__main__":
-    # Example Usage
-    company = "Voqo AI"
-    # linkedin_data = scrape_linkedin_company("https://www.linkedin.com/company/voqo-ai")
-    reddit_data = scrape_reddit_search(company)
-    
-    # Save for inspection
-    os.makedirs("memory/data_lake/intelligence", exist_ok=True)
-    with open(f"memory/data_lake/intelligence/{company.replace(' ', '_')}_reddit.json", "w") as f:
-        json.dump(reddit_data, f, indent=2)
+    # Test
+    print("Testing Apify Module...")
+    # res = scrape_website_content("https://www.example.com")
+    # print(res)

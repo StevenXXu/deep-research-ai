@@ -3,6 +3,7 @@ import sys
 import json
 import time
 import requests
+import re
 from datetime import datetime
 from dotenv import load_dotenv
 from exa_py import Exa
@@ -83,12 +84,40 @@ class ResearchEngine:
             self.log(f"DDG Error: {e}")
             return []
 
+    def _find_linkedin_url(self):
+        """Helper: Scan sources for a LinkedIn Company URL"""
+        li_pattern = re.compile(r"https?://(www\.)?linkedin\.com/company/[\w-]+")
+        
+        # 1. Check existing sources
+        for s in self.sources:
+            match = li_pattern.search(s.get('url', ''))
+            if match:
+                return match.group(0)
+        
+        # 2. Targeted search if not found
+        self.log(f"LinkedIn URL not found in initial scan. Searching...")
+        results = self.search_brave(f"site:linkedin.com/company {self.company} official", num=1)
+        if results:
+            match = li_pattern.search(results[0].get('url', ''))
+            if match:
+                return match.group(0)
+        
+        return None
+
     # --- PHASES ---
 
     def phase_1_broad_scan(self):
         self.log(f"Phase 1: Broad Scan for '{self.company}'...")
 
-        # Optional uploaded deck/document as primary source
+        # A. Official Site Deep Extract (Apify)
+        try:
+            site_data = apify.scrape_website_content(self.url)
+            self.sources.extend(site_data)
+            self.log(f"Apify: Extracted {len(site_data)} pages from official site.")
+        except Exception as e:
+            self.log(f"Apify Site Crawl Error: {e}")
+
+        # B. Uploaded Doc
         if self.document_content:
             self.sources.append({
                 "title": "Uploaded Document",
@@ -148,36 +177,52 @@ class ResearchEngine:
         # 3A. Apify Intelligence (Social & LinkedIn)
         try:
             self.log(f"Phase 3A: Apify Scanning (Reddit & LinkedIn) for {self.company}...")
-            # 1. Reddit Sentiment
+            
+            # 1. Reddit Sentiment (Brand Search)
             reddit_data = apify.scrape_reddit_search(self.company)
             for item in reddit_data:
                 self.sources.append({
                     "title": item.get('title'),
                     "url": item.get('url'),
-                    "content": f"[Reddit Sentiment] {item.get('description') or item.get('title')}",
+                    "content": f"[Reddit Sentiment] {item.get('description') or item.get('title') or item.get('snippet')}",
                     "source": "Reddit (Apify)"
                 })
             
-            # 2. LinkedIn Data
-            # Note: Using the company domain to find the LinkedIn page URL might be needed first
-            # For now, we search for the LinkedIn URL via Brave, then scrape it.
-            # Simplified: Just search LinkedIn via Google Scraper in Apify
-            linkedin_data = apify.scrape_reddit_search(f"site:linkedin.com/company {self.company}") # Reuse google scraper logic
-            for item in linkedin_data:
-                 self.sources.append({
-                    "title": item.get('title'),
-                    "url": item.get('url'),
-                    "content": f"[LinkedIn Signal] {item.get('description')}",
-                    "source": "LinkedIn (Apify)"
-                })
+            # 2. LinkedIn Data (Structured Company Data)
+            linkedin_url = self._find_linkedin_url()
+            if linkedin_url:
+                self.log(f"Found LinkedIn URL: {linkedin_url}. Scraping...")
+                li_data = apify.scrape_linkedin_company(linkedin_url)
+                if li_data:
+                    # Usually returns a list of 1 company profile
+                    profile = li_data[0]
+                    # Format as a source
+                    content_str = (
+                        f"Name: {profile.get('name')}\n"
+                        f"Followers: {profile.get('followerCount')}\n"
+                        f"Description: {profile.get('description')}\n"
+                        f"Employees: {profile.get('employeeCount', 'N/A')}\n"
+                        f"Industry: {profile.get('industry')}\n"
+                        f"Website: {profile.get('websiteUrl')}"
+                    )
+                    self.sources.append({
+                        "title": f"LinkedIn Profile: {profile.get('name')}",
+                        "url": linkedin_url,
+                        "content": f"[LinkedIn Official Data]\n{content_str}",
+                        "source": "LinkedIn (Apify)"
+                    })
+            else:
+                self.log("Could not find LinkedIn URL. Skipping deep LinkedIn scrape.")
+
         except Exception as e:
             self.log(f"Apify Module Warning: {e}")
 
+        # 3B. Tech & Market Gaps
         for q in self.questions:
             self.sources.extend(self.search_exa(q, 3))
             self.sources.extend(self.search_tavily(q, 3) or self.search_ddg(q, 2))
 
-        # 3B. Technology Deep Dive
+        # 3C. Standard Deep Dive (Tech + Market)
         tech_queries = [
             f"{self.company} architecture API documentation github",
             f"{self.company} tech stack llm infrastructure",
@@ -185,16 +230,13 @@ class ResearchEngine:
         ]
         for q in tech_queries:
             self.sources.extend(self.search_exa(q, 2))
-            self.sources.extend(self.search_tavily(q, 2) or self.search_ddg(q, 2))
-
-        # 3C. Market/Competition Data Deep Dive
+            
         market_queries = [
             f"{self.company} pricing plans comparison",
             f"{self.company} market size TAM SAM SOM",
             f"{self.company} competitors pricing crunchbase g2"
         ]
         for q in market_queries:
-            self.sources.extend(self.search_exa(q, 2))
             self.sources.extend(self.search_tavily(q, 2) or self.search_ddg(q, 2))
             
         self.log(f"Total Sources: {len(self.sources)}")
@@ -206,7 +248,7 @@ class ResearchEngine:
         seen_urls = set()
         unique_sources = []
         for s in self.sources:
-            if s['url'] not in seen_urls:
+            if s.get('url') and s['url'] not in seen_urls:
                 unique_sources.append(s)
                 seen_urls.add(s['url'])
         
@@ -215,8 +257,8 @@ class ResearchEngine:
         context_blob = ""
         for i, s in enumerate(unique_sources):
             ref = f"[{i+1}]"
-            citations.append(f"{ref} {s['title']} - {s['url']}")
-            context_blob += f"Source {ref}: {s['content']}\n\n"
+            citations.append(f"{ref} {s.get('title', 'Unknown')} - {s.get('url', 'N/A')}")
+            context_blob += f"Source {ref}: {s.get('content', '')[:2000]}\n\n"
             
         prompt = f"""
         You are a Senior Investment Analyst.
