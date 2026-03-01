@@ -12,29 +12,28 @@ if not APIFY_TOKEN:
 
 # --- ACTOR CONFIGURATION ---
 
-# 1. Website Content Crawler (For deep website content extraction)
-# Replaced RAG Browser with dedicated Crawler for stability (ID: aIG300CPZ8149eLw5)
-RAG_BROWSER_ACTOR = "aIG300CPZ8149eLw5"
+# 1. Website Content Crawler (ID: aYG0l9s7dbB7j3gbS)
+# Documentation: https://apify.com/apify/website-content-crawler
+RAG_BROWSER_ACTOR = "aYG0l9s7dbB7j3gbS"
 RAG_BROWSER_URL = f"https://api.apify.com/v2/acts/{RAG_BROWSER_ACTOR}/runs?waitForFinish=120"
 
-# 2. LinkedIn Scraper
-# Using a specific actor for company data. 
-# Note: 'scraper-engine/linkedin-company-employees-scraper' is one option.
-LINKEDIN_ACTOR = "scraper-engine/linkedin-company-employees-scraper"
+# 2. LinkedIn Scraper (ID: consummate_mandala/linkedin-company-scraper)
+LINKEDIN_ACTOR = "consummate_mandala/linkedin-company-scraper"
 LINKEDIN_RUN_URL = f"https://api.apify.com/v2/acts/{LINKEDIN_ACTOR}/runs?waitForFinish=120"
 
-# 3. Reddit Scraper
-REDDIT_ACTOR = "trudax/reddit-scraper"
+# 3. Reddit Scraper (ID: FgJtjDwJCLhRH9saM)
+# Documentation: https://apify.com/trudax/reddit-scraper
+REDDIT_ACTOR = "FgJtjDwJCLhRH9saM"
 REDDIT_RUN_URL = f"https://api.apify.com/v2/acts/{REDDIT_ACTOR}/runs?waitForFinish=120"
 
 
 def _run_actor(run_url, payload, label="Actor"):
     """Helper to run an Apify actor and fetch results"""
     if not APIFY_TOKEN:
-        print(f"⚠️  Skipping {label}: No APIFY_TOKEN")
+        print(f"[WARN] Skipping {label}: No APIFY_TOKEN")
         return []
         
-    print(f"🚀 Launching {label}...")
+    print(f"[APIFY] Launching {label}...")
     try:
         # 1. Start Run
         response = requests.post(
@@ -53,20 +52,21 @@ def _run_actor(run_url, payload, label="Actor"):
         data_response.raise_for_status()
         
         items = data_response.json()
-        print(f"✅ {label}: Fetched {len(items)} items.")
+        print(f"[APIFY] {label}: Fetched {len(items)} items.")
         return items
     except Exception as e:
-        print(f"❌ {label} Error: {e}")
+        print(f"[ERROR] {label} Error: {e}")
         return []
 
 def scrape_website_content(url):
     """
-    Uses Apify Website Content Crawler to extract clean Markdown.
+    Uses Apify Website Content Crawler (aYG0l9s7dbB7j3gbS) to extract clean Markdown.
     """
+    # Website Content Crawler uses 'startUrls'
     payload = {
         "startUrls": [{"url": url}],
-        "maxCrawlDepth": 1, # Valid param for Crawler
-        "maxCrawlPages": 5, # Valid param for Crawler
+        "maxCrawlDepth": 1,
+        "maxCrawlPages": 5,
         "saveMarkdown": True,
         "proxyConfiguration": {"useApifyProxy": True}
     }
@@ -81,7 +81,7 @@ def scrape_website_content(url):
             results.append({
                 "title": item.get("metadata", {}).get("title", "Official Site Page"),
                 "url": item.get("url", url),
-                "content": markdown[:3000],
+                "content": markdown[:6000],
                 "source": "Official Website (Deep Crawl)"
             })
     return results
@@ -96,8 +96,8 @@ def scrape_linkedin_company(linkedin_url):
         return []
 
     payload = {
-        "startUrls": [{"url": linkedin_url}],
-        "maxItems": 1 # We just need the main company profile
+        "companyUrls": [linkedin_url],
+        "maxPosts": 5 # Limit posts to save cost/time
     }
     
     items = _run_actor(LINKEDIN_RUN_URL, payload, label="LinkedIn Scraper")
