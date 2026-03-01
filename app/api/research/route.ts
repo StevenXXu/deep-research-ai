@@ -12,8 +12,11 @@ export async function POST(req: Request) {
     }
 
     // FORWARD TO LOCAL PYTHON BACKEND (via Tunnel)
-    // Updated: 2026-02-28
-    const TUNNEL_URL = "https://chilly-signs-relate.loca.lt";
+    // Updated: Dynamically load from ENV
+    const TUNNEL_URL = process.env.NEXT_PUBLIC_API_URL;
+    if (!TUNNEL_URL) {
+       return NextResponse.json({ error: "Configuration Error: API URL missing" }, { status: 500 });
+    }
     const BACKEND_ENDPOINT = `${TUNNEL_URL}/research-upload`;
 
     const backendForm = new FormData();
