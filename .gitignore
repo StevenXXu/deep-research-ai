@@ -37,3 +37,13 @@ yarn-error.log*
 backend/workspace/research_output/*.pdf
 backend/workspace/research_output/*.png
 backend/workspace/research_output/*.md
+
+# OpenClaw Agent Files (Private)
+AGENTS.md
+SOUL.md
+USER.md
+IDENTITY.md
+HEARTBEAT.md
+TOOLS.md
+MEMORY.md
+memory/
