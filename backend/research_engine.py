@@ -7,6 +7,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from exa_py import Exa
 from duckduckgo_search import DDGS
+import apify_intelligence_suite as apify # Import the Apify Suite
 
 # --- SETUP ---
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
@@ -144,6 +145,34 @@ class ResearchEngine:
     def phase_3_deep_dive(self):
         self.log("Phase 3: Targeted Deep Dive...")
 
+        # 3A. Apify Intelligence (Social & LinkedIn)
+        try:
+            self.log(f"Phase 3A: Apify Scanning (Reddit & LinkedIn) for {self.company}...")
+            # 1. Reddit Sentiment
+            reddit_data = apify.scrape_reddit_search(self.company)
+            for item in reddit_data:
+                self.sources.append({
+                    "title": item.get('title'),
+                    "url": item.get('url'),
+                    "content": f"[Reddit Sentiment] {item.get('description') or item.get('title')}",
+                    "source": "Reddit (Apify)"
+                })
+            
+            # 2. LinkedIn Data
+            # Note: Using the company domain to find the LinkedIn page URL might be needed first
+            # For now, we search for the LinkedIn URL via Brave, then scrape it.
+            # Simplified: Just search LinkedIn via Google Scraper in Apify
+            linkedin_data = apify.scrape_reddit_search(f"site:linkedin.com/company {self.company}") # Reuse google scraper logic
+            for item in linkedin_data:
+                 self.sources.append({
+                    "title": item.get('title'),
+                    "url": item.get('url'),
+                    "content": f"[LinkedIn Signal] {item.get('description')}",
+                    "source": "LinkedIn (Apify)"
+                })
+        except Exception as e:
+            self.log(f"Apify Module Warning: {e}")
+
         for q in self.questions:
             self.sources.extend(self.search_exa(q, 3))
             self.sources.extend(self.search_tavily(q, 3) or self.search_ddg(q, 2))
@@ -203,11 +232,12 @@ class ResearchEngine:
         1. **Executive Summary** (SWOT Analysis, Key Verdict)
         2. **Product Deep Dive** (Features, Tech Stack, UX)
         3. **Market Landscape** (Competitor Table - compare features/pricing)
-        4. **Business Model** (Revenue Streams, Pricing Strategy)
-        5. **Traction & Risks** (Funding, Traffic, Legal/Reg Risks)
-        6. **Founding Team** (Backgrounds, Track Record)
-        7. **Data Consistency Check** (Deck vs. Web Reality - Flag discrepancies)
-        8. **Strategic Conclusion** (Buy/Sell/Wait)
+        4. **Social Sentiment & Risk** (Reddit/User Feedback - Highlight "Real" sentiment vs PR)
+        5. **Business Model** (Revenue Streams, Pricing Strategy)
+        6. **Traction & Risks** (Funding, Traffic, Legal/Reg Risks)
+        7. **Founding Team** (Backgrounds, Track Record - Check LinkedIn signals)
+        8. **Data Consistency Check** (Deck vs. Web Reality - Flag discrepancies)
+        9. **Strategic Conclusion** (Buy/Sell/Wait)
         
         **FORMATTING RULES:**
         - **NO CHATTY INTROS:** Do NOT say "Here is the report" or "Okay I will do that". Start directly with the Report Title (# Project Name).
