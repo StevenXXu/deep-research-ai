@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import time
+import shutil
 from datetime import datetime
 import subprocess
 from dotenv import load_dotenv
@@ -37,8 +38,13 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 load_dotenv(os.path.join(root_dir, ".env"))
 NOTEBOOK_ID = os.getenv("NOTEBOOK_ID") # For Deal Flow Memory
 
-def run_research(url, target_email=None, document_text=None):
-    print(f"[RESEARCH] Analyzing: {url}")
+def run_research(url, target_email=None, document_text=None, progress_callback=None):
+    def update_status(progress, status):
+        if progress_callback:
+            progress_callback(progress, status)
+        print(f"[RESEARCH] {progress}% - {status}")
+
+    update_status(5, f"Initializing research on {url}...")
     dc.post("cipher", "START", f"Starting Deep Research (Premium) on {url}")
     
     timestamp = int(time.time())
@@ -48,7 +54,7 @@ def run_research(url, target_email=None, document_text=None):
     # 0. Check Memory (NotebookLM)
     memory_context = ""
     if NOTEBOOK_ID and consult_notebooklm:
-        print("[RESEARCH] Checking Deal Memory (NotebookLM)...")
+        update_status(10, "Querying Memory (NotebookLM)...")
         dc.post("cipher", "PROGRESS", "Querying NotebookLM for historical context...")
         query = f"What do we know about {site_name} or this sector? Have we looked at similar competitors?"
         memory_context = consult_notebooklm.query_notebooklm(query, notebook_id=NOTEBOOK_ID)
@@ -56,6 +62,7 @@ def run_research(url, target_email=None, document_text=None):
 
     # 1. Browser Automation (Screenshot + Text)
     # ... (Keep existing Playwright JS script generation) ...
+    update_status(15, "Browsing Target Website...")
     js_script = f"""
     const {{ chromium }} = require('playwright');
     (async () => {{
@@ -85,7 +92,12 @@ def run_research(url, target_email=None, document_text=None):
         
     try:
         print("[RESEARCH] Browsing site...")
-        result = subprocess.run(["node", js_path], capture_output=True, text=True, encoding="utf-8")
+        node_exec = shutil.which("node") or "node"
+        # Windows Fallback
+        if node_exec == "node" and os.path.exists(r"C:\Program Files\nodejs\node.exe"):
+            node_exec = r"C:\Program Files\nodejs\node.exe"
+
+        result = subprocess.run([node_exec, js_path], capture_output=True, text=True, encoding="utf-8")
         
         output = result.stdout
         raw_text = ""
@@ -95,10 +107,11 @@ def run_research(url, target_email=None, document_text=None):
             print(f"[ERROR] Browser Output: {output}")
             
         print(f"[RESEARCH] Extracted landing page text.")
+        update_status(25, "Site Scraped. Engaging Research Engine...")
         dc.post("cipher", "PROGRESS", f"Scraped site. Screenshot saved.")
 
         # 2. Research Engine (The New Brain)
-        print("[RESEARCH] Engaging Research Engine (Exa+Tavily+Brave)...")
+        update_status(30, "Phase 1: Broad Market Scan (Exa/Tavily)...")
         engine = ResearchEngine(url, document_content=document_text)
         
         # Inject Landing Page + Memory Context
@@ -108,11 +121,18 @@ def run_research(url, target_email=None, document_text=None):
         
         # Execute Phases 1-4
         engine.phase_1_broad_scan()
+        
+        update_status(50, "Phase 2: Identifying Knowledge Gaps...")
         engine.phase_2_gap_analysis()
+        
+        update_status(60, "Phase 3: Deep Dive (Apify/Social/Trends)...")
         engine.phase_3_deep_dive()
+        
+        update_status(80, "Phase 4: Synthesizing Investment Memo...")
         analysis = engine.phase_4_synthesis() # Returns Markdown Report
 
         # 3. Generate HTML Report (Premium Style)
+        update_status(90, "Generating PDF Report...")
         # Convert Markdown to HTML
         # Pre-process: Fix common table formatting issues & Strip Filler
         import re
@@ -209,7 +229,14 @@ def run_research(url, target_email=None, document_text=None):
         pdf_path = f"{OUTPUT_DIR}/{site_name}_{timestamp}_Memo.pdf"
         try:
             print("[RESEARCH] Generating PDF...")
-            subprocess.run(f"markdown-pdf \"{report_path}\" -o \"{pdf_path}\"", shell=True)
+            # Use 'npx' to run local markdown-pdf or rely on global install
+            # If global install failed, this might fail.
+            # We can try npx if node is available.
+            # Or just subprocess.run(["markdown-pdf", ...])
+            # Given previous error '/bin/sh: 1: markdown-pdf: not found', we need full path or npx.
+            
+            # Try npx (safer if global install is weird)
+            subprocess.run(f"npx markdown-pdf \"{report_path}\" -o \"{pdf_path}\"", shell=True)
         except Exception as pdf_e:
             print(f"[WARN] PDF Gen failed: {pdf_e}")
             pdf_path = None
@@ -219,42 +246,42 @@ def run_research(url, target_email=None, document_text=None):
         
         # Email Logic
         if target_email:
+            update_status(95, f"Sending Email to {target_email}...")
             print(f"[EMAIL] Sending Premium Report to {target_email}...")
             
-            root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
-            email_script = os.path.join(root_dir, "skills/smtp-send/scripts/send_email.py")
+            inline_images = []
+            if os.path.exists(screenshot_path):
+                inline_images.append((screenshot_path, "screenshot"))
             
-            # Write HTML body to temp file to avoid CLI length limits
-            body_file = f"{OUTPUT_DIR}/{site_name}_{timestamp}_body.html"
-            with open(body_file, "w", encoding="utf-8") as f:
-                f.write(html_content)
-            
-            inline_arg = f"{screenshot_path}|screenshot"
-            
-            email_cmd = [
-                "python", email_script,
-                "--to", target_email,
-                "--subject", f"📋 Prescreen Memo with deep research: {site_name}",
-                "--body-file", body_file, 
-                "--html", 
-                "--inline", inline_arg,
-                "--attachment", report_path
-            ]
-            
+            attachments = []
+            if os.path.exists(report_path):
+                attachments.append(report_path)
             if pdf_path and os.path.exists(pdf_path):
-                email_cmd.extend(["--attachment", pdf_path])
+                attachments.append(pdf_path)
 
-            subprocess.run(email_cmd)
-            print(f"[EMAIL] Sent.")
+            success = send_email(
+                to_addr=target_email,
+                subject=f"📋 Prescreen Memo with deep research: {site_name}",
+                body=html_content,
+                is_html=True,
+                attachments=attachments,
+                inline_images=inline_images
+            )
             
-            # Cleanup body file
-            try: os.remove(body_file)
-            except: pass
+            if success:
+                print(f"[EMAIL] Sent.")
+            else:
+                update_status(99, "Email failed to send. Check logs.")
         
-        os.remove(js_path)
+        update_status(100, "Done! Check your email.")
+        try:
+            os.remove(js_path)
+        except:
+            pass
         return report_path
 
     except Exception as e:
+        update_status(0, f"Error: {str(e)}")
         print(f"[ERROR] Research failed: {e}")
         dc.post("cipher", "ERROR", f"Research failed: {e}")
 

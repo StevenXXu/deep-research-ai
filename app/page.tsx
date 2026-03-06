@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function Home() {
   const [url, setUrl] = useState("");
@@ -8,6 +8,11 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  
+  // Progress State
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [progressMsg, setProgressMsg] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +24,10 @@ export default function Home() {
     }
 
     setLoading(true);
-    setStatus("Initiating Deep Research... (This takes 2-3 mins)");
+    setStatus("");
+    setProgress(0);
+    setProgressMsg("Initializing...");
+    setJobId(null);
 
     try {
       const formData = new FormData();
@@ -28,17 +36,16 @@ export default function Home() {
       if (file) formData.append("file", file);
 
       // BYPASS VERCEL: Upload directly to Local Tunnel
-      // Vercel Serverless has 4.5MB limit. Tunnel allows more.
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL;
-      const DIRECT_ENDPOINT = `${API_BASE}/research-upload`;
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://deep-research-ai-production.up.railway.app";
+      const DIRECT_ENDPOINT = file ? `${API_BASE}/research-upload` : `${API_BASE}/research`;
       
       const res = await fetch(DIRECT_ENDPOINT, {
         method: "POST",
-        // 'Bypass-Tunnel-Reminder' is critical for loca.lt
-        headers: {
+        headers: file ? { 'Bypass-Tunnel-Reminder': 'true' } : {
+            'Content-Type': 'application/json',
             'Bypass-Tunnel-Reminder': 'true'
         },
-        body: formData,
+        body: file ? formData : JSON.stringify({ url, email }),
       });
       
       if (!res.ok) {
@@ -46,13 +53,47 @@ export default function Home() {
       }
 
       const data = await res.json();
-      setStatus(data.message || "Agent Dispatched. Check your email shortly.");
+      if (data.job_id) {
+          setJobId(data.job_id);
+          setStatus("Research Agent Dispatched. Tracking progress...");
+      } else {
+          setStatus(data.message || "Agent Dispatched. Check your email shortly.");
+          setLoading(false);
+      }
     } catch (err) {
       console.error(err);
       setStatus("Error: " + err);
+      setLoading(false);
     }
-    setLoading(false);
   };
+
+  // Polling Effect
+  useEffect(() => {
+      if (!jobId) return;
+
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://deep-research-ai-production.up.railway.app";
+      
+      const interval = setInterval(async () => {
+          try {
+              const res = await fetch(`${API_BASE}/status/${jobId}`);
+              if (res.ok) {
+                  const data = await res.json();
+                  setProgress(data.progress || 0);
+                  setProgressMsg(data.status || "Working...");
+                  
+                  if (data.progress >= 100) {
+                      clearInterval(interval);
+                      setLoading(false);
+                      setStatus("Research Complete! Report sent to your email.");
+                  }
+              }
+          } catch (e) {
+              console.error("Polling error", e);
+          }
+      }, 2000); // Poll every 2s
+
+      return () => clearInterval(interval);
+  }, [jobId]);
 
   return (
     <div className="min-h-screen bg-neutral-900 text-neutral-100 font-sans flex items-center justify-center p-4">
@@ -111,14 +152,30 @@ export default function Home() {
           <div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading && !jobId} 
               className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              {loading ? "Agent Working..." : "Generate Analysis Report"}
+              {loading && !jobId ? "Starting Agent..." : (loading ? "Researching..." : "Generate Analysis Report")}
             </button>
           </div>
 
-          {status && (
+          {/* Progress Bar UI */}
+          {loading && jobId && (
+              <div className="mt-6 space-y-2">
+                  <div className="flex justify-between text-xs font-medium text-indigo-300">
+                      <span>{progressMsg}</span>
+                      <span>{Math.round(progress)}%</span>
+                  </div>
+                  <div className="w-full bg-neutral-700 rounded-full h-2.5 overflow-hidden">
+                      <div 
+                          className="bg-indigo-500 h-2.5 rounded-full transition-all duration-500 ease-out" 
+                          style={{ width: `${progress}%` }}
+                      ></div>
+                  </div>
+              </div>
+          )}
+
+          {status && !loading && (
             <div className="mt-4 text-center text-sm font-medium text-indigo-300 bg-indigo-900/30 p-3 rounded border border-indigo-800">
               {status}
             </div>

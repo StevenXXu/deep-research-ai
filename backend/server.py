@@ -4,6 +4,8 @@ from pydantic import BaseModel
 import threading
 import sys
 import os
+import uuid
+import time
 
 # Add root CLAW folder to path to find llm_gateway
 # We are in workspace/deep-research-saas/backend/
@@ -16,27 +18,49 @@ import docx  # Added for Word support
 
 app = FastAPI()
 
-# Enable CORS for Direct-to-Backend Uploads
-# This bypasses Vercel's 4.5MB request body limit
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins (Vercel, local, etc.)
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Job Store (In-Memory)
+jobs = {}
+
 class ResearchRequest(BaseModel):
     url: str
     email: str
 
+def update_job_progress(job_id, progress, status):
+    """Callback to update job status"""
+    if job_id in jobs:
+        jobs[job_id]["progress"] = progress
+        jobs[job_id]["status"] = status
+        # Keep job alive for 1 hour
+        jobs[job_id]["last_updated"] = time.time()
+
+@app.get("/status/{job_id}")
+def get_status(job_id: str):
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return jobs[job_id]
+
 @app.post("/research")
 async def start_research(req: ResearchRequest):
-    # Run in background thread so API returns immediately
-    thread = threading.Thread(target=run_research, args=(req.url, req.email))
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {"progress": 0, "status": "Queued", "result": None}
+    
+    # Run in background thread
+    thread = threading.Thread(
+        target=run_research, 
+        args=(req.url, req.email, None, lambda p, s: update_job_progress(job_id, p, s))
+    )
     thread.start()
     
-    return {"status": "started", "message": "Agent dispatched locally."}
+    return {"status": "started", "job_id": job_id, "message": "Agent dispatched locally."}
 
 @app.post("/research-upload")
 async def start_research_with_file(
@@ -68,11 +92,18 @@ async def start_research_with_file(
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"File parse failed: {e}")
 
-    thread = threading.Thread(target=run_research, args=(url, email, document_text))
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {"progress": 0, "status": "Queued", "result": None}
+
+    thread = threading.Thread(
+        target=run_research, 
+        args=(url, email, document_text, lambda p, s: update_job_progress(job_id, p, s))
+    )
     thread.start()
 
     return {
         "status": "started",
+        "job_id": job_id,
         "message": "Agent dispatched with optional document context.",
         "hasDocument": bool(document_text)
     }

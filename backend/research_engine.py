@@ -170,6 +170,8 @@ class ResearchEngine:
         
         try:
             resp = gateway.generate(prompt, "Return valid JSON list only.")
+            if not resp:
+                resp = "[]"
             # Clean JSON
             resp = resp.replace("```json", "").replace("```", "").strip()
             self.questions = json.loads(resp)
@@ -286,6 +288,8 @@ class ResearchEngine:
         
         try:
             resp = gateway.generate(audit_prompt, "Return valid JSON only.")
+            if not resp:
+                resp = "{}"
             # Clean JSON
             resp = resp.replace("```json", "").replace("```", "").strip()
             audit_result = json.loads(resp)
@@ -318,10 +322,18 @@ class ResearchEngine:
         for i, s in enumerate(unique_sources):
             ref_num = i + 1
             # Hyperlink Format: [1] [Title](URL)
-            title = s.get('title', 'Unknown Source').replace('[', '(').replace(']', ')')
+            # Safe title handling
+            raw_title = s.get('title')
+            if not raw_title:
+                raw_title = 'Unknown Source'
+            title = str(raw_title).replace('[', '(').replace(']', ')')
+            
             url = s.get('url', '#')
             citations.append(f"[{ref_num}] [{title}]({url})")
-            context_blob += f"Source [{ref_num}]: {s.get('content', '')[:2000]}\n\n"
+            
+            # Safe content handling
+            content = s.get('content') or ''
+            context_blob += f"Source [{ref_num}]: {str(content)[:2000]}\n\n"
             
         prompt = f"""
         You are a Senior Investment Analyst.
