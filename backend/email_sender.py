@@ -59,13 +59,21 @@ def send_email(to_addr, subject, body, is_html=False, attachments=None, inline_i
                     print(f"[WARN] Failed to attach file {fpath}: {e}")
 
     try:
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-        server.starttls()
+        # Use SSL (465) instead of STARTTLS (587) for better stability with some Gmail configs
+        # or properly handle the EHLO for 587
+        if SMTP_PORT == 465:
+            server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT)
+        else:
+            server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            
         server.login(USER, PASSWORD)
         server.sendmail(USER, to_addr, msg.as_string())
         server.quit()
-        print(f"[SUCCESS] Email sent to {to_addr}")
+        print(f"[SUCCESS] Email sent to {to_addr}", flush=True)
         return True
     except Exception as e:
-        print(f"[ERROR] Failed to send email: {e}")
+        print(f"[ERROR] Failed to send email: {e}", flush=True)
         return False
