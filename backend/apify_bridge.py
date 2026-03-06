@@ -37,7 +37,7 @@ def scrape_website_content(url):
     run_input = {
         "startUrls": [{"url": url}],
         "maxCrawlPages": 5, # Limit for speed
-        "crawlerType": "playwright:firefox", # Better anti-detect
+        "crawlerType": "cheerio", # Use lighter cheerio to prevent memory issues
         "proxyConfiguration": {"useApifyProxy": True}
     }
     
