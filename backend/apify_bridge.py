@@ -77,7 +77,10 @@ def scrape_website_content(url):
     
     try:
         # Actor: apify/website-content-crawler (The "Ultimate" one for text)
-        run = client.actor("apify/website-content-crawler").call(run_input=run_input)
+        # Add timeout to prevent hanging forever
+        print(f"[Apify Bridge] Invoking Actor...")
+        run = client.actor("apify/website-content-crawler").call(run_input=run_input, timeout_secs=180)
+        print(f"[Apify Bridge] Actor Finished. Fetching results...")
         
         # Fetch results
         dataset_items = client.dataset(run["defaultDatasetId"]).list_items().items
@@ -111,7 +114,9 @@ def scrape_reddit_search(query):
     
     try:
         # Actor: trudax/reddit-scraper-lite (often used for reputation)
-        run = client.actor("trudax/reddit-scraper-lite").call(run_input=run_input)
+        print(f"[Apify Bridge] Invoking Reddit Actor...")
+        run = client.actor("trudax/reddit-scraper-lite").call(run_input=run_input, timeout_secs=90)
+        print(f"[Apify Bridge] Reddit Actor Finished. Fetching items...")
         dataset_items = client.dataset(run["defaultDatasetId"]).list_items().items
         
         results = []
@@ -143,7 +148,9 @@ def scrape_google_trends(query):
     }
     
     try:
-        run = client.actor("emotra/google-trends-scraper").call(run_input=run_input)
+        print(f"[Apify Bridge] Invoking Google Trends Actor...")
+        run = client.actor("emotra/google-trends-scraper").call(run_input=run_input, timeout_secs=60)
+        print(f"[Apify Bridge] Trends Actor Finished.")
         dataset_items = client.dataset(run["defaultDatasetId"]).list_items().items
         
         # Format for context
@@ -190,7 +197,9 @@ def scrape_linkedin_company(linkedin_url):
     }
 
     try:
-        run = client.actor("consummate_mandala/linkedin-company-scraper").call(run_input=run_input)
+        print(f"[Apify Bridge] Invoking LinkedIn Actor...")
+        run = client.actor("consummate_mandala/linkedin-company-scraper").call(run_input=run_input, timeout_secs=90)
+        print(f"[Apify Bridge] LinkedIn Actor Finished.")
         dataset_items = client.dataset(run["defaultDatasetId"]).list_items().items
         
         # This actor returns structured profile objects

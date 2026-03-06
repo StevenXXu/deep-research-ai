@@ -376,6 +376,10 @@ class ResearchEngine:
         
         report = gateway.generate(prompt, "You are a thoughtful analyst. Output ONLY the report.")
         
+        if not report:
+            self.log("Error: LLM returned None for report generation.")
+            return "# Analysis Failed\n\nDeep Research collected relevant sources, but the LLM failed to synthesize the final report due to a timeout or safety filter.\n\n## Data gathered\n" + f"{len(unique_sources)} sources found."
+
         # Append References if LLM missed them (safety net)
         # Using Markdown Link format now
         if "## References" not in report:
