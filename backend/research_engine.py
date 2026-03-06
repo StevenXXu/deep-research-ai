@@ -4,11 +4,15 @@ import json
 import time
 import requests
 import re
+import warnings
 from datetime import datetime
 from dotenv import load_dotenv
 from exa_py import Exa
 from duckduckgo_search import DDGS
 import apify_bridge as apify # Updated: Use new Bridge
+
+# Filter specific warning from duckduckgo_search
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="duckduckgo_search")
 
 # --- SETUP ---
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
@@ -27,6 +31,7 @@ class ResearchEngine:
     def __init__(self, target_url, document_content=None):
         self.url = target_url
         self.domain = target_url.split("//")[-1].split("/")[0]
+        self.ddg_retries = 0  # Global counter for DDG fallbacks
         
         # Handle 'www.' prefix or subdomains to get proper company name
         domain_parts = self.domain.split('.')
@@ -82,6 +87,13 @@ class ResearchEngine:
             return []
             
     def search_ddg(self, query, num=3):
+        # Global limit to prevent infinite loops / stalling
+        if self.ddg_retries > 3:
+            self.log(f"DDG Search Skipped (Global Limit Reached) for: {query}")
+            return []
+            
+        self.ddg_retries += 1
+        
         # Free Fallback
         try:
             # Sleep to prevent rate limiting
@@ -90,9 +102,7 @@ class ResearchEngine:
                 results = list(ddgs.text(query, max_results=num))
                 return [{"title": r['title'], "url": r['href'], "content": r['body'][:500], "source": "DDG"} for r in results]
         except Exception as e:
-            # Suppress specific warning about renaming if it appears in exception message (though usually it's stderr)
-            if "renamed" not in str(e):
-                self.log(f"DDG Error: {e}")
+            self.log(f"DDG Error: {e}")
             return []
 
     def _find_linkedin_url(self):
@@ -107,7 +117,11 @@ class ResearchEngine:
         
         # 2. Targeted search if not found
         self.log(f"LinkedIn URL not found in initial scan. Searching...")
+        # Use Brave instead of DDG for this critical search if available
         results = self.search_brave(f"site:linkedin.com/company {self.company} official", num=1)
+        if not results:
+             results = self.search_ddg(f"site:linkedin.com/company {self.company} official", num=1)
+             
         if results:
             match = li_pattern.search(results[0].get('url', ''))
             if match:
@@ -139,8 +153,10 @@ class ResearchEngine:
         
         # 1. Company General
         q1 = f"{self.company} {self.domain} startup funding news"
-        self.sources.extend(self.search_exa(q1, 4))
-        self.sources.extend(self.search_tavily(q1, 3))
+        # Try Exa first
+        res = self.search_exa(q1, 4)
+        if not res: res = self.search_tavily(q1, 3)
+        self.sources.extend(res)
         
         # 2. Competitors
         q2 = f"{self.company} competitors alternatives market share"
@@ -148,7 +164,9 @@ class ResearchEngine:
         
         # 3. Reviews / Issues
         q3 = f"{self.company} reviews complaints pricing scam"
-        self.sources.extend(self.search_tavily(q3, 3) or self.search_ddg(q3, 3))
+        res = self.search_tavily(q3, 3)
+        if not res: res = self.search_ddg(q3, 3)
+        self.sources.extend(res)
         
         self.log(f"Found {len(self.sources)} initial sources.")
 

@@ -13,8 +13,8 @@ markdown-pdf
 # Search / LLM
 google-genai
 exa-py
-# Use the new package name to avoid 'This package has been renamed to ddgs' warning
-duckduckgo-search>=6.0.0
+# Official package name is duckduckgo-search, but we need >6.0 to match the 'ddgs' binary warning
+duckduckgo-search>=6.1.0
 apify-client
 
 # Utilities
