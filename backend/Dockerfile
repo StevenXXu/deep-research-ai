@@ -4,10 +4,12 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for Playwright (Chrome) + PDF generation
+# Install system dependencies for Playwright (Chrome) + PDF generation + Build Tools
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
+    build-essential \
+    python3-dev \
     libnss3 \
     libnspr4 \
     libatk1.0-0 \
