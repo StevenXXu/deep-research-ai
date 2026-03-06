@@ -29,7 +29,7 @@ export default function Home() {
 
       // BYPASS VERCEL: Upload directly to Local Tunnel
       // Vercel Serverless has 4.5MB limit. Tunnel allows more.
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://retrieve-brandon-function-catalyst.trycloudflare.com";
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL;
       const DIRECT_ENDPOINT = `${API_BASE}/research-upload`;
       
       const res = await fetch(DIRECT_ENDPOINT, {
