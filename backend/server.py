@@ -115,6 +115,6 @@ def home():
 if __name__ == "__main__":
     import uvicorn
     # Respect Railway's dynamic PORT, default to 8081 if not set
-    print("\n\n=== DEPLOYMENT CHECK: V2.0 (Commit 494958e+) - FORCE REFRESH ===\n\n", flush=True)
+    print("\n\n=== DEPLOYMENT CHECK: V3.0 (Resend API + Final DDG Fix) - FORCE ===\n\n", flush=True)
     port = int(os.getenv("PORT", 8081))
     uvicorn.run(app, host="0.0.0.0", port=port)
