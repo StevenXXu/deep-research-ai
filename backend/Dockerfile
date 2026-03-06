@@ -38,7 +38,7 @@ RUN pip install playwright && playwright install chromium --with-deps
 COPY . .
 
 # Expose port
-EXPOSE 8081
+EXPOSE 8080
 
 # Run the server using python to trigger the __main__ block which handles PORT env
 CMD ["python", "server.py"]
