@@ -16,6 +16,7 @@ exa-py
 # Official package name is duckduckgo-search, but we need >6.0 to match the 'ddgs' binary warning
 duckduckgo-search>=6.1.0
 apify-client
+resend
 
 # Utilities
 markdown

@@ -1,94 +1,71 @@
 import os
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.application import MIMEApplication
-from email.mime.image import MIMEImage
+import resend
 from dotenv import load_dotenv
 
-# Env vars from Railway Variables
-SMTP_SERVER = os.getenv("EMAIL_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("EMAIL_PORT", 587))
-USER = os.getenv("EMAIL_USER")
-PASSWORD = os.getenv("EMAIL_PASSWORD")
+# Load Env
+load_dotenv()
+
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+EMAIL_FROM = os.getenv("EMAIL_FROM", "onboarding@resend.dev") # Default Resend test sender
+
+if RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
 
 def send_email(to_addr, subject, body, is_html=False, attachments=None, inline_images=None):
-    if not USER or not PASSWORD:
-        print("[ERROR] EMAIL_USER or EMAIL_PASSWORD not set in environment.")
+    """
+    Sends email via Resend API (HTTP).
+    Robust, fast, and firewall-friendly.
+    """
+    if not RESEND_API_KEY:
+        print("[ERROR] RESEND_API_KEY not set. Cannot send email.", flush=True)
         return False
 
-    msg = MIMEMultipart('mixed')
-    msg['From'] = USER
-    msg['To'] = to_addr
-    msg['Subject'] = subject
+    print(f"[EMAIL] Sending via Resend API to {to_addr}...", flush=True)
 
-    # Handle Body + Inline Images (Related) or just Body (Alternative)
-    if inline_images:
-        msg_related = MIMEMultipart('related')
-        msg.attach(msg_related)
-        
-        msg_alternative = MIMEMultipart('alternative')
-        msg_related.attach(msg_alternative)
-        msg_alternative.attach(MIMEText(body, 'html' if is_html else 'plain'))
-        
-        for fpath, cid in inline_images:
-            if os.path.exists(fpath):
-                try:
-                    with open(fpath, 'rb') as f:
-                        img = MIMEImage(f.read())
-                    img.add_header('Content-ID', f'<{cid}>')
-                    img.add_header('Content-Disposition', 'inline', filename=os.path.basename(fpath))
-                    msg_related.attach(img)
-                except Exception as e:
-                    print(f"[WARN] Failed to attach inline image {fpath}: {e}")
-    else:
-        msg_alternative = MIMEMultipart('alternative')
-        msg.attach(msg_alternative)
-        msg_alternative.attach(MIMEText(body, 'html' if is_html else 'plain'))
+    params = {
+        "from": EMAIL_FROM,
+        "to": [to_addr],
+        "subject": subject,
+        "html" if is_html else "text": body,
+    }
 
-    # Attachments
+    # Handle Attachments
+    # Resend expects attachments as a list of dicts:
+    # { "filename": "report.md", "content": [list of bytes] }
     if attachments:
+        att_list = []
         for fpath in attachments:
             if os.path.exists(fpath):
                 try:
                     with open(fpath, "rb") as f:
-                        part = MIMEApplication(f.read(), Name=os.path.basename(fpath))
-                    part['Content-Disposition'] = f'attachment; filename="{os.path.basename(fpath)}"'
-                    msg.attach(part)
+                        # Resend Python SDK handles file reading if we pass bytes
+                        # Actually, looking at docs, it needs 'content' as list of integers (bytes)
+                        # OR simply 'path'??
+                        # The safest way per docs is reading content.
+                        content_bytes = f.read()
+                        # Convert bytes to list of integers for JSON serialization if needed,
+                        # BUT the official SDK usually takes bytes or lists.
+                        # Let's check typical usage.
+                        att_list.append({
+                            "filename": os.path.basename(fpath),
+                            "content": list(content_bytes) 
+                        })
                 except Exception as e:
-                    print(f"[WARN] Failed to attach file {fpath}: {e}")
+                    print(f"[WARN] Failed to read attachment {fpath}: {e}", flush=True)
+        
+        if att_list:
+            params["attachments"] = att_list
 
     try:
-        # Strategy: Try 587 (STARTTLS) first, if network unreachable, try 465 (SSL)
-        # Some cloud envs block one or the other.
-        ports_to_try = [587, 465]
-        # Respect user choice if they set a specific port
-        if SMTP_PORT not in ports_to_try:
-            ports_to_try = [SMTP_PORT] + ports_to_try
-
-        last_error = None
-        for port in ports_to_try:
-            try:
-                print(f"[EMAIL] Trying connection on port {port}...", flush=True)
-                if port == 465:
-                    server = smtplib.SMTP_SSL(SMTP_SERVER, port, timeout=10)
-                else:
-                    server = smtplib.SMTP(SMTP_SERVER, port, timeout=10)
-                    server.ehlo()
-                    server.starttls()
-                    server.ehlo()
-                
-                server.login(USER, PASSWORD)
-                server.sendmail(USER, to_addr, msg.as_string())
-                server.quit()
-                print(f"[SUCCESS] Email sent to {to_addr}", flush=True)
-                return True
-            except Exception as e:
-                print(f"[WARN] Failed on port {port}: {e}", flush=True)
-                last_error = e
-                
-        print(f"[ERROR] All email attempts failed. Last error: {last_error}", flush=True)
-        return False
+        r = resend.Emails.send(params)
+        # Check if 'id' is in response
+        if r and r.get("id"):
+            print(f"[SUCCESS] Email sent via Resend. ID: {r['id']}", flush=True)
+            return True
+        else:
+            print(f"[ERROR] Resend API Response invalid: {r}", flush=True)
+            return False
+            
     except Exception as e:
-        print(f"[ERROR] Failed to send email: {e}", flush=True)
+        print(f"[ERROR] Resend API Failed: {e}", flush=True)
         return False
