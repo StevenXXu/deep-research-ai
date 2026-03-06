@@ -248,7 +248,13 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
         # Email Logic
         if target_email:
             update_status(95, f"Sending Email to {target_email}...")
-            print(f"[EMAIL] Sending Premium Report to {target_email}...")
+            
+            # Debug: Verify Credentials loaded (Masked)
+            email_user = os.getenv("EMAIL_USER", "")
+            masked_user = email_user[:3] + "***" + email_user.split('@')[-1] if email_user else "NONE"
+            print(f"[EMAIL] Using Creds: {masked_user}", flush=True)
+
+            print(f"[EMAIL] Sending Premium Report to {target_email}...", flush=True)
             
             inline_images = []
             if os.path.exists(screenshot_path):
@@ -270,9 +276,13 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
             )
             
             if success:
-                print(f"[EMAIL] Sent.")
+                print(f"[EMAIL] Sent successfully.", flush=True)
             else:
-                update_status(99, "Email failed to send. Check logs.")
+                update_status(99, "Email failed. Sending backup summary to Discord.")
+                # Fallback: Send Summary to Discord
+                summary_match = re.search(r"## 1\. Executive Summary(.*?)(?=## 2\.)", analysis, re.DOTALL)
+                summary_text = summary_match.group(1).strip() if summary_match else "Report generated but email failed."
+                dc.post("cipher", "ERROR", f"Email failed. **Executive Summary:**\n{summary_text[:1000]}...")
         
         update_status(100, "Done! Check your email.")
         try:
