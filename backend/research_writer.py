@@ -93,22 +93,27 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
         f.write(js_script)
         
     try:
-        print("[RESEARCH] Browsing site...")
-        node_exec = shutil.which("node") or "node"
-        # Windows Fallback
-        if node_exec == "node" and os.path.exists(r"C:\Program Files\nodejs\node.exe"):
-            node_exec = r"C:\Program Files\nodejs\node.exe"
-
+        print("[RESEARCH] Browsing site...", flush=True)
+        # Linux/Cloud-First Node Resolution
+        node_exec = "node"
+        if shutil.which("node"):
+            node_exec = shutil.which("node")
+            
+        # Execute Scraper
         result = subprocess.run([node_exec, js_path], capture_output=True, text=True, encoding="utf-8")
         
         output = result.stdout
+        # Ensure we capture errors if stdout is empty
+        if result.returncode != 0:
+             print(f"[WARN] Node script error: {result.stderr}", flush=True)
+
         raw_text = ""
         if "__CONTENT_START__" in output:
             raw_text = output.split("__CONTENT_START__")[1].split("__CONTENT_END__")[0]
         else:
-            print(f"[ERROR] Browser Output: {output}")
+            print(f"[WARN] Browser Output format mismatch. Raw output: {output[:200]}...", flush=True)
             
-        print(f"[RESEARCH] Extracted landing page text.")
+        print(f"[RESEARCH] Extracted landing page text.", flush=True)
         update_status(25, "Site Scraped. Engaging Research Engine...")
         dc.post("cipher", "PROGRESS", f"Scraped site. Screenshot saved.")
 
