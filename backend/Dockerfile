@@ -32,7 +32,12 @@ RUN apt-get update && apt-get install -y \
     libcairo2 \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
+    # Install playwright globally for Node.js scripts to find it
+    && npm install -g playwright \
     && rm -rf /var/lib/apt/lists/*
+
+# Set NODE_PATH so scripts can find global modules
+ENV NODE_PATH=/usr/lib/node_modules
 
 # Install Python dependencies
 COPY requirements.txt .
@@ -48,4 +53,5 @@ COPY . .
 EXPOSE 8080
 
 # Run the server using python to trigger the __main__ block which handles PORT env
+# Force a change to trigger Docker rebuild (v3 - Panic Fix)
 CMD ["python", "server.py"]
