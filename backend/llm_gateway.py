@@ -1,0 +1,118 @@
+import os
+import time
+import google.generativeai as genai
+from openai import OpenAI
+from dotenv import load_dotenv
+import communication_protocol as comms # Import Protocol
+
+load_dotenv()
+
+class LLMGateway:
+    def __init__(self):
+        # 1. Google Gemini
+        self.gemini_key = os.getenv("GOOGLE_API_KEY")
+        if self.gemini_key:
+            genai.configure(api_key=self.gemini_key)
+            self.gemini_model = genai.GenerativeModel('gemini-2.0-flash')
+
+        # 2. DeepSeek (OpenAI Compatible)
+        self.deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+        if self.deepseek_key:
+            self.deepseek_client = OpenAI(
+                api_key=self.deepseek_key,
+                base_url="https://api.deepseek.com"
+            )
+
+        # 3. MiniMax (OpenAI Compatible)
+        self.minimax_key = os.getenv("MINIMAX_API_KEY")
+        self.minimax_group = os.getenv("MINIMAX_GROUP_ID")
+        if self.minimax_key:
+            self.minimax_client = OpenAI(
+                api_key=self.minimax_key,
+                base_url="https://api.minimax.chat/v1"
+            )
+
+        # 4. OpenAI
+        self.openai_key = os.getenv("OPENAI_API_KEY")
+        if self.openai_key:
+            self.openai_client = OpenAI(api_key=self.openai_key)
+
+    def generate(self, prompt, system_prompt="You are a helpful assistant."):
+        """
+        Waterfall Fallback Strategy:
+        Gemini -> DeepSeek -> MiniMax -> OpenAI
+        """
+        # INJECT COMMUNICATION SKILL
+        # We prepend it to ensure it sets the baseline behavior
+        full_system_prompt = comms.get_protocol() + "\n\n" + system_prompt
+        
+        errors = []
+
+        # Attempt 1: Gemini
+        if self.gemini_key:
+            try:
+                # print("[LLM] Trying Gemini...")
+                # Gemini doesn't use 'system' role in generate_content same way, strictly speaking
+                # But we simulate it in the prompt text for this simple gateway
+                full_input = f"System: {full_system_prompt}\n\nUser: {prompt}"
+                response = self.gemini_model.generate_content(full_input)
+                if response.text:
+                    return response.text
+            except Exception as e:
+                # print(f"[LLM] Gemini Failed: {e}")
+                errors.append(f"Gemini: {e}")
+        
+        # Attempt 2: DeepSeek
+        if self.deepseek_key:
+            try:
+                # print("[LLM] Trying DeepSeek...")
+                response = self.deepseek_client.chat.completions.create(
+                    model="deepseek-chat",
+                    messages=[
+                        {"role": "system", "content": full_system_prompt},
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                return response.choices[0].message.content
+            except Exception as e:
+                # print(f"[LLM] DeepSeek Failed: {e}")
+                errors.append(f"DeepSeek: {e}")
+
+        # Attempt 3: MiniMax
+        if self.minimax_key:
+            try:
+                # print("[LLM] Trying MiniMax...")
+                # MiniMax sometimes requires specific model names
+                response = self.minimax_client.chat.completions.create(
+                    model="abab6.5s-chat", 
+                    messages=[
+                        {"role": "system", "content": full_system_prompt},
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                return response.choices[0].message.content
+            except Exception as e:
+                # print(f"[LLM] MiniMax Failed: {e}")
+                errors.append(f"MiniMax: {e}")
+
+        # Attempt 4: OpenAI
+        if self.openai_key:
+            try:
+                # print("[LLM] Trying OpenAI...")
+                response = self.openai_client.chat.completions.create(
+                    model="gpt-4o-mini", # Use mini for cost, or gpt-4o for quality
+                    messages=[
+                        {"role": "system", "content": full_system_prompt},
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                return response.choices[0].message.content
+            except Exception as e:
+                # print(f"[LLM] OpenAI Failed: {e}")
+                errors.append(f"OpenAI: {e}")
+
+        # Critical Failure
+        return f"CRITICAL: All LLM providers failed.\nErrors: {'; '.join(errors)}"
+
+# Global instance
+gateway = LLMGateway()

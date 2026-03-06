@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 # Add Root to Path
 # This is required to import llm_gateway and find .env
-root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
 sys.path.append(root_dir)
 
 from llm_gateway import gateway

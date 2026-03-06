@@ -1,0 +1,21 @@
+# Core
+fastapi
+uvicorn
+python-multipart
+python-dotenv
+requests
+
+# PDF/Word Processing
+pypdf
+python-docx
+markdown-pdf
+
+# Search / LLM
+google-generativeai
+exa-py
+duckduckgo-search
+apify-client
+
+# Utilities
+markdown
+pydantic

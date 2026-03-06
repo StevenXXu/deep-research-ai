@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 APIFY_TOKEN = os.getenv("APIFY_TOKEN")
+JINA_API_KEY = os.getenv("JINA_API_KEY")
+
 if not APIFY_TOKEN:
     print("Error: APIFY_TOKEN not found.")
     # We don't exit here to allow import without crashing, but methods will fail/warn.
@@ -58,11 +60,62 @@ def _run_actor(run_url, payload, label="Actor"):
         print(f"[ERROR] {label} Error: {e}")
         return []
 
+def scrape_with_jina(url):
+    """
+    Uses Jina Reader API (r.jina.ai) to scrape the website as Markdown.
+    Better success rate for Cloudflare-protected sites than standard crawlers.
+    """
+    if not JINA_API_KEY:
+        print("[WARN] JINA_API_KEY missing. Skipping Jina scan.")
+        return None
+
+    print(f"[JINA] Scraping {url}...")
+    try:
+        # Construct Jina URL: https://r.jina.ai/<url>
+        jina_endpoint = f"https://r.jina.ai/{url}"
+        
+        headers = {
+            "Authorization": f"Bearer {JINA_API_KEY}",
+            "X-With-Generated-Alt": "true"
+        }
+        
+        response = requests.get(jina_endpoint, headers=headers, timeout=30)
+        response.raise_for_status()
+        
+        markdown_content = response.text
+        
+        if len(markdown_content) < 100:
+            print(f"[JINA] Warning: Content too short ({len(markdown_content)} chars). Likely failed/blocked.")
+            return None
+            
+        print(f"[JINA] Success! Fetched {len(markdown_content)} characters.")
+        
+        return {
+            "title": f"Jina Crawl: {url}",
+            "url": url,
+            "content": markdown_content[:8000], # Keep a good chunk for LLM
+            "source": "Jina Reader"
+        }
+        
+    except Exception as e:
+        print(f"[JINA] Error scraping {url}: {e}")
+        return None
+
 def scrape_website_content(url):
     """
-    Uses Apify Website Content Crawler (aYG0l9s7dbB7j3gbS) to extract clean Markdown.
+    Hybrid Strategy:
+    1. Try Jina Reader first (Fast, bypasses blocks).
+    2. Fallback to Apify Website Content Crawler if Jina fails or returns empty.
     """
-    # Website Content Crawler uses 'startUrls'
+    
+    # 1. Try Jina
+    jina_result = scrape_with_jina(url)
+    if jina_result:
+        return [jina_result]
+        
+    # 2. Fallback to Apify
+    print("[APIFY] Jina failed/empty. Falling back to Apify Crawler...")
+    
     payload = {
         "startUrls": [{"url": url}],
         "maxCrawlDepth": 1,
@@ -92,7 +145,7 @@ def scrape_linkedin_company(linkedin_url):
     Requires a direct URL (e.g., https://www.linkedin.com/company/openai).
     """
     if "linkedin.com/company" not in linkedin_url:
-        print(f"⚠️  Invalid LinkedIn URL provided: {linkedin_url}")
+        print(f"[WARN] Invalid LinkedIn URL provided: {linkedin_url}")
         return []
 
     payload = {
@@ -119,6 +172,6 @@ def scrape_reddit_search(query):
 
 if __name__ == "__main__":
     # Test
-    print("Testing Apify Module...")
+    print("Testing Apify/Jina Module...")
     # res = scrape_website_content("https://www.example.com")
     # print(res)
