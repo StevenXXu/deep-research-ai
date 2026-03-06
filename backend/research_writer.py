@@ -13,6 +13,7 @@ root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
 sys.path.append(root_dir)
 
 from llm_gateway import gateway
+from email_sender import send_email # Local module
 import discord_connector as dc
 from exa_py import Exa
 import markdown
@@ -228,15 +229,44 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
         # 4. Generate PDF
         pdf_path = f"{OUTPUT_DIR}/{site_name}_{timestamp}_Memo.pdf"
         try:
-            print("[RESEARCH] Generating PDF...")
-            # Use 'npx' to run local markdown-pdf or rely on global install
-            # If global install failed, this might fail.
-            # We can try npx if node is available.
-            # Or just subprocess.run(["markdown-pdf", ...])
-            # Given previous error '/bin/sh: 1: markdown-pdf: not found', we need full path or npx.
+            print("[RESEARCH] Generating PDF via Playwright...")
+            # Use Playwright for PDF generation (Modern, Reliable)
+            # We reuse the HTML we just generated
             
-            # Try npx (safer if global install is weird)
-            subprocess.run(f"npx markdown-pdf \"{report_path}\" -o \"{pdf_path}\"", shell=True)
+            # Save HTML temp file (absolute path needed for Playwright)
+            temp_html_path = os.path.abspath(f"{OUTPUT_DIR}/{site_name}_{timestamp}_temp.html")
+            with open(temp_html_path, "w", encoding="utf-8") as f:
+                f.write(html_content)
+                
+            pdf_script = f"""
+            const {{ chromium }} = require('playwright');
+            (async () => {{
+              const browser = await chromium.launch();
+              const page = await browser.newPage();
+              await page.goto('file://{temp_html_path.replace(os.sep, "/")}', {{ waitUntil: 'networkidle' }});
+              await page.pdf({{ path: '{pdf_path.replace(os.sep, "/")}', format: 'A4', printBackground: true, margin: {{ top: '2cm', bottom: '2cm', left: '2cm', right: '2cm' }} }});
+              await browser.close();
+            }})();
+            """
+            
+            pdf_js_path = f"{OUTPUT_DIR}/temp_pdf_gen_{timestamp}.js"
+            with open(pdf_js_path, "w", encoding="utf-8") as f:
+                f.write(pdf_script)
+                
+            node_exec = shutil.which("node") or "node"
+            # Windows Fallback
+            if node_exec == "node" and os.path.exists(r"C:\Program Files\nodejs\node.exe"):
+                node_exec = r"C:\Program Files\nodejs\node.exe"
+
+            subprocess.run([node_exec, pdf_js_path], check=True)
+            
+            # Clean up temp files
+            try:
+                os.remove(temp_html_path)
+                os.remove(pdf_js_path)
+            except:
+                pass
+                
         except Exception as pdf_e:
             print(f"[WARN] PDF Gen failed: {pdf_e}")
             pdf_path = None
