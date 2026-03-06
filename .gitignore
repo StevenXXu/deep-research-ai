@@ -29,6 +29,14 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env.*
+
+# Python
+*.pyc
+__pycache__/
+.venv/
+venv/
+dist/
 
 # Vercel
 .vercel
@@ -47,3 +55,7 @@ HEARTBEAT.md
 TOOLS.md
 MEMORY.md
 memory/
+
+# Specific nested ignores if needed
+workspace/**/node_modules/
+workspace/**/.venv/
