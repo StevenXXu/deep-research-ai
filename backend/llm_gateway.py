@@ -1,6 +1,6 @@
 import os
 import time
-import google.generativeai as genai
+from google import genai
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -36,11 +36,10 @@ load_dotenv()
 
 class LLMGateway:
     def __init__(self):
-        # 1. Google Gemini
+        # 1. Google GenAI (New SDK)
         self.gemini_key = os.getenv("GOOGLE_API_KEY")
         if self.gemini_key:
-            genai.configure(api_key=self.gemini_key)
-            self.gemini_model = genai.GenerativeModel('gemini-2.0-flash')
+            self.gemini_client = genai.Client(api_key=self.gemini_key)
 
         # 2. DeepSeek (OpenAI Compatible)
         self.deepseek_key = os.getenv("DEEPSEEK_API_KEY")
@@ -79,10 +78,11 @@ class LLMGateway:
         if self.gemini_key:
             try:
                 # print("[LLM] Trying Gemini...")
-                # Gemini doesn't use 'system' role in generate_content same way, strictly speaking
-                # But we simulate it in the prompt text for this simple gateway
                 full_input = f"System: {full_system_prompt}\n\nUser: {prompt}"
-                response = self.gemini_model.generate_content(full_input)
+                response = self.gemini_client.models.generate_content(
+                    model="gemini-2.0-flash",
+                    contents=full_input
+                )
                 if response.text:
                     return response.text
             except Exception as e:

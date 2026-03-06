@@ -38,5 +38,5 @@ COPY . .
 # Expose port
 EXPOSE 8081
 
-# Run the server
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8081"]
+# Run the server using python to trigger the __main__ block which handles PORT env
+CMD ["python", "server.py"]

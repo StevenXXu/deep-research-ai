@@ -11,7 +11,7 @@ python-docx
 markdown-pdf
 
 # Search / LLM
-google-generativeai
+google-genai
 exa-py
 duckduckgo-search
 apify-client
