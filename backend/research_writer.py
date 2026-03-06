@@ -35,8 +35,9 @@ except ImportError:
 OUTPUT_DIR = "workspace/research_output"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# Load Keys from Root Env
-load_dotenv(os.path.join(root_dir, ".env"))
+# Load Keys from Root Env (Optional - Railway injects envs automatically)
+# IMPORTANT: override=False ensures we don't overwrite system envs with empty .env values
+load_dotenv(os.path.join(root_dir, ".env"), override=False)
 NOTEBOOK_ID = os.getenv("NOTEBOOK_ID") # For Deal Flow Memory
 
 def run_research(url, target_email=None, document_text=None, progress_callback=None):
