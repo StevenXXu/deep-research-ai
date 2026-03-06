@@ -47,14 +47,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install playwright && playwright install chromium --with-deps
 
 # Force Cache Busting - Change this value to force a rebuild of the COPY step
-ARG CACHEBUST=20260307_v1
+ARG CACHEBUST=20260307_v3_FORCE
 
 # Copy backend code (This step will now definitely re-run)
 COPY . .
 
 # VERIFY: Check if server.py contains the deployment check signature
 # If grep fails, the build will fail, preventing deployment of old code
-RUN grep -q "DEPLOYMENT CHECK" server.py || (echo "ERROR: server.py is OLD! Aborting build." && exit 1)
+RUN grep -q "DEPLOYMENT CHECK: V2.0" server.py || (echo "ERROR: server.py is OLD! Aborting build." && exit 1)
 
 # Expose port
 EXPOSE 8080
