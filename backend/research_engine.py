@@ -84,11 +84,15 @@ class ResearchEngine:
     def search_ddg(self, query, num=3):
         # Free Fallback
         try:
+            # Sleep to prevent rate limiting
+            time.sleep(2)
             with DDGS() as ddgs:
                 results = list(ddgs.text(query, max_results=num))
                 return [{"title": r['title'], "url": r['href'], "content": r['body'][:500], "source": "DDG"} for r in results]
         except Exception as e:
-            self.log(f"DDG Error: {e}")
+            # Suppress specific warning about renaming if it appears in exception message (though usually it's stderr)
+            if "renamed" not in str(e):
+                self.log(f"DDG Error: {e}")
             return []
 
     def _find_linkedin_url(self):
