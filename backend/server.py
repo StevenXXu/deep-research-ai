@@ -12,6 +12,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../.
 
 from research_writer import run_research
 from pypdf import PdfReader
+import docx  # Added for Word support
 
 app = FastAPI()
 
@@ -57,6 +58,10 @@ async def start_research_with_file(
                 for p in reader.pages[:30]:
                     pages.append(p.extract_text() or "")
                 document_text = "\n".join(pages)
+            elif filename.endswith(".docx") or filename.endswith(".doc"):
+                import io
+                doc = docx.Document(io.BytesIO(raw))
+                document_text = "\n".join([p.text for p in doc.paragraphs])
             else:
                 # fallback: treat as utf-8 text
                 document_text = raw.decode("utf-8", errors="ignore")
@@ -78,4 +83,4 @@ def home():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8081)

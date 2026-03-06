@@ -96,12 +96,12 @@ export default function Home() {
               />
             </div>
             <div>
-              <label htmlFor="deck" className="block text-xs text-neutral-400 mb-2">Optional: Upload Deck / Project File (PDF, TXT, MD)</label>
+              <label htmlFor="deck" className="block text-xs text-neutral-400 mb-2">Optional: Upload Deck / Project File (PDF, Word, TXT, MD)</label>
               <input
                 id="deck"
                 name="deck"
                 type="file"
-                accept=".pdf,.txt,.md"
+                accept=".pdf,.txt,.md,.docx,.doc"
                 className="block w-full text-sm text-neutral-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-neutral-700 file:text-neutral-200 hover:file:bg-neutral-600"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
               />

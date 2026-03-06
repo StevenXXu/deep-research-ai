@@ -8,10 +8,10 @@ from datetime import datetime
 from dotenv import load_dotenv
 from exa_py import Exa
 from duckduckgo_search import DDGS
-import apify_intelligence_suite as apify # Import the Apify Suite
+import apify_bridge as apify # Updated: Use new Bridge
 
 # --- SETUP ---
-root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
 sys.path.append(root_dir)
 
 from llm_gateway import gateway
@@ -27,8 +27,15 @@ class ResearchEngine:
     def __init__(self, target_url, document_content=None):
         self.url = target_url
         self.domain = target_url.split("//")[-1].split("/")[0]
-        self.company = self.domain.split(".")[0].capitalize()
-        self.sources = [] 
+        
+        # Handle 'www.' prefix or subdomains to get proper company name
+        domain_parts = self.domain.split('.')
+        if domain_parts[0] == 'www' and len(domain_parts) > 2:
+            self.company = domain_parts[1].capitalize()
+        else:
+            self.company = domain_parts[0].capitalize()
+            
+        self.sources = []  
         self.questions = [] 
         self.document_content = document_content # New: Uploaded Deck
 
@@ -217,7 +224,15 @@ class ResearchEngine:
         except Exception as e:
             self.log(f"Apify Module Warning: {e}")
 
-        # 3B. Tech & Market Gaps
+        # 3B. Market Momentum (Google Trends)
+        try:
+            self.log(f"Phase 3B: Checking Market Momentum...")
+            trends_data = apify.scrape_google_trends(self.company)
+            self.sources.extend(trends_data)
+        except Exception as e:
+            self.log(f"Trends Warning: {e}")
+
+        # 3C. Tech & Market Gaps
         for q in self.questions:
             self.sources.extend(self.search_exa(q, 3))
             self.sources.extend(self.search_tavily(q, 3) or self.search_ddg(q, 2))
@@ -297,13 +312,16 @@ class ResearchEngine:
                 unique_sources.append(s)
                 seen_urls.add(s['url'])
         
-        # Create Citation Map
+        # Create Citation Map (Markdown Links)
         citations = []
         context_blob = ""
         for i, s in enumerate(unique_sources):
-            ref = f"[{i+1}]"
-            citations.append(f"{ref} {s.get('title', 'Unknown')} - {s.get('url', 'N/A')}")
-            context_blob += f"Source {ref}: {s.get('content', '')[:2000]}\n\n"
+            ref_num = i + 1
+            # Hyperlink Format: [1] [Title](URL)
+            title = s.get('title', 'Unknown Source').replace('[', '(').replace(']', ')')
+            url = s.get('url', '#')
+            citations.append(f"[{ref_num}] [{title}]({url})")
+            context_blob += f"Source [{ref_num}]: {s.get('content', '')[:2000]}\n\n"
             
         prompt = f"""
         You are a Senior Investment Analyst.
@@ -314,6 +332,12 @@ class ResearchEngine:
         
         Task: Write a comprehensive Investment Memo (Minimum 2000 words).
         Style: Professional, Objective, Thorough. Use Markdown.
+        
+        **CRITICAL SAFETY RULES:**
+        1. **NO 'SCAM' ACCUSATIONS:** Unless you see a Government Warning (SEC/FTC) or Major News Outlet confirming fraud, DO NOT use words like "Scam", "Fraud", or "Ponzi".
+        2. If users complain, label it "Customer Service Issues" or "User Controversy".
+        3. If the business model is risky, label it "High Risk Structure".
+        4. **Innocent until proven guilty.**
         
         Requirements:
         1. **Executive Summary** (SWOT Analysis, Key Verdict)
@@ -335,14 +359,17 @@ class ResearchEngine:
           | :--- | :--- | :--- |
           | Price | $10 | $20 |
         
-        - Use citations like [1], [2] linked to the References.
+        - Use citations like [1], [2] linked to the References section.
         """
         
         report = gateway.generate(prompt, "You are a thoughtful analyst. Output ONLY the report.")
         
         # Append References if LLM missed them (safety net)
+        # Using Markdown Link format now
         if "## References" not in report:
-            report += "\n\n## References\n" + "\n".join(citations)
+            report += "\n\n## References\n"
+            for c in citations:
+                report += f"- {c}\n"
             
         return report
 
