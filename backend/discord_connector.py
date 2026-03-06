@@ -58,11 +58,12 @@ CHANNEL_ID_MAP = {
     "joy": "1474314146798637107"
 }
 
-def post(agent_name, msg_type, message):
+def post(agent_name, msg_type, message, file_path=None):
     """
     agent_name: 'scout', 'quill', etc.
     msg_type: 'START', 'PROGRESS', 'DONE', 'ERROR', 'INFO'
     message: Human readable text
+    file_path: Optional path to a file to upload
     """
     agent_key = agent_name.lower()
     
@@ -98,26 +99,31 @@ def post(agent_name, msg_type, message):
         try:
             payload = {
                 "username": f"{agent_name.capitalize()} (Bot)",
-                # "avatar_url": "...", # Optional: Add agent avatars later
                 "embeds": [{
                     "title": title,
-                    "description": message, # Use raw message in desc, icon in title? Or vice versa
+                    "description": message, 
                     "color": color,
                     "footer": {"text": f"Mission Control • {msg_type}"},
                     "timestamp": datetime.utcnow().isoformat()
                 }]
             }
-            # Simple content fallback if embeds fail or for simple logs
-            # payload = {"content": f"**{title}**\n{desc}"} 
             
-            res = requests.post(webhook_url, json=payload, timeout=5)
+            # File Upload Logic
+            if file_path and os.path.exists(file_path):
+                with open(file_path, 'rb') as f:
+                    files = {'file': (os.path.basename(file_path), f)}
+                    # When sending files, payload must be passed as payload_json string
+                    res = requests.post(webhook_url, files=files, data={'payload_json': json.dumps(payload)}, timeout=30)
+            else:
+                res = requests.post(webhook_url, json=payload, timeout=5)
+
             if res.status_code in [200, 204]:
-                print(f"[DISCORD] Sent to {agent_key} via Webhook.")
+                print(f"[DISCORD] Sent to {agent_key} via Webhook.", flush=True)
                 return
             else:
-                print(f"[DISCORD] Webhook Failed ({res.status_code}): {res.text}")
+                print(f"[DISCORD] Webhook Failed ({res.status_code}): {res.text}", flush=True)
         except Exception as e:
-            print(f"[DISCORD] Webhook Error: {e}")
+            print(f"[DISCORD] Webhook Error: {e}", flush=True)
 
     # 3. Fallback: Log Intent (The old way)
     # If webhook missing or failed, print the tag for the human operator/supervisor

@@ -59,21 +59,36 @@ def send_email(to_addr, subject, body, is_html=False, attachments=None, inline_i
                     print(f"[WARN] Failed to attach file {fpath}: {e}")
 
     try:
-        # Use SSL (465) instead of STARTTLS (587) for better stability with some Gmail configs
-        # or properly handle the EHLO for 587
-        if SMTP_PORT == 465:
-            server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT)
-        else:
-            server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            
-        server.login(USER, PASSWORD)
-        server.sendmail(USER, to_addr, msg.as_string())
-        server.quit()
-        print(f"[SUCCESS] Email sent to {to_addr}", flush=True)
-        return True
+        # Strategy: Try 587 (STARTTLS) first, if network unreachable, try 465 (SSL)
+        # Some cloud envs block one or the other.
+        ports_to_try = [587, 465]
+        # Respect user choice if they set a specific port
+        if SMTP_PORT not in ports_to_try:
+            ports_to_try = [SMTP_PORT] + ports_to_try
+
+        last_error = None
+        for port in ports_to_try:
+            try:
+                print(f"[EMAIL] Trying connection on port {port}...", flush=True)
+                if port == 465:
+                    server = smtplib.SMTP_SSL(SMTP_SERVER, port, timeout=10)
+                else:
+                    server = smtplib.SMTP(SMTP_SERVER, port, timeout=10)
+                    server.ehlo()
+                    server.starttls()
+                    server.ehlo()
+                
+                server.login(USER, PASSWORD)
+                server.sendmail(USER, to_addr, msg.as_string())
+                server.quit()
+                print(f"[SUCCESS] Email sent to {to_addr}", flush=True)
+                return True
+            except Exception as e:
+                print(f"[WARN] Failed on port {port}: {e}", flush=True)
+                last_error = e
+                
+        print(f"[ERROR] All email attempts failed. Last error: {last_error}", flush=True)
+        return False
     except Exception as e:
         print(f"[ERROR] Failed to send email: {e}", flush=True)
         return False

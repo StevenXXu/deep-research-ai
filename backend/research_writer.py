@@ -278,13 +278,11 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
             if success:
                 print(f"[EMAIL] Sent successfully.", flush=True)
             else:
-                update_status(99, "Email failed. Sending backup summary to Discord.")
-                # Fallback: Send Summary to Discord
-                summary_match = re.search(r"## 1\. Executive Summary(.*?)(?=## 2\.)", analysis, re.DOTALL)
-                summary_text = summary_match.group(1).strip() if summary_match else "Report generated but email failed."
-                dc.post("cipher", "ERROR", f"Email failed. **Executive Summary:**\n{summary_text[:1000]}...")
+                update_status(99, "Email failed. Uploading report to Discord backup.")
+                # Fallback: Upload File to Discord
+                dc.post("cipher", "ERROR", f"Email failed (Network/Auth). Uploading report directly:", file_path=report_path)
         
-        update_status(100, "Done! Check your email.")
+        update_status(100, "Done! Check your email or Discord.")
         try:
             os.remove(js_path)
         except:
