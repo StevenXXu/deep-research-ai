@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin as supabase } from "@/lib/supabase"; // Use Admin Client
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
