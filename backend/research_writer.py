@@ -244,9 +244,27 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
         # Pattern: Start of string -> any text (lazy) -> # Header -> Newline
         analysis = re.sub(r'^.*?# [^\n]+\n', '', analysis, flags=re.DOTALL).strip()
         
-        # 2. Table Formatting Fix: Ensure blank line before tables
-        # Find any line starting with | that doesn't have a blank line before it
-        analysis = re.sub(r'([^\n])\n(\|.*\|)', r'\1\n\n\2', analysis)
+        # 2. Table Formatting Fix: Aggressively ensure blank line before tables
+        # Strategy: Split by lines. If a line starts with | and prev line is not empty and not a table row, insert empty line.
+        lines = analysis.split('\n')
+        cleaned_lines = []
+        for i, line in enumerate(lines):
+            # Header Number Stripping (e.g. "## 1. Exec" -> "## Exec")
+            if line.strip().startswith('#'):
+                line = re.sub(r'^(#+)\s*\d+\.\s*', r'\1 ', line)
+                
+            # Table Fix logic
+            if line.strip().startswith('|'):
+                # If it's a table row
+                if i > 0:
+                    prev_line = lines[i-1].strip()
+                    # If prev line is text (not empty, not table, not header), insert gap
+                    if prev_line and not prev_line.startswith('|') and not prev_line.startswith('#'):
+                        cleaned_lines.append('')
+            
+            cleaned_lines.append(line)
+            
+        analysis = '\n'.join(cleaned_lines)
         
         # 3. Clean Pipe Tables (Standardize spacing)
         analysis = re.sub(r'\| *:?-+:? *\|', lambda m: m.group(0).strip(), analysis) 

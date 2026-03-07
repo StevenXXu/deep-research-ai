@@ -371,11 +371,15 @@ class ResearchEngine:
         1. **OBJECTIVE FACTS ONLY:** Do NOT provide "Recommendations", "Verdicts", "Next Steps", or "Advice". Do not say "Wait and observe", "Buy", or "Sell". Your job is data aggregation, not consulting.
         2. **NO 'SCAM' ACCUSATIONS:** Unless proven by government/major news, assume innocence. Label issues as "User Controversy".
         3. **NO REFERENCES SECTION:** Do NOT write a References/Sources section at the end. The system appends this automatically.
+        4. **NO NUMBERED HEADERS:** Do NOT number the sections (e.g. use "Executive Summary", NOT "1. Executive Summary").
+        5. **MANDATORY TABLES:** 
+           - SWOT Analysis MUST be a Markdown table.
+           - Market Landscape MUST be a Markdown table.
         
         Requirements:
-        1. **Executive Summary** (SWOT Analysis - Facts only)
+        1. **Executive Summary** (Include SWOT Analysis as a Table)
         2. **Product Deep Dive** (Features, Tech Stack, UX)
-        3. **Market Landscape** (Competitor Table - compare features/pricing)
+        3. **Market Landscape** (Competitor Table - columns: Competitor, Features, Pricing)
         4. **Social Sentiment & Risk** (Reddit/User Feedback - Highlight "Real" sentiment vs PR)
         5. **Business Model** (Revenue Streams, Pricing Strategy)
         6. **Traction & Risks** (Funding, Traffic, Legal/Reg Risks)
@@ -384,8 +388,7 @@ class ResearchEngine:
         
         **FORMATTING RULES:**
         - **NO CHATTY INTROS:** Start directly with the Report Title (# Project Name).
-        - Use standard Markdown tables for SWOT and Competitors.
-        - **IMPORTANT:** Ensure tables start on a new line and are NOT indented.
+        - **IMPORTANT:** Ensure all tables are preceded by an empty line.
         - Use citations like [1], [2] in the text.
         """
         
