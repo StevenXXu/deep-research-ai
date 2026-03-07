@@ -238,11 +238,17 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
 
         # Convert Markdown to HTML
         import re
-        # Smart Strip: Remove the first line if it's a Header (to avoid double titles)
-        lines = analysis.split('\n')
-        if lines and lines[0].strip().startswith('# '):
-            analysis = '\n'.join(lines[1:])
-            
+        
+        # 1. Smart Title Stripping: Remove the first H1 header and anything before it
+        # This fixes "Zipline # Zipline Investment Memo" double title issues
+        # Pattern: Start of string -> any text (lazy) -> # Header -> Newline
+        analysis = re.sub(r'^.*?# [^\n]+\n', '', analysis, flags=re.DOTALL).strip()
+        
+        # 2. Table Formatting Fix: Ensure blank line before tables
+        # Find any line starting with | that doesn't have a blank line before it
+        analysis = re.sub(r'([^\n])\n(\|.*\|)', r'\1\n\n\2', analysis)
+        
+        # 3. Clean Pipe Tables (Standardize spacing)
         analysis = re.sub(r'\| *:?-+:? *\|', lambda m: m.group(0).strip(), analysis) 
         
         analysis_html = markdown.markdown(
