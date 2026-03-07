@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession, useUser } from "@clerk/nextjs";
 import { createClient } from "@supabase/supabase-js";
 import { FileText, Clock, AlertCircle, CheckCircle } from "lucide-react";
+import Link from "next/link";
 
 type Report = {
   id: string;
@@ -95,7 +96,7 @@ export default function HistoryPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     {report.status === 'completed' && (
-                        <button className="text-indigo-600 hover:text-indigo-900">View Report</button>
+                        <Link href={`/dashboard/history/${report.id}`} className="text-indigo-600 hover:text-indigo-900 font-medium">View Report</Link>
                     )}
                   </td>
                 </tr>
