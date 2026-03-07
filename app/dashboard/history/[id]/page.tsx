@@ -5,19 +5,23 @@ import { useUser } from "@clerk/nextjs";
 import { ArrowLeft, Calendar, Link as LinkIcon, Download } from "lucide-react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
+import { useParams } from "next/navigation"; // Use Hook
 
-export default function ReportDetailPage({ params }: { params: { id: string } }) {
+export default function ReportDetailPage() {
   const { user } = useUser();
+  const params = useParams(); // Get params via hook
+  const id = params?.id as string; // Extract ID
+  
   const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !id) return; // Wait for ID
 
     async function fetchReport() {
       try {
-        const res = await fetch(`/api/history/${params.id}`, {
+        const res = await fetch(`/api/history/${id}`, {
             headers: {
                 'X-User-ID': user!.id
             }
@@ -35,7 +39,7 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
     }
 
     fetchReport();
-  }, [user, params.id]);
+  }, [user, id]);
 
   if (loading) return <div className="p-12 text-center text-gray-500">Loading report...</div>;
   if (error) return <div className="p-12 text-center text-red-500">{error}</div>;
