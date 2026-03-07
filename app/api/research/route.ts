@@ -6,7 +6,16 @@ export async function POST(req: Request) {
   const { userId } = auth();
   
   if (!userId) {
-    return new NextResponse("Unauthorized", { status: 401 });
+    console.error("[API] Auth Failed. userId is null.");
+    // Check if Secret Key is loaded (Don't log the actual key)
+    const hasSecretKey = !!process.env.CLERK_SECRET_KEY;
+    console.error(`[API] CLERK_SECRET_KEY Present: ${hasSecretKey}`);
+    
+    return NextResponse.json({ 
+        error: "Unauthorized", 
+        details: "User session not found on server.",
+        debug_key_present: hasSecretKey 
+    }, { status: 401 });
   }
 
   // 1. Check Credits
