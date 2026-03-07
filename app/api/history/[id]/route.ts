@@ -9,6 +9,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (!userId) {
       const userIdHeader = req.headers.get("X-User-ID");
       if (userIdHeader) {
+          console.log(`[API] Report Detail: Using fallback user_id from header: ${userIdHeader}`);
           userId = userIdHeader;
       } else {
           return new NextResponse("Unauthorized", { status: 401 });
