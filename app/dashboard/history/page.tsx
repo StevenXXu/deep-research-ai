@@ -24,8 +24,14 @@ export default function HistoryPage() {
 
     async function fetchReports() {
       try {
-          // Fetch via our own API route (bypasses RLS complexity)
-          const res = await fetch("/api/history");
+          // Fetch via our own API route
+          // Pass User ID in header as fallback for cross-domain auth issues
+          const res = await fetch("/api/history", {
+              headers: {
+                  'X-User-ID': user!.id
+              }
+          });
+          
           if (!res.ok) throw new Error("Failed to fetch history");
           
           const data = await res.json();

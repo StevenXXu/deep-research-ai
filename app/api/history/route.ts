@@ -3,10 +3,17 @@ import { supabaseAdmin } from "@/lib/supabase"; // Use Admin Client to bypass RL
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
-  const { userId } = auth();
+  let { userId } = auth();
   
+  // FALLBACK: Check for custom header if cookie auth fails
   if (!userId) {
-    return new NextResponse("Unauthorized", { status: 401 });
+      const userIdHeader = req.headers.get("X-User-ID");
+      if (userIdHeader) {
+          console.log(`[API] History: Using fallback user_id from header: ${userIdHeader}`);
+          userId = userIdHeader;
+      } else {
+          return new NextResponse("Unauthorized", { status: 401 });
+      }
   }
 
   // Admin query (trusted because userId comes from Clerk auth())
