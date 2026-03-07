@@ -211,7 +211,7 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
         </head>
         <body>
             <div class="container">
-                <div class="meta">CONFIDENTIAL • DEEP RESEARCH MEMO</div>
+                <div class="meta">CONFIDENTIAL • PRE-SCREEN MEMO</div>
                 <h1>{site_name}</h1>
                 
                 <img src="cid:screenshot" class="hero" alt="Landing Page Screenshot">
@@ -232,17 +232,60 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(analysis) 
             
-        # 4. Generate PDF (DISABLED TEMPORARILY to fix flow)
-        pdf_path = None
-        # pdf_path = f"{OUTPUT_DIR}/{site_name}_{timestamp}_Memo.pdf"
-        # try:
-        #     print("[RESEARCH] Generating PDF via Playwright...")
-        #     # ... (PDF generation code commented out) ...
-        # except Exception as pdf_e:
-        #     print(f"[WARN] PDF Gen failed: {pdf_e}")
-        #     pdf_path = None
+        # 4. Generate PDF (Enabled)
+        pdf_path = f"{OUTPUT_DIR}/{site_name}_{timestamp}_Memo.pdf"
+        try:
+            update_status(92, "Generating PDF...")
+            print("[RESEARCH] Generating PDF via Playwright...", flush=True)
+            
+            # Save HTML temp file (absolute path needed for Playwright)
+            temp_html_path = os.path.abspath(f"{OUTPUT_DIR}/{site_name}_{timestamp}_temp.html")
+            with open(temp_html_path, "w", encoding="utf-8") as f:
+                f.write(html_content)
+                
+            pdf_script = f"""
+            const {{ chromium }} = require('playwright');
+            (async () => {{
+              const browser = await chromium.launch();
+              const page = await browser.newPage();
+              try {{
+                  await page.goto('file://{temp_html_path.replace(os.sep, "/")}', {{ waitUntil: 'networkidle' }});
+                  await page.pdf({{ path: '{pdf_path.replace(os.sep, "/")}', format: 'A4', printBackground: true, margin: {{ top: '2cm', bottom: '2cm', left: '2cm', right: '2cm' }} }});
+              }} finally {{
+                  await browser.close();
+              }}
+            }})();
+            """
+            
+            pdf_js_path = f"{OUTPUT_DIR}/temp_pdf_gen_{timestamp}.js"
+            with open(pdf_js_path, "w", encoding="utf-8") as f:
+                f.write(pdf_script)
+            
+            # Resolve Node
+            node_exec = "node"
+            if shutil.which("node"):
+                node_exec = shutil.which("node")
 
-        print(f"[SUCCESS] Reports saved: {report_path}")
+            result = subprocess.run([node_exec, pdf_js_path], capture_output=True, text=True, encoding="utf-8")
+            
+            if result.returncode != 0:
+                print(f"[WARN] PDF Gen failed: {result.stderr}", flush=True)
+                pdf_path = None
+            else:
+                print(f"[SUCCESS] PDF Generated: {pdf_path}", flush=True)
+            
+            # Clean up temp files
+            try:
+                os.remove(temp_html_path)
+                os.remove(pdf_js_path)
+            except:
+                pass
+                
+        except Exception as pdf_e:
+            print(f"[WARN] PDF Gen Exception: {pdf_e}", flush=True)
+            pdf_path = None
+
+        print(f"[SUCCESS] Reports saved: {report_path}", flush=True)
         dc.post("cipher", "DONE", f"Research Complete. Generated Premium Report.")
         
         # Email Logic
