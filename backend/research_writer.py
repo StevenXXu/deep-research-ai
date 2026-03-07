@@ -140,108 +140,112 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
 
         # 3. Generate HTML Report (Premium Style)
         update_status(90, "Generating PDF Report...")
-        # Convert Markdown to HTML
-        # Pre-process: Fix common table formatting issues & Strip Filler
-        import re
         
-        # Strip Chatty Intro (Remove everything before the first Header #)
+        # Clean Site Name for Title (e.g. "www.breaker.com" -> "Breaker")
+        display_title = site_name
+        if "www." in site_name:
+            display_title = site_name.replace("www.", "")
+        if "." in display_title:
+            display_title = display_title.split(".")[0]
+        display_title = display_title.replace("_", " ").title()
+
+        # Convert Markdown to HTML
+        import re
         if "# " in analysis:
-            # Keep the header and everything after
             analysis = "# " + analysis.split("# ", 1)[1]
-            
-        # Fix: ensure |---| separator line exists and is clean
         analysis = re.sub(r'\| *:?-+:? *\|', lambda m: m.group(0).strip(), analysis) 
         
-        # Convert
         analysis_html = markdown.markdown(
             analysis, 
             extensions=['tables', 'fenced_code', 'nl2br']
         )
         
-        html_content = f"""
-        <html>
-        <head>
-            <style>
-                body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1f2937; max-width: 800px; margin: 0 auto; padding: 40px; background-color: #f9fafb; }}
-                .container {{ background: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }}
-                h1 {{ font-size: 24px; font-weight: 800; color: #111827; border-bottom: 2px solid #e5e7eb; padding-bottom: 16px; margin-bottom: 24px; }}
-                h2 {{ font-size: 18px; font-weight: 700; color: #374151; margin-top: 32px; margin-bottom: 12px; }}
-                p {{ margin-bottom: 16px; color: #4b5563; }}
-                ul {{ margin-bottom: 16px; padding-left: 20px; }}
-                li {{ margin-bottom: 8px; }}
-                table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
-                th, td {{ border: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; }}
-                th {{ background-color: #f3f4f6; font-weight: 600; }}
-                strong {{ color: #111827; font-weight: 600; }}
-                /* Table Styling */
-                table {{ 
+        # CSS for PDF/Email
+        # Added page-break rules for PDF
+        css_style = """
+                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1f2937; max-width: 800px; margin: 0 auto; padding: 40px; background-color: #ffffff; }
+                .container { background: #ffffff; padding: 0; }
+                h1 { font-size: 28px; font-weight: 800; color: #111827; border-bottom: 4px solid #000; padding-bottom: 16px; margin-bottom: 32px; letter-spacing: -0.5px; }
+                h2 { font-size: 20px; font-weight: 700; color: #374151; margin-top: 40px; margin-bottom: 16px; page-break-after: avoid; border-left: 4px solid #3b82f6; padding-left: 12px; }
+                p { margin-bottom: 16px; color: #4b5563; text-align: justify; }
+                ul { margin-bottom: 16px; padding-left: 20px; }
+                li { margin-bottom: 8px; }
+                
+                /* Table Styling - Robust for PDF */
+                table { 
                     width: 100%; 
                     border-collapse: collapse; 
                     margin: 24px 0; 
-                    font-size: 14px; 
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
-                    border-radius: 6px; 
-                    overflow: hidden; 
-                }}
-                th {{ 
-                    background-color: #f3f4f6; 
-                    color: #374151; 
+                    font-size: 13px; 
+                    border: 1px solid #e5e7eb;
+                    page-break-inside: avoid; /* Prevent table splitting */
+                }
+                th { 
+                    background-color: #f9fafb; 
+                    color: #111827; 
                     font-weight: 700; 
                     text-transform: uppercase; 
                     font-size: 11px; 
-                    letter-spacing: 0.5px; 
-                    padding: 12px 16px; 
+                    padding: 12px; 
                     text-align: left; 
                     border-bottom: 2px solid #e5e7eb; 
-                }}
-                td {{ 
-                    border-bottom: 1px solid #f3f4f6; 
-                    padding: 12px 16px; 
+                }
+                td { 
+                    border-bottom: 1px solid #e5e7eb; 
+                    padding: 12px; 
                     color: #4b5563; 
                     vertical-align: top;
-                }}
-                tr:last-child td {{ border-bottom: none; }}
-                tr:nth-child(even) {{ background-color: #f9fafb; }}
+                }
+                tr:last-child td { border-bottom: none; }
+                tr:nth-child(even) { background-color: #fcfcfc; }
                 
-                .meta {{ font-size: 11px; font-weight: 600; letter-spacing: 1px; color: #6b7280; text-transform: uppercase; margin-bottom: 8px; }}
-                .hero {{ width: 100%; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 32px; }}
-                .footer {{ margin-top: 40px; text-align: center; font-size: 12px; color: #9ca3af; }}
-                .ref {{ font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 40px; }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="meta">CONFIDENTIAL • PRE-SCREEN MEMO</div>
-                <h1>{site_name}</h1>
-                
-                <img src="cid:screenshot" class="hero" alt="Landing Page Screenshot">
-                
-                {analysis_html}
-                
-                <div class="footer">
-                    Generated by Deep Research AI (Premium) • {datetime.now().strftime('%Y-%m-%d')}
-                </div>
-            </div>
-        </body>
-        </html>
+                .meta { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: #9ca3af; text-transform: uppercase; margin-bottom: 16px; display: block; }
+                .hero { width: 100%; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 32px; max-height: 400px; object-fit: cover; }
+                .footer { margin-top: 60px; text-align: center; font-size: 11px; color: #d1d5db; border-top: 1px solid #f3f4f6; padding-top: 20px; }
         """
+
+        # Template Base
+        def render_html(img_src):
+            return f"""
+            <html>
+            <head><style>{css_style}</style></head>
+            <body>
+                <div class="container">
+                    <span class="meta">CONFIDENTIAL • PRE-SCREEN MEMO</span>
+                    <h1>{display_title}</h1>
+                    <img src="{img_src}" class="hero" alt="Landing Page Screenshot">
+                    {analysis_html}
+                    <div class="footer">
+                        Generated by Deep Research AI • {datetime.now().strftime('%Y-%m-%d')}
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+        # 1. Email Version (cid:screenshot)
+        email_html = render_html("cid:screenshot")
         
-        # Save Report
+        # 2. PDF Version (Local Path for Playwright)
+        # Playwright needs absolute path with file:// protocol or just absolute path depending on OS
+        # Using forward slashes is safest for file:// URLs
+        abs_screenshot_path = screenshot_path.replace(os.sep, "/")
+        pdf_html = render_html(f"file://{abs_screenshot_path}")
+            
+        # Save Markdown Report (Keep original logic)
         report_path = f"{OUTPUT_DIR}/{site_name}_{timestamp}_Analysis.md"
-        
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(analysis) 
             
-        # 4. Generate PDF (Enabled)
+        # 4. Generate PDF
         pdf_path = f"{OUTPUT_DIR}/{site_name}_{timestamp}_Memo.pdf"
         try:
             update_status(92, "Generating PDF...")
             print("[RESEARCH] Generating PDF via Playwright...", flush=True)
             
-            # Save HTML temp file (absolute path needed for Playwright)
             temp_html_path = os.path.abspath(f"{OUTPUT_DIR}/{site_name}_{timestamp}_temp.html")
             with open(temp_html_path, "w", encoding="utf-8") as f:
-                f.write(html_content)
+                f.write(pdf_html) # Use the PDF-specific HTML
                 
             pdf_script = f"""
             const {{ chromium }} = require('playwright');
@@ -250,7 +254,12 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
               const page = await browser.newPage();
               try {{
                   await page.goto('file://{temp_html_path.replace(os.sep, "/")}', {{ waitUntil: 'networkidle' }});
-                  await page.pdf({{ path: '{pdf_path.replace(os.sep, "/")}', format: 'A4', printBackground: true, margin: {{ top: '2cm', bottom: '2cm', left: '2cm', right: '2cm' }} }});
+                  await page.pdf({{ 
+                    path: '{pdf_path.replace(os.sep, "/")}', 
+                    format: 'A4', 
+                    printBackground: true, 
+                    margin: {{ top: '2cm', bottom: '2cm', left: '2cm', right: '2cm' }} 
+                  }});
               }} finally {{
                   await browser.close();
               }}
@@ -311,8 +320,8 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
 
             success = send_email(
                 to_addr=target_email,
-                subject=f"📋 Prescreen Memo with deep research: {site_name}",
-                body=html_content,
+                subject=f"📋 Pre-Screen Memo: {display_title}",
+                body=email_html, # Use the Email-specific HTML
                 is_html=True,
                 attachments=attachments,
                 inline_images=inline_images
