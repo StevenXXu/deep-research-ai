@@ -249,10 +249,10 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
         if target_email:
             update_status(95, f"Sending Email to {target_email}...")
             
-            # Debug: Verify Credentials loaded (Masked)
-            email_user = os.getenv("EMAIL_USER", "")
-            masked_user = email_user[:3] + "***" + email_user.split('@')[-1] if email_user else "NONE"
-            print(f"[EMAIL] Using Creds: {masked_user}", flush=True)
+            # Debug: Verify Resend Key loaded
+            resend_key = os.getenv("RESEND_API_KEY", "")
+            masked_key = resend_key[:3] + "***" if resend_key else "NONE"
+            print(f"[EMAIL] Auth Provider: Resend (Key: {masked_key})", flush=True)
 
             print(f"[EMAIL] Sending Premium Report to {target_email}...", flush=True)
             

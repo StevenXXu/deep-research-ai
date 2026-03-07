@@ -29,32 +29,55 @@ def send_email(to_addr, subject, body, is_html=False, attachments=None, inline_i
         "html" if is_html else "text": body,
     }
 
-    # Handle Attachments
-    # Resend expects attachments as a list of dicts:
-    # { "filename": "report.md", "content": [list of bytes] }
+    # Handle Inline Images (Add to attachments with content_id)
+    if inline_images:
+        if not attachments: attachments = []
+        for fpath, cid in inline_images:
+            if os.path.exists(fpath):
+                # We treat inline images as attachments with a specific content_id
+                # This allows Resend to map <img src="cid:..."> correctly if supported
+                # NOTE: Resend Python SDK might not fully support 'content_id' in all versions
+                # If this fails, the image just becomes a regular attachment.
+                pass 
+                # Actually, let's just merge them into the attachment loop below
+                # but we need to track the CID.
+    
+    # Process Attachments (Standard + Inline)
+    final_attachments = []
+    
+    # 1. Standard Attachments
     if attachments:
-        att_list = []
         for fpath in attachments:
             if os.path.exists(fpath):
                 try:
                     with open(fpath, "rb") as f:
-                        # Resend Python SDK handles file reading if we pass bytes
-                        # Actually, looking at docs, it needs 'content' as list of integers (bytes)
-                        # OR simply 'path'??
-                        # The safest way per docs is reading content.
                         content_bytes = f.read()
-                        # Convert bytes to list of integers for JSON serialization if needed,
-                        # BUT the official SDK usually takes bytes or lists.
-                        # Let's check typical usage.
-                        att_list.append({
+                        final_attachments.append({
                             "filename": os.path.basename(fpath),
                             "content": list(content_bytes) 
                         })
                 except Exception as e:
                     print(f"[WARN] Failed to read attachment {fpath}: {e}", flush=True)
-        
-        if att_list:
-            params["attachments"] = att_list
+
+    # 2. Inline Images (Screenshot)
+    if inline_images:
+        for fpath, cid in inline_images:
+            if os.path.exists(fpath):
+                try:
+                    with open(fpath, "rb") as f:
+                        content_bytes = f.read()
+                        # Resend allows 'content_id' (or 'content_id' in some docs? Let's try standard)
+                        # Official Resend docs use 'content_id' for inline images.
+                        final_attachments.append({
+                            "filename": os.path.basename(fpath),
+                            "content": list(content_bytes),
+                            "content_id": cid  # This enables <img src="cid:screenshot">
+                        })
+                except Exception as e:
+                    print(f"[WARN] Failed to read inline image {fpath}: {e}", flush=True)
+
+    if final_attachments:
+        params["attachments"] = final_attachments
 
     try:
         r = resend.Emails.send(params)
