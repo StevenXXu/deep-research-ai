@@ -40,7 +40,7 @@ export default function HistoryPage() {
           const { data, error } = await supabase
             .from("reports")
             .select("*")
-            # No .eq("user_id") needed because RLS handles it, but keeping it is safe
+            // No .eq("user_id") needed because RLS handles it, but keeping it is safe
             .order("created_at", { ascending: false });
 
           if (error) {
