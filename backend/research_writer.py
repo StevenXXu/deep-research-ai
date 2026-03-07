@@ -107,8 +107,27 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
                 data["report_content"] = content
                 
             # Perform Insert
-            res = supabase.table("reports").insert(data).execute()
-            print(f"[DB] Saved report to history. ID: {res.data[0]['id'] if res.data else 'Unknown'}", flush=True)
+            try:
+                res = supabase.table("reports").insert(data).execute()
+                print(f"[DB] Saved report to history.", flush=True)
+            except Exception as e:
+                # Handle Foreign Key Violation (Missing Profile)
+                if "foreign key constraint" in str(e) or "23503" in str(e):
+                    print(f"[DB] Missing Profile for {user_id}. Creating fallback profile...", flush=True)
+                    # Create minimal profile
+                    profile_data = {
+                        "user_id": user_id,
+                        "email": target_email or "unknown@email.com",
+                        "full_name": "User (Auto-Created)",
+                        "credits_remaining": 0 # Assume they used one
+                    }
+                    supabase.table("profiles").insert(profile_data).execute()
+                    print(f"[DB] Fallback profile created. Retrying report save...", flush=True)
+                    # Retry Report Insert
+                    supabase.table("reports").insert(data).execute()
+                    print(f"[DB] Saved report on retry.", flush=True)
+                else:
+                    raise e
             
         except Exception as e:
             print(f"[DB] Error saving history: {e}", flush=True)
