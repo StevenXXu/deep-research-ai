@@ -12,7 +12,6 @@ export async function POST(req: Request) {
     console.warn("[API] Auth check failed (Cookie missing/invalid). Checking body payload...");
     
     // FALLBACK: Trust the frontend-provided user_id for MVP stability
-    // This bypasses strict server-side cookie validation which is failing cross-domain
     if (body.user_id) {
         console.log(`[API] Using fallback user_id from body: ${body.user_id}`);
         userId = body.user_id;
@@ -34,10 +33,6 @@ export async function POST(req: Request) {
     .select('credits_remaining')
     .eq('user_id', userId)
     .single();
-    .from('profiles')
-    .select('credits_remaining')
-    .eq('user_id', userId)
-    .single();
 
   if (error || !profile) {
       return new NextResponse("Profile not found", { status: 404 });
@@ -54,29 +49,26 @@ export async function POST(req: Request) {
     .eq('user_id', userId);
 
   // 3. Forward to Python Backend
-  const body = await req.json();
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://deep-research-ai-production.up.railway.app";
-  
-  // Note: Handling File Uploads via Proxy is tricky (Multipart). 
-  // For MVP, we might allow direct upload for files OR handle the stream properly.
-  // For JSON requests (URL only), this proxy works perfectly.
   
   try {
       const res = await fetch(`${API_BASE}/research`, {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json',
-              // Add a secret key here later to secure Python backend
           },
-          body: JSON.stringify(body)
+          body: JSON.stringify(body) // Re-use the body which contains url, email, user_id
       });
       
+      if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`Backend Error: ${res.status} ${errText}`);
+      }
+
       const data = await res.json();
       return NextResponse.json(data);
       
   } catch (e) {
-      // Refund credit if backend fails immediately? 
-      // For now, keep it simple.
-      return new NextResponse("Backend Error", { status: 500 });
+      return new NextResponse(`Backend Error: ${String(e)}`, { status: 500 });
   }
 }
