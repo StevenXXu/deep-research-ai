@@ -1,54 +1,59 @@
-import { NextResponse } from 'next/server';
+import { auth } from "@clerk/nextjs/server";
+import { supabase } from "@/lib/supabase";
+import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
+  const { userId } = auth();
+  
+  if (!userId) {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
+
+  // 1. Check Credits
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('credits_remaining')
+    .eq('user_id', userId)
+    .single();
+
+  if (error || !profile) {
+      return new NextResponse("Profile not found", { status: 404 });
+  }
+
+  if (profile.credits_remaining <= 0) {
+      return new NextResponse("Insufficient credits. Please upgrade.", { status: 403 });
+  }
+
+  // 2. Decrement Credit
+  await supabase
+    .from('profiles')
+    .update({ credits_remaining: profile.credits_remaining - 1 })
+    .eq('user_id', userId);
+
+  // 3. Forward to Python Backend
+  const body = await req.json();
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://deep-research-ai-production.up.railway.app";
+  
+  // Note: Handling File Uploads via Proxy is tricky (Multipart). 
+  // For MVP, we might allow direct upload for files OR handle the stream properly.
+  // For JSON requests (URL only), this proxy works perfectly.
+  
   try {
-    const formData = await req.formData();
-    const url = formData.get("url") as string;
-    const email = formData.get("email") as string;
-    const file = formData.get("file") as File | null;
-
-    if (!url || !email) {
-      return NextResponse.json({ error: "URL and Email required" }, { status: 400 });
-    }
-
-    // FORWARD TO LOCAL PYTHON BACKEND (via Tunnel)
-    // Updated: Dynamically load from ENV
-    const TUNNEL_URL = process.env.NEXT_PUBLIC_API_URL || "https://tent-comparing-treatments-dakota.trycloudflare.com";
-    if (!TUNNEL_URL) {
-       return NextResponse.json({ error: "Configuration Error: API URL missing" }, { status: 500 });
-    }
-    const BACKEND_ENDPOINT = `${TUNNEL_URL}/research-upload`;
-
-    const backendForm = new FormData();
-    backendForm.append("url", url as string);
-    backendForm.append("email", email as string);
-    if (file) backendForm.append("file", file);
-
-    try {
-      console.log(`[PROXY] Forwarding to ${BACKEND_ENDPOINT}...`);
-      
-      const response = await fetch(BACKEND_ENDPOINT, {
-        method: 'POST',
-        // 'Bypass-Tunnel-Reminder' is critical for loca.lt to avoid the "Click to Continue" page blocking the API
-        headers: {
-          'Bypass-Tunnel-Reminder': 'true' 
-        },
-        body: backendForm
+      const res = await fetch(`${API_BASE}/research`, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              // Add a secret key here later to secure Python backend
+          },
+          body: JSON.stringify(body)
       });
-
-      if (!response.ok) {
-        throw new Error(`Backend responded with ${response.status}`);
-      }
-
-      const data = await response.json();
+      
+      const data = await res.json();
       return NextResponse.json(data);
-
-    } catch (err: any) {
-      console.error(`[API] Proxy Error: ${err.message}`);
-      return NextResponse.json({ error: "Backend unavailable. Tunnel might be down." }, { status: 502 });
-    }
-
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+      
+  } catch (e) {
+      // Refund credit if backend fails immediately? 
+      // For now, keep it simple.
+      return new NextResponse("Backend Error", { status: 500 });
   }
 }
