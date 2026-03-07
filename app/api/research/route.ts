@@ -28,14 +28,34 @@ export async function POST(req: Request) {
   }
 
   // 1. Check Credits
-  const { data: profile, error } = await supabase
+  let { data: profile, error } = await supabase
     .from('profiles')
     .select('credits_remaining')
     .eq('user_id', userId)
     .single();
 
-  if (error || !profile) {
-      return new NextResponse("Profile not found", { status: 404 });
+  // SELF-HEALING: If profile missing, create it now (Backend Authority)
+  if (!profile) {
+      console.log(`[API] Profile missing for ${userId}. Creating new trial profile...`);
+      // Use fallback email/name if not available from auth(), but for now just ID is enough for the DB constraint
+      // Ideally we want email, but auth() doesn't give email directly without extra calls.
+      // We'll trust the body email if present, or placeholder.
+      const userEmail = body.email || "unknown@user.com";
+      
+      const { error: insertError } = await supabase.from('profiles').insert({
+          user_id: userId,
+          email: userEmail,
+          full_name: "User (Auto-Created)",
+          credits_remaining: 3
+      });
+      
+      if (insertError) {
+          console.error("[API] Failed to create profile:", insertError);
+          return new NextResponse("Database Error: Could not create profile", { status: 500 });
+      }
+      
+      // Re-fetch
+      profile = { credits_remaining: 3 };
   }
 
   if (profile.credits_remaining <= 0) {
