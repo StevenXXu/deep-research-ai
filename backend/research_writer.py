@@ -147,12 +147,16 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
             display_title = site_name.replace("www.", "")
         if "." in display_title:
             display_title = display_title.split(".")[0]
-        display_title = display_title.replace("_", " ").title()
+        # Clean hyphens and underscores
+        display_title = display_title.replace("_", " ").replace("-", " ").title()
 
         # Convert Markdown to HTML
         import re
-        if "# " in analysis:
-            analysis = "# " + analysis.split("# ", 1)[1]
+        # Smart Strip: Remove the first line if it's a Header (to avoid double titles)
+        lines = analysis.split('\n')
+        if lines and lines[0].strip().startswith('# '):
+            analysis = '\n'.join(lines[1:])
+            
         analysis = re.sub(r'\| *:?-+:? *\|', lambda m: m.group(0).strip(), analysis) 
         
         analysis_html = markdown.markdown(
@@ -161,7 +165,7 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
         )
         
         # CSS for PDF/Email
-        # Added page-break rules for PDF
+        # Added page-break rules for PDF + Link Styling
         css_style = """
                 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1f2937; max-width: 800px; margin: 0 auto; padding: 40px; background-color: #ffffff; }
                 .container { background: #ffffff; padding: 0; }
@@ -170,6 +174,7 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
                 p { margin-bottom: 16px; color: #4b5563; text-align: justify; }
                 ul { margin-bottom: 16px; padding-left: 20px; }
                 li { margin-bottom: 8px; }
+                a { color: #2563eb; text-decoration: underline; } /* Blue Links */
                 
                 /* Table Styling - Robust for PDF */
                 table { 
