@@ -40,14 +40,20 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 load_dotenv(os.path.join(root_dir, ".env"), override=False)
 NOTEBOOK_ID = os.getenv("NOTEBOOK_ID") # For Deal Flow Memory
 
-# Initialize Supabase (Optional)
+# Initialize Supabase (Robust)
 from supabase import create_client, Client
+from supabase.lib.client_options import ClientOptions
+
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY") # Must use SERVICE_KEY for admin write
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY") # Must use SERVICE_KEY
+
 supabase: Client = None
+
 if SUPABASE_URL and SUPABASE_KEY:
     try:
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        # Use new ClientOptions pattern to avoid warnings and set timeout
+        opts = ClientOptions().replace(postgrest_client_timeout=10)
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY, options=opts)
         print(f"[INIT] Supabase connected.", flush=True)
     except Exception as e:
         print(f"[WARN] Supabase init failed: {e}", flush=True)
@@ -56,12 +62,19 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
     def update_status(progress, status):
         if progress_callback:
             progress_callback(progress, status)
-        print(f"[RESEARCH] {progress}% - {status}")
+        print(f"[RESEARCH] {progress}% - {status}", flush=True)
 
     # Helper: Save to DB
     def save_history(status, content=None):
-        if not supabase or not user_id: return
+        if not supabase:
+            print("[DB] Supabase client not active. Skipping save.", flush=True)
+            return
+        if not user_id: 
+            print("[DB] No user_id provided. Skipping save.", flush=True)
+            return
+            
         try:
+            print(f"[DB] Saving report for user {user_id}...", flush=True)
             data = {
                 "user_id": user_id,
                 "target_url": url,
@@ -71,14 +84,10 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
             if content:
                 data["report_content"] = content
                 
-            # Check if we already created a record for this run? 
-            # For simplicity, we just insert a new one at start, or update?
-            # Actually, simplest MVP: Insert one record when DONE.
-            # But "Processing" state is nice.
-            # Let's just insert when DONE for now to avoid ID tracking complexity across threads.
-            if status == "completed" or status == "failed":
-                supabase.table("reports").insert(data).execute()
-                print(f"[DB] Saved report to history.", flush=True)
+            # Perform Insert
+            res = supabase.table("reports").insert(data).execute()
+            print(f"[DB] Saved report to history. ID: {res.data[0]['id'] if res.data else 'Unknown'}", flush=True)
+            
         except Exception as e:
             print(f"[DB] Error saving history: {e}", flush=True)
 
