@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession, useUser } from "@clerk/nextjs";
 import { createClient } from "@supabase/supabase-js";
-import { FileText, Clock, AlertCircle, CheckCircle } from "lucide-react";
+import { FileText, Clock, AlertCircle, CheckCircle, Download } from "lucide-react";
 import Link from "next/link";
 
 type Report = {
@@ -25,8 +25,6 @@ export default function HistoryPage() {
 
     async function fetchReports() {
       try {
-          // Fetch via our own API route
-          // Pass User ID in header as fallback for cross-domain auth issues
           const res = await fetch("/api/history", {
               headers: {
                   'X-User-ID': user!.id
@@ -46,6 +44,18 @@ export default function HistoryPage() {
 
     fetchReports();
   }, [user]);
+
+  const handleDownloadMD = (report: Report) => {
+    if (!report.report_content) return;
+    const blob = new Blob([report.report_content], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${report.target_url.replace(/[^a-z0-9]/gi, '_')}_Analysis.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -94,9 +104,16 @@ export default function HistoryPage() {
                     {getStatusIcon(report.status)}
                     <span className="capitalize">{report.status}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end gap-4 items-center">
                     {report.status === 'completed' && (
-                        <Link href={`/dashboard/history/${report.id}`} className="text-indigo-600 hover:text-indigo-900 font-medium">View Report</Link>
+                        <>
+                            <button onClick={() => handleDownloadMD(report)} className="text-gray-400 hover:text-gray-600 transition-colors" title="Download Markdown">
+                                <Download className="w-5 h-5" />
+                            </button>
+                            <Link href={`/dashboard/history/${report.id}`} className="text-indigo-600 hover:text-indigo-900 font-medium">
+                                View Report
+                            </Link>
+                        </>
                     )}
                   </td>
                 </tr>
