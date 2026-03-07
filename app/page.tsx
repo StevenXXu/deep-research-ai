@@ -1,9 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, BarChart3, Clock, ShieldCheck, LayoutDashboard } from "lucide-react";
-import { auth } from "@clerk/nextjs/server";
+import { useUser } from "@clerk/nextjs";
 
 export default function LandingPage() {
-  const { userId } = auth();
+  const { isSignedIn, isLoaded } = useUser();
 
   return (
     <div className="bg-white">
@@ -14,7 +16,10 @@ export default function LandingPage() {
             <span className="text-xl font-bold text-indigo-600 tracking-tight">Deep Research</span>
           </div>
           <div className="hidden lg:flex lg:flex-1 lg:justify-end gap-x-6">
-            {userId ? (
+            {!isLoaded ? (
+                // Loading Skeleton
+                <div className="h-8 w-20 bg-gray-100 rounded animate-pulse"></div>
+            ) : isSignedIn ? (
                 <Link href="/dashboard" className="flex items-center gap-2 rounded-md bg-indigo-50 px-3.5 py-2.5 text-sm font-semibold text-indigo-600 shadow-sm hover:bg-indigo-100">
                     <LayoutDashboard className="w-4 h-4" /> Go to Dashboard
                 </Link>
@@ -46,7 +51,9 @@ export default function LandingPage() {
               Stop spending hours scraping data. Our autonomous agents scan the web, analyze competitors, and write comprehensive pre-screen memos for VCs and Founders.
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
-              {userId ? (
+              {!isLoaded ? (
+                  <div className="h-12 w-32 bg-gray-100 rounded-md animate-pulse"></div>
+              ) : isSignedIn ? (
                   <Link href="/dashboard" className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 flex items-center gap-2">
                     Open Dashboard <ArrowRight className="w-4 h-4" />
                   </Link>
