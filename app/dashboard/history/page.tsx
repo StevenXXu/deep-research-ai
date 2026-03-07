@@ -20,34 +20,16 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user || !session) return;
+    if (!user) return;
 
     async function fetchReports() {
       try {
-          // 1. Get Clerk Token designated for Supabase
-          // Note: You must create a JWT Template in Clerk named 'supabase' first!
-          // If not set up yet, this token might be standard, but let's try injecting the Authorization header.
-          const token = await session.getToken({ template: "supabase" });
+          // Fetch via our own API route (bypasses RLS complexity)
+          const res = await fetch("/api/history");
+          if (!res.ok) throw new Error("Failed to fetch history");
           
-          const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            {
-              global: { headers: { Authorization: `Bearer ${token}` } },
-            }
-          );
-
-          const { data, error } = await supabase
-            .from("reports")
-            .select("*")
-            // No .eq("user_id") needed because RLS handles it, but keeping it is safe
-            .order("created_at", { ascending: false });
-
-          if (error) {
-            console.error("Error fetching history:", error);
-          } else {
-            setReports(data || []);
-          }
+          const data = await res.json();
+          setReports(data || []);
       } catch (e) {
           console.error("Auth error:", e);
       } finally {
@@ -56,7 +38,7 @@ export default function HistoryPage() {
     }
 
     fetchReports();
-  }, [user, session]);
+  }, [user]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
