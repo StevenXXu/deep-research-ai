@@ -36,27 +36,41 @@ OUTPUT_DIR = "workspace/research_output"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Load Keys from Root Env (Optional - Railway injects envs automatically)
-# IMPORTANT: override=False ensures we don't overwrite system envs with empty .env values
-load_dotenv(os.path.join(root_dir, ".env"), override=False)
+# DISABLED: load_dotenv to prevent interference with Railway Variables
+# load_dotenv(os.path.join(root_dir, ".env"), override=False)
 NOTEBOOK_ID = os.getenv("NOTEBOOK_ID") # For Deal Flow Memory
 
 # Initialize Supabase (Robust)
 from supabase import create_client, Client
 from supabase.lib.client_options import ClientOptions
 
+# Load from Railway System Envs ONLY (Skip .env file to avoid confusion)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY") # Must use SERVICE_KEY
 
 supabase: Client = None
+
+print(f"[INIT] Checking Supabase Config...", flush=True)
+if SUPABASE_URL:
+    print(f"[INIT] URL Found: {SUPABASE_URL[:10]}...", flush=True)
+else:
+    print(f"[INIT] ERROR: SUPABASE_URL is Missing!", flush=True)
+
+if SUPABASE_KEY:
+    print(f"[INIT] KEY Found: {SUPABASE_KEY[:5]}...", flush=True)
+else:
+    print(f"[INIT] ERROR: SUPABASE_SERVICE_KEY is Missing!", flush=True)
 
 if SUPABASE_URL and SUPABASE_KEY:
     try:
         # Use new ClientOptions pattern to avoid warnings and set timeout
         opts = ClientOptions().replace(postgrest_client_timeout=10)
         supabase = create_client(SUPABASE_URL, SUPABASE_KEY, options=opts)
-        print(f"[INIT] Supabase connected.", flush=True)
+        print(f"[INIT] Supabase connected successfully.", flush=True)
     except Exception as e:
         print(f"[WARN] Supabase init failed: {e}", flush=True)
+else:
+    print(f"[WARN] Supabase init skipped due to missing vars.", flush=True)
 
 def run_research(url, target_email=None, document_text=None, progress_callback=None, user_id=None):
     def update_status(progress, status):
