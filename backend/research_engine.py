@@ -367,14 +367,13 @@ class ResearchEngine:
         Task: Write a comprehensive Investment Memo (Minimum 2000 words).
         Style: Professional, Objective, Thorough. Use Markdown.
         
-        **CRITICAL SAFETY RULES:**
-        1. **NO 'SCAM' ACCUSATIONS:** Unless you see a Government Warning (SEC/FTC) or Major News Outlet confirming fraud, DO NOT use words like "Scam", "Fraud", or "Ponzi".
-        2. If users complain, label it "Customer Service Issues" or "User Controversy".
-        3. If the business model is risky, label it "High Risk Structure".
-        4. **Innocent until proven guilty.**
+        **CRITICAL SAFETY & STYLE RULES:**
+        1. **OBJECTIVE FACTS ONLY:** Do NOT provide "Recommendations", "Verdicts", "Next Steps", or "Advice". Do not say "Wait and observe", "Buy", or "Sell". Your job is data aggregation, not consulting.
+        2. **NO 'SCAM' ACCUSATIONS:** Unless proven by government/major news, assume innocence. Label issues as "User Controversy".
+        3. **NO REFERENCES SECTION:** Do NOT write a References/Sources section at the end. The system appends this automatically.
         
         Requirements:
-        1. **Executive Summary** (SWOT Analysis, Key Verdict)
+        1. **Executive Summary** (SWOT Analysis - Facts only)
         2. **Product Deep Dive** (Features, Tech Stack, UX)
         3. **Market Landscape** (Competitor Table - compare features/pricing)
         4. **Social Sentiment & Risk** (Reddit/User Feedback - Highlight "Real" sentiment vs PR)
@@ -382,18 +381,12 @@ class ResearchEngine:
         6. **Traction & Risks** (Funding, Traffic, Legal/Reg Risks)
         7. **Founding Team** (Backgrounds, Track Record - Check LinkedIn signals)
         8. **Data Consistency Check** (Deck vs. Web Reality - Flag discrepancies)
-        9. **Strategic Conclusion** (Buy/Sell/Wait)
         
         **FORMATTING RULES:**
-        - **NO CHATTY INTROS:** Do NOT say "Here is the report" or "Okay I will do that". Start directly with the Report Title (# Project Name).
+        - **NO CHATTY INTROS:** Start directly with the Report Title (# Project Name).
         - Use standard Markdown tables for SWOT and Competitors.
         - **IMPORTANT:** Ensure tables start on a new line and are NOT indented.
-        - Example Table:
-          | Feature | Company A | Company B |
-          | :--- | :--- | :--- |
-          | Price | $10 | $20 |
-        
-        - Use citations like [1], [2] linked to the References section.
+        - Use citations like [1], [2] in the text.
         """
         
         report = gateway.generate(prompt, "You are a thoughtful analyst. Output ONLY the report.")
@@ -402,12 +395,14 @@ class ResearchEngine:
             self.log("Error: LLM returned None for report generation.")
             return "# Analysis Failed\n\nDeep Research collected relevant sources, but the LLM failed to synthesize the final report due to a timeout or safety filter.\n\n## Data gathered\n" + f"{len(unique_sources)} sources found."
 
-        # Append References if LLM missed them (safety net)
-        # Using Markdown Link format now
-        if "## References" not in report:
-            report += "\n\n## References\n"
-            for c in citations:
-                report += f"- {c}\n"
+        # FORCE APPEND REFERENCES (Programmatic, Clickable)
+        # We strip any LLM-hallucinated references first to avoid duplicates
+        if "## References" in report:
+            report = report.split("## References")[0].strip()
+            
+        report += "\n\n## References\n"
+        for c in citations:
+            report += f"- {c}\n"
             
         return report
 
