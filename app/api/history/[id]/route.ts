@@ -2,8 +2,11 @@ import { auth } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let { userId } = auth();
+  
+  // Await params for Next.js 15+ compatibility
+  const { id } = await params;
   
   // FALLBACK: Check header if cookie auth fails
   if (!userId) {
@@ -19,7 +22,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const { data, error } = await supabaseAdmin
     .from("reports")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", id) // Use extracted ID
     .eq("user_id", userId) // Ensure user owns the report
     .single();
 
