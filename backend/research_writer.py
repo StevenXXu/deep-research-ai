@@ -63,9 +63,17 @@ else:
 
 if SUPABASE_URL and SUPABASE_KEY:
     try:
-        # Use new ClientOptions pattern to avoid warnings and set timeout
-        opts = ClientOptions().replace(postgrest_client_timeout=10)
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY, options=opts)
+        # Use simple dict for options (Compatible with older and newer SDKs)
+        # Or just default init if timeouts aren't critical
+        # opts = ClientOptions().replace(postgrest_client_timeout=10) <--- Caused error
+        
+        # Fallback: Just init simply. The default timeout is usually fine.
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        
+        # If we really need timeout, we can try accessing postgrest client later
+        if hasattr(supabase, "postgrest"):
+            supabase.postgrest.timeout = 10
+            
         print(f"[INIT] Supabase connected successfully.", flush=True)
     except Exception as e:
         print(f"[WARN] Supabase init failed: {e}", flush=True)
