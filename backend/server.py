@@ -51,6 +51,7 @@ def get_status(job_id: str):
 
 @app.post("/research")
 async def start_research(req: ResearchRequest):
+    print(f"[REQUEST] Received research task for {req.url}. UserID: {req.user_id}", flush=True)
     job_id = str(uuid.uuid4())
     jobs[job_id] = {"progress": 0, "status": "Queued", "result": None}
     
@@ -117,6 +118,6 @@ def home():
 if __name__ == "__main__":
     import uvicorn
     # Respect Railway's dynamic PORT, default to 8081 if not set
-    print("\n\n=== DEPLOYMENT CHECK: V4.1 (Final PDF Polish) - FORCE ===\n\n", flush=True)
+    print("\n\n=== DEPLOYMENT CHECK: V5.0 (DB Sync Debug) - FORCE ===\n\n", flush=True)
     port = int(os.getenv("PORT", 8081))
     uvicorn.run(app, host="0.0.0.0", port=port)
