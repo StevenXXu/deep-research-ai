@@ -17,6 +17,7 @@ exa-py
 duckduckgo-search>=6.1.0
 apify-client
 resend
+supabase
 
 # Utilities
 markdown

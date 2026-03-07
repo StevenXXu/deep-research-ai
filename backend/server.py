@@ -33,6 +33,7 @@ jobs = {}
 class ResearchRequest(BaseModel):
     url: str
     email: str
+    user_id: str = None # Optional for backward compatibility, but required for history
 
 def update_job_progress(job_id, progress, status):
     """Callback to update job status"""
@@ -56,7 +57,7 @@ async def start_research(req: ResearchRequest):
     # Run in background thread
     thread = threading.Thread(
         target=run_research, 
-        args=(req.url, req.email, None, lambda p, s: update_job_progress(job_id, p, s))
+        args=(req.url, req.email, None, lambda p, s: update_job_progress(job_id, p, s), req.user_id)
     )
     thread.start()
     
@@ -66,6 +67,7 @@ async def start_research(req: ResearchRequest):
 async def start_research_with_file(
     url: str = Form(...),
     email: str = Form(...),
+    user_id: str = Form(None), # Accept user_id from form
     file: UploadFile = File(None)
 ):
     document_text = None
@@ -97,7 +99,7 @@ async def start_research_with_file(
 
     thread = threading.Thread(
         target=run_research, 
-        args=(url, email, document_text, lambda p, s: update_job_progress(job_id, p, s))
+        args=(url, email, document_text, lambda p, s: update_job_progress(job_id, p, s), user_id)
     )
     thread.start()
 

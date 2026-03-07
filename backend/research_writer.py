@@ -40,11 +40,47 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 load_dotenv(os.path.join(root_dir, ".env"), override=False)
 NOTEBOOK_ID = os.getenv("NOTEBOOK_ID") # For Deal Flow Memory
 
-def run_research(url, target_email=None, document_text=None, progress_callback=None):
+# Initialize Supabase (Optional)
+from supabase import create_client, Client
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY") # Must use SERVICE_KEY for admin write
+supabase: Client = None
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        print(f"[INIT] Supabase connected.", flush=True)
+    except Exception as e:
+        print(f"[WARN] Supabase init failed: {e}", flush=True)
+
+def run_research(url, target_email=None, document_text=None, progress_callback=None, user_id=None):
     def update_status(progress, status):
         if progress_callback:
             progress_callback(progress, status)
         print(f"[RESEARCH] {progress}% - {status}")
+
+    # Helper: Save to DB
+    def save_history(status, content=None):
+        if not supabase or not user_id: return
+        try:
+            data = {
+                "user_id": user_id,
+                "target_url": url,
+                "status": status,
+                "created_at": datetime.utcnow().isoformat()
+            }
+            if content:
+                data["report_content"] = content
+                
+            # Check if we already created a record for this run? 
+            # For simplicity, we just insert a new one at start, or update?
+            # Actually, simplest MVP: Insert one record when DONE.
+            # But "Processing" state is nice.
+            # Let's just insert when DONE for now to avoid ID tracking complexity across threads.
+            if status == "completed" or status == "failed":
+                supabase.table("reports").insert(data).execute()
+                print(f"[DB] Saved report to history.", flush=True)
+        except Exception as e:
+            print(f"[DB] Error saving history: {e}", flush=True)
 
     update_status(5, f"Initializing research on {url}...")
     dc.post("cipher", "START", f"Starting Deep Research (Premium) on {url}")
@@ -302,6 +338,9 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
         print(f"[SUCCESS] Reports saved: {report_path}", flush=True)
         dc.post("cipher", "DONE", f"Research Complete. Generated Premium Report.")
         
+        # Save to Supabase
+        save_history("completed", analysis)
+        
         # Email Logic
         if target_email:
             update_status(95, f"Sending Email to {target_email}...")
@@ -350,6 +389,7 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
         update_status(0, f"Error: {str(e)}")
         print(f"[ERROR] Research failed: {e}")
         dc.post("cipher", "ERROR", f"Research failed: {e}")
+        save_history("failed")
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
