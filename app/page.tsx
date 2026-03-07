@@ -1,7 +1,10 @@
 import Link from "next/link";
-import { ArrowRight, BarChart3, Clock, ShieldCheck } from "lucide-react";
+import { ArrowRight, BarChart3, Clock, ShieldCheck, LayoutDashboard } from "lucide-react";
+import { auth } from "@clerk/nextjs/server";
 
 export default function LandingPage() {
+  const { userId } = auth();
+
   return (
     <div className="bg-white">
       {/* Navigation */}
@@ -11,10 +14,18 @@ export default function LandingPage() {
             <span className="text-xl font-bold text-indigo-600 tracking-tight">Deep Research</span>
           </div>
           <div className="hidden lg:flex lg:flex-1 lg:justify-end gap-x-6">
-            <Link href="/sign-in" className="text-sm font-semibold leading-6 text-gray-900">Log in</Link>
-            <Link href="/sign-up" className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
-              Sign up
-            </Link>
+            {userId ? (
+                <Link href="/dashboard" className="flex items-center gap-2 rounded-md bg-indigo-50 px-3.5 py-2.5 text-sm font-semibold text-indigo-600 shadow-sm hover:bg-indigo-100">
+                    <LayoutDashboard className="w-4 h-4" /> Go to Dashboard
+                </Link>
+            ) : (
+                <>
+                    <Link href="/sign-in" className="text-sm font-semibold leading-6 text-gray-900 flex items-center">Log in</Link>
+                    <Link href="/sign-up" className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+                    Sign up
+                    </Link>
+                </>
+            )}
           </div>
         </nav>
       </header>
@@ -35,9 +46,15 @@ export default function LandingPage() {
               Stop spending hours scraping data. Our autonomous agents scan the web, analyze competitors, and write comprehensive pre-screen memos for VCs and Founders.
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
-              <Link href="/dashboard" className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 flex items-center gap-2">
-                Get Started <ArrowRight className="w-4 h-4" />
-              </Link>
+              {userId ? (
+                  <Link href="/dashboard" className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 flex items-center gap-2">
+                    Open Dashboard <ArrowRight className="w-4 h-4" />
+                  </Link>
+              ) : (
+                  <Link href="/sign-up" className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 flex items-center gap-2">
+                    Get Started <ArrowRight className="w-4 h-4" />
+                  </Link>
+              )}
               <a href="#" className="text-sm font-semibold leading-6 text-gray-900">Live Demo <span aria-hidden="true">→</span></a>
             </div>
           </div>
