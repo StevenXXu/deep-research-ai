@@ -38,6 +38,7 @@ export default function Dashboard() {
       const formData = new FormData();
       formData.append("url", url);
       formData.append("email", userEmail);
+      formData.append("user_id", user.id); // Pass User ID
       if (file) formData.append("file", file);
 
       // Use Local Proxy for Billing (URL Mode)
@@ -48,7 +49,7 @@ export default function Dashboard() {
       
       let endpoint = "/api/research"; // Local Next.js API
       let headers: HeadersInit = { 'Content-Type': 'application/json' };
-      let body: any = JSON.stringify({ url, email: userEmail });
+      let body: any = JSON.stringify({ url, email: userEmail, user_id: user.id }); // Pass User ID
 
       if (file) {
           // Fallback for File Upload (Direct to Railway for now to avoid multipart complexity)
