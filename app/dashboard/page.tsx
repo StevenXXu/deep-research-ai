@@ -85,6 +85,30 @@ export default function Dashboard() {
     }
   };
 
+  // Check/Create Profile on Load
+  useEffect(() => {
+      if (!user) return;
+      
+      async function ensureProfile() {
+          const { supabase } = await import("@/lib/supabase"); // Dynamic import
+          const { data } = await supabase.from('profiles').select('user_id').eq('user_id', user!.id).single();
+          
+          if (!data) {
+              // Create Profile if missing
+              const email = user!.primaryEmailAddress?.emailAddress || "";
+              const name = user!.fullName || "User";
+              await supabase.from('profiles').insert({
+                  user_id: user!.id,
+                  email: email,
+                  full_name: name,
+                  credits_remaining: 3
+              });
+              console.log("Profile created via Dashboard fallback.");
+          }
+      }
+      ensureProfile();
+  }, [user]);
+
   // Polling Effect
   useEffect(() => {
       if (!jobId) return;
