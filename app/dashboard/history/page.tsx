@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
-import { supabase } from "@/lib/supabase";
+import { useSession, useUser } from "@clerk/nextjs";
+import { createClient } from "@supabase/supabase-js";
 import { FileText, Clock, AlertCircle, CheckCircle } from "lucide-react";
 
 type Report = {
@@ -15,29 +15,48 @@ type Report = {
 
 export default function HistoryPage() {
   const { user } = useUser();
+  const { session } = useSession();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !session) return;
 
     async function fetchReports() {
-      const { data, error } = await supabase
-        .from("reports")
-        .select("*")
-        .eq("user_id", user!.id)
-        .order("created_at", { ascending: false });
+      try {
+          // 1. Get Clerk Token designated for Supabase
+          // Note: You must create a JWT Template in Clerk named 'supabase' first!
+          // If not set up yet, this token might be standard, but let's try injecting the Authorization header.
+          const token = await session.getToken({ template: "supabase" });
+          
+          const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+              global: { headers: { Authorization: `Bearer ${token}` } },
+            }
+          );
 
-      if (error) {
-        console.error("Error fetching history:", error);
-      } else {
-        setReports(data || []);
+          const { data, error } = await supabase
+            .from("reports")
+            .select("*")
+            # No .eq("user_id") needed because RLS handles it, but keeping it is safe
+            .order("created_at", { ascending: false });
+
+          if (error) {
+            console.error("Error fetching history:", error);
+          } else {
+            setReports(data || []);
+          }
+      } catch (e) {
+          console.error("Auth error:", e);
+      } finally {
+          setLoading(false);
       }
-      setLoading(false);
     }
 
     fetchReports();
-  }, [user]);
+  }, [user, session]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
