@@ -11,14 +11,26 @@ export default function Dashboard() {
   const [status, setStatus] = useState("");
   const [file, setFile] = useState<File | null>(null);
   
-  // Progress State
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
-  const [progressMsg, setProgressMsg] = useState("");
+  // Load Credits
+  const [credits, setCredits] = useState<number | null>(null);
+  
+  useEffect(() => {
+      if (!user) return;
+      const { supabase } = require("@/lib/supabase"); // Lazy load
+      supabase.from('profiles').select('credits_remaining').eq('user_id', user.id).single()
+        .then(({ data }: any) => { if (data) setCredits(data.credits_remaining); });
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    
+    // Client-Side Credit Check
+    if (credits !== null && credits <= 0) {
+        if (!confirm("You have 0 credits left. Upgrade to Pro to continue?")) return;
+        window.location.href = "/dashboard/billing";
+        return;
+    }
     
     // Safety Check: File Size
     if (file && file.size > 10 * 1024 * 1024) {
