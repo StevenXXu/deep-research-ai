@@ -15,13 +15,13 @@ export default function LandingPage() {
           <div className="flex lg:flex-1">
             <span className="text-xl font-bold text-indigo-600 tracking-tight">Deep Research</span>
           </div>
-          <div className="hidden lg:flex lg:flex-1 lg:justify-end gap-x-6">
+          <div className="flex flex-1 justify-end gap-x-6">
             {!isLoaded ? (
                 // Loading Skeleton
                 <div className="h-8 w-20 bg-gray-100 rounded animate-pulse"></div>
             ) : isSignedIn ? (
                 <Link href="/dashboard" className="flex items-center gap-2 rounded-md bg-indigo-50 px-3.5 py-2.5 text-sm font-semibold text-indigo-600 shadow-sm hover:bg-indigo-100">
-                    <LayoutDashboard className="w-4 h-4" /> Go to Dashboard
+                    <LayoutDashboard className="w-4 h-4" /> <span className="hidden sm:inline">Go to Dashboard</span><span className="sm:hidden">Dashboard</span>
                 </Link>
             ) : (
                 <>
