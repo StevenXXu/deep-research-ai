@@ -328,19 +328,29 @@ class ResearchEngine:
 
     def phase_traffic_check(self):
         """Phase 3D: Verify traffic claims via SimilarWeb/Semrush public data"""
-        self.log("Phase 3D: Traffic Reality Check...")
+        self.log("Phase 3D: Traffic Reality Check (Search Hack)...")
+        # Strategy 2: Search Hack (As requested by user: site:similarweb.com/website/...)
         queries = [
             f"site:similarweb.com/website/{self.domain} traffic stats",
-            f"site:semrush.com/website/{self.domain} traffic",
+            f"site:semrush.com/website/{self.domain} traffic analytics",
+            f"site:ubersuggest.com/traffic/overview/domain/{self.domain}",
             f"{self.domain} monthly visits worthofweb"
         ]
+        
+        # Use Tavily for deeper snippet extraction if possible, else DDG
         for q in queries:
-            # Use DDG for this as it indexes SimilarWeb well
-            res = self.search_ddg(q, 2)
+            # Tavily handles "site:" queries reasonably well
+            res = self.search_tavily(q, 1) # Just top 1 is enough usually
+            if not res:
+                res = self.search_ddg(q, 2)
+                
             if res:
                 # Tag these sources for the LLM to notice
-                for r in res: r['content'] = "[TRAFFIC DATA] " + r['content']
+                for r in res: 
+                    # Highlight numbers if possible? No, let LLM do it.
+                    r['content'] = "[TRAFFIC DATA (VERIFICATION)] " + r['content']
                 self.sources.extend(res)
+                self.log(f"Traffic Check: Found {len(res)} sources for {q}")
 
     def phase_founder_deep_dive(self):
         """
