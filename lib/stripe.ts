@@ -7,10 +7,16 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 // Helper to get absolute URL
 export function getAbsoluteUrl(path: string) {
-  // Check if running on Vercel
+  // Priority 1: Explicit Public Domain (Set this in Vercel!)
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+      return `${process.env.NEXT_PUBLIC_APP_URL}${path}`;
+  }
+  
+  // Priority 2: Vercel System URL (Fallback)
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}${path}`;
   }
-  // Fallback for local dev
+  
+  // Priority 3: Localhost
   return `http://localhost:3000${path}`;
 }
