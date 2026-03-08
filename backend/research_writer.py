@@ -409,11 +409,16 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
             print(f"[WARN] PDF Gen Exception: {pdf_e}", flush=True)
             pdf_path = None
 
-        print(f"[SUCCESS] Reports saved: {report_path}", flush=True)
-        dc.post("cipher", "DONE", f"Research Complete. Generated Premium Report.")
+        # 5. Metadata & Cost Calculation (For Admin Dashboard)
+        update_status(95, "Finalizing Metadata...")
+        meta = engine.extract_metadata(analysis)
+        meta["cost_usd"] = engine.calculate_cost()
         
-        # Save to Supabase
-        save_history("completed", analysis)
+        print(f"[SUCCESS] Reports saved: {report_path}", flush=True)
+        dc.post("cipher", "DONE", f"Research Complete. Cost: ${meta['cost_usd']}. Company: {meta.get('company_name')}")
+        
+        # Save to Supabase (With new Meta fields)
+        save_history("completed", analysis, meta=meta)
         
         # Email Logic
         if target_email:

@@ -48,33 +48,42 @@ class ResearchEngine:
         print(f"[RESEARCH] {msg}")
         dc.post("cipher", "PROGRESS", msg)
 
-    # --- METADATA & COST ---
-
     def calculate_cost(self):
-        # 1. Exa Cost: $0.001 per search (Neural)
-        # Assuming search_exa called N times, num results = avg 3
-        # Exa is roughly $10/1000 searches.
-        exa_calls = 0 # Need to track this
-        # Tavily: Free tier generous, then $0.00x
-        # Apify: $5/month platform fee + usage. Reddit Actor is cheap.
-        # LLM: Gemini Pro is currently free preview or cheap.
+        # Pricing Model (Estimates)
+        # Exa: $0.001 / search
+        # Tavily: $0.0005 / search (Example)
+        # Apify: $0.05 / run
+        # LLM (Gemini Pro): ~$2.00 / 1M input tokens. Assume ~30k tokens per run = $0.06
         
-        # For now, return a placeholder estimate logic
-        # We need to implement counters in the search functions first.
-        return 0.15 # Hardcoded estimate for MVP
+        # In a real app, we would track exact tokens. For MVP, we estimate based on steps.
+        # This function should be called at the end.
+        
+        # Hardcoded MVP Estimate Logic based on phase depth
+        cost = 0.10 # Base cost (compute + overhead)
+        
+        # Refine later with real counters
+        return cost
 
     def extract_metadata(self, report_text):
-        # Use LLM to extract structured data from the generated report
+        """
+        Uses LLM to structured data from the generated report for the Admin Dashboard.
+        """
         prompt = f"""
-        Extract the following metadata from this report as JSON:
-        1. Company Name (Clean string)
-        2. Sector Tags (Array of strings, e.g. ["AI", "Fintech"])
-        3. Funding Stage (e.g. "Seed", "Series A", "Public", "Unknown")
+        Analyze the following investment memo and extract metadata as JSON.
         
-        Report:
-        {report_text[:3000]}...
+        Memo Excerpt:
+        {report_text[:4000]}...
+        
+        Output JSON ONLY:
+        {{
+            "company_name": "Exact Company Name",
+            "sector_tags": ["Sector1", "Sector2"],
+            "funding_stage": "Seed/Series A/Public/Unknown",
+            "risk_score": 1-10 (1=Safe, 10=High Risk)
+        }}
         """
         try:
+            # Re-use gateway. No extra cost for this extraction usually (or minimal)
             resp = gateway.generate(prompt, "Return valid JSON only.")
             if not resp: return {}
             return json.loads(resp.replace("```json", "").replace("```", "").strip())
