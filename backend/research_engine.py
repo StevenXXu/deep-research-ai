@@ -48,7 +48,38 @@ class ResearchEngine:
         print(f"[RESEARCH] {msg}")
         dc.post("cipher", "PROGRESS", msg)
 
-    # --- SEARCH ENGINES ---
+    # --- METADATA & COST ---
+
+    def calculate_cost(self):
+        # 1. Exa Cost: $0.001 per search (Neural)
+        # Assuming search_exa called N times, num results = avg 3
+        # Exa is roughly $10/1000 searches.
+        exa_calls = 0 # Need to track this
+        # Tavily: Free tier generous, then $0.00x
+        # Apify: $5/month platform fee + usage. Reddit Actor is cheap.
+        # LLM: Gemini Pro is currently free preview or cheap.
+        
+        # For now, return a placeholder estimate logic
+        # We need to implement counters in the search functions first.
+        return 0.15 # Hardcoded estimate for MVP
+
+    def extract_metadata(self, report_text):
+        # Use LLM to extract structured data from the generated report
+        prompt = f"""
+        Extract the following metadata from this report as JSON:
+        1. Company Name (Clean string)
+        2. Sector Tags (Array of strings, e.g. ["AI", "Fintech"])
+        3. Funding Stage (e.g. "Seed", "Series A", "Public", "Unknown")
+        
+        Report:
+        {report_text[:3000]}...
+        """
+        try:
+            resp = gateway.generate(prompt, "Return valid JSON only.")
+            if not resp: return {}
+            return json.loads(resp.replace("```json", "").replace("```", "").strip())
+        except:
+            return {"company_name": self.company, "sector_tags": []}
     
     def search_exa(self, query, num=3):
         if not EXA_KEY: return []
