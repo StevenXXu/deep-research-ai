@@ -11,16 +11,26 @@ export default function BillingPage() {
   const [credits, setCredits] = useState(0);
   const [plan, setPlan] = useState("free");
 
-  // Load current status
+  // Load current status via API (Bypasses RLS issues)
   useEffect(() => {
       if (!user) return;
-      supabase.from('profiles').select('*').eq('user_id', user.id).single()
-        .then(({ data }) => {
-            if (data) {
-                setCredits(data.credits_remaining);
-                setPlan(data.subscription_status);
-            }
-        });
+      
+      async function fetchBillingStatus() {
+          try {
+              const res = await fetch("/api/billing/status", {
+                  headers: { 'X-User-ID': user!.id }
+              });
+              
+              if (res.ok) {
+                  const data = await res.json();
+                  setCredits(data.credits_remaining ?? 0);
+                  setPlan(data.subscription_status ?? "free");
+              }
+          } catch (e) {
+              console.error("Billing fetch error", e);
+          }
+      }
+      fetchBillingStatus();
   }, [user]);
 
   const handleUpgrade = async () => {
