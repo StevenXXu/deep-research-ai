@@ -1,9 +1,9 @@
-"use client";
-
 import { UserButton } from "@clerk/nextjs";
-import { LayoutDashboard, FileText, Settings, CreditCard, Menu, X } from "lucide-react";
+import { auth } from "@clerk/nextjs/server";
+import { LayoutDashboard, FileText, Settings, CreditCard, Menu, X, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase"; // Client client is fine for reading own profile
 
 export default function DashboardLayout({
   children,
@@ -11,6 +11,36 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check Admin Status on Mount
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+        // Wait, supabase.auth.getUser() won't work with Clerk unless we set session.
+        // Easier: Just fetch profile by Clerk ID (we don't have user object here easily in layout client component without hook)
+        // Actually, let's use the API route technique or simpler: useUser() from Clerk
+    });
+  }, []);
+
+  // Let's refactor to use useUser() for ID, then fetch role
+  return <DashboardContent>{children}</DashboardContent>;
+}
+
+import { useUser } from "@clerk/nextjs";
+
+function DashboardContent({ children }: { children: React.ReactNode }) {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user } = useUser();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+      if (!user) return;
+      // Fetch role
+      supabase.from("profiles").select("role").eq("user_id", user.id).single()
+        .then(({ data }) => {
+            if (data?.role === 'admin') setIsAdmin(true);
+        });
+  }, [user]);
 
   const NavLinks = () => (
     <>
@@ -26,6 +56,16 @@ export default function DashboardLayout({
         <CreditCard className="w-5 h-5 mr-3 text-gray-400 group-hover:text-indigo-500" />
         Billing
       </Link>
+      
+      {isAdmin && (
+          <div className="pt-4 mt-4 border-t border-gray-100">
+            <div className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Admin</div>
+            <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-indigo-50 hover:text-indigo-700 transition-colors group bg-indigo-50/50">
+                <ShieldCheck className="w-5 h-5 mr-3 text-indigo-500" />
+                Mission Control
+            </Link>
+          </div>
+      )}
     </>
   );
 
