@@ -128,7 +128,7 @@ export default function Dashboard() {
                   user_id: user!.id,
                   email: email,
                   full_name: name,
-                  credits_remaining: 3
+                  credits_remaining: 1 // Free Trial
               });
               console.log("Profile created via Dashboard fallback.");
           }

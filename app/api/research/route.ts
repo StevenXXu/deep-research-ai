@@ -46,7 +46,7 @@ export async function POST(req: Request) {
           user_id: userId,
           email: userEmail,
           full_name: "User (Auto-Created)",
-          credits_remaining: 3
+          credits_remaining: 1 // Default 1 Credit
       });
       
       if (insertError) {
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
       }
       
       // Re-fetch
-      profile = { credits_remaining: 3 };
+      profile = { credits_remaining: 1 };
   }
 
   if (profile.credits_remaining <= 0) {

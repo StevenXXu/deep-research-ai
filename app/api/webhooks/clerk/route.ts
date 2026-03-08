@@ -62,7 +62,7 @@ export async function POST(req: Request) {
             user_id: id,
             email: email,
             full_name: name,
-            credits_remaining: 3 // Default Free Trial
+            credits_remaining: 1 // Default Free Trial: 1 Credit
         });
       
       if (error) {
