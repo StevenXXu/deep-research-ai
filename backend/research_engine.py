@@ -249,57 +249,86 @@ class ResearchEngine:
         try:
             self.log(f"Phase 3A: Apify Scanning (Reddit & LinkedIn) for {self.company}...")
             
-            # 1. Reddit Sentiment (Brand Search)
+            # 1. Reddit Sentiment
             reddit_data = apify.scrape_reddit_search(self.company)
             for item in reddit_data:
                 self.sources.append({
                     "title": item.get('title'),
                     "url": item.get('url'),
-                    "content": f"[Reddit Sentiment] {item.get('description') or item.get('title') or item.get('snippet')}",
+                    "content": f"[Reddit Sentiment] {item.get('description') or item.get('title')}",
                     "source": "Reddit (Apify)"
                 })
-            
-            # 2. LinkedIn Data (Structured Company Data)
-            linkedin_url = self._find_linkedin_url()
-            if linkedin_url:
-                self.log(f"Found LinkedIn URL: {linkedin_url}. Scraping...")
-                li_data = apify.scrape_linkedin_company(linkedin_url)
-                if li_data:
-                    # Usually returns a list of 1 company profile
-                    profile = li_data[0]
-                    # Format as a source
-                    content_str = (
-                        f"Name: {profile.get('name')}\n"
-                        f"Followers: {profile.get('followerCount')}\n"
-                        f"Description: {profile.get('description')}\n"
-                        f"Employees: {profile.get('employeeCount', 'N/A')}\n"
-                        f"Industry: {profile.get('industry')}\n"
-                        f"Website: {profile.get('websiteUrl')}"
-                    )
-                    self.sources.append({
-                        "title": f"LinkedIn Profile: {profile.get('name')}",
-                        "url": linkedin_url,
-                        "content": f"[LinkedIn Official Data]\n{content_str}",
-                        "source": "LinkedIn (Apify)"
-                    })
-            else:
-                self.log("Could not find LinkedIn URL. Skipping deep LinkedIn scrape.")
-
         except Exception as e:
             self.log(f"Apify Module Warning: {e}")
 
-        # 3B. Market Momentum (Google Trends)
+        # 3B. Founder Detective (NEW)
+        self.phase_founder_deep_dive()
+
+        # 3C. Market Momentum (Google Trends)
         try:
-            self.log(f"Phase 3B: Checking Market Momentum...")
+            self.log(f"Phase 3C: Checking Market Momentum...")
             trends_data = apify.scrape_google_trends(self.company)
             self.sources.extend(trends_data)
         except Exception as e:
             self.log(f"Trends Warning: {e}")
 
-        # 3C. Tech & Market Gaps
+        # 3D. Tech & Market Gaps
         for q in self.questions:
             self.sources.extend(self.search_exa(q, 3))
             self.sources.extend(self.search_tavily(q, 3) or self.search_ddg(q, 2))
+
+    def phase_founder_deep_dive(self):
+        """
+        Specialized phase to vet the founding team.
+        """
+        self.log("Phase 3B: Founder Detective (Vetting Team)...")
+        
+        # 1. Identify Founders
+        # Use LLM to extract names from current context
+        context = "\n".join([f"- {s['title']}: {s['content'][:150]}..." for s in self.sources[:15]])
+        prompt = f"""
+        Extract the names and roles of the key founders/executives of {self.company} from this context.
+        Return JSON list: [{{"name": "Name", "role": "CEO"}}]
+        If none found, return [].
+        Context:
+        {context}
+        """
+        founders = []
+        try:
+            resp = gateway.generate(prompt, "Return valid JSON only.")
+            if resp:
+                founders = json.loads(resp.replace("```json", "").replace("```", "").strip())
+        except Exception as e:
+            self.log(f"Founder Extraction Failed: {e}")
+
+        if not founders:
+            self.log("No founders identified in initial scan. Trying broad search...")
+            # Fallback search
+            q = f"{self.company} founders team linkedin"
+            res = self.search_tavily(q, 2)
+            self.sources.extend(res)
+            # Try extraction again (simplified)
+            # For now, just let the main synthesis handle it if extraction fails twice.
+            return
+
+        self.log(f"Investigating Founders: {[f['name'] for f in founders]}")
+        
+        # 2. Targeted Search per Founder
+        for f in founders[:3]: # Limit to top 3 to save time/cost
+            name = f['name']
+            # Search 1: Background & Track Record
+            q1 = f"{name} {self.company} background linkedin previous startups"
+            self.sources.extend(self.search_exa(q1, 2))
+            
+            # Search 2: Interviews/Thoughts (Depth)
+            q2 = f"{name} interview podcast blog"
+            self.sources.extend(self.search_ddg(q2, 2))
+            
+            # Search 3: Risk Check (Reputation)
+            q3 = f"{name} scam fraud controversy lawsuit"
+            self.sources.extend(self.search_ddg(q3, 2))
+            
+            self.log(f"Deep dived into {name}.")
 
         # 3C. Standard Deep Dive (Tech + Market)
         tech_queries = [
