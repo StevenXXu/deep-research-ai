@@ -87,7 +87,7 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
         print(f"[RESEARCH] {progress}% - {status}", flush=True)
 
     # Helper: Save to DB
-    def save_history(status, content=None):
+    def save_history(status, content=None, meta=None):
         if not supabase:
             print("[DB] Supabase client not active. Skipping save.", flush=True)
             return
@@ -101,10 +101,16 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
                 "user_id": user_id,
                 "target_url": url,
                 "status": status,
-                "created_at": datetime.utcnow().isoformat()
+                "created_at": datetime.utcnow().isoformat(),
             }
             if content:
                 data["report_content"] = content
+                
+            # Add Metadata if available
+            if meta:
+                if "company_name" in meta: data["company_name"] = meta.get("company_name")
+                if "sector_tags" in meta: data["sector_tags"] = meta.get("sector_tags")
+                if "cost_usd" in meta: data["cost_usd"] = meta.get("cost_usd")
                 
             # Perform Insert
             try:
@@ -119,7 +125,7 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
                         "user_id": user_id,
                         "email": target_email or "unknown@email.com",
                         "full_name": "User (Auto-Created)",
-                        "credits_remaining": 0 # Assume they used one
+                        "credits_remaining": 1 # Default 1 Credit (adjusted)
                     }
                     supabase.table("profiles").insert(profile_data).execute()
                     print(f"[DB] Fallback profile created. Retrying report save...", flush=True)
