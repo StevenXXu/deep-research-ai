@@ -18,6 +18,7 @@ export default function Dashboard() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [progressMsg, setProgressMsg] = useState("");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false); // UI State for Upsell
 
   useEffect(() => {
       if (!user) return;
@@ -30,10 +31,9 @@ export default function Dashboard() {
     e.preventDefault();
     if (!user) return;
     
-    // Client-Side Credit Check
+    // Client-Side Credit Check (Soft Check)
     if (credits !== null && credits <= 0) {
-        if (!confirm("You have 0 credits left. Upgrade to Pro to continue?")) return;
-        window.location.href = "/dashboard/billing";
+        setShowUpgradeModal(true);
         return;
     }
     
@@ -83,6 +83,14 @@ export default function Dashboard() {
         body: body,
       });
       
+      // Handle Specific Errors
+      if (res.status === 403) {
+          // Insufficient Credits (Hard Check from Server)
+          setLoading(false);
+          setShowUpgradeModal(true);
+          return;
+      }
+      
       if (!res.ok) {
         throw new Error(`Server responded with ${res.status}`);
       }
@@ -91,6 +99,8 @@ export default function Dashboard() {
       if (data.job_id) {
           setJobId(data.job_id);
           setStatus("Agent dispatched. Analysis in progress...");
+          // Optimistic update: decrement local credit
+          if (credits) setCredits(credits - 1);
       } else {
           setStatus(data.message || "Agent Dispatched. Check your email shortly.");
           setLoading(false);
@@ -156,6 +166,43 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
+      {/* Upgrade Modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative animate-in fade-in zoom-in duration-200">
+                <button 
+                    onClick={() => setShowUpgradeModal(false)}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                >
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+                
+                <div className="text-center">
+                    <div className="mx-auto w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
+                        <Loader2 className="w-6 h-6 text-indigo-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">Out of Credits</h3>
+                    <p className="text-gray-500 mb-6">
+                        You've used all your free research credits. Upgrade to Pro to unlock unlimited deep research reports.
+                    </p>
+                    
+                    <a 
+                        href="/dashboard/billing" 
+                        className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+                    >
+                        Upgrade Now
+                    </a>
+                    <button 
+                        onClick={() => setShowUpgradeModal(false)}
+                        className="mt-3 text-sm text-gray-500 hover:text-gray-700"
+                    >
+                        Maybe later
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
       <div>
         <h1 className="text-3xl font-bold text-gray-900">New Research Task</h1>
         <p className="mt-2 text-gray-600">Enter a company URL to generate a comprehensive pre-screen investment memo.</p>
