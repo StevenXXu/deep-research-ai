@@ -26,11 +26,21 @@ export default function BillingPage() {
   const handleUpgrade = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/billing/checkout");
+      // Pass Header for Auth Bypass
+      const response = await fetch("/api/billing/checkout", {
+          headers: { 'X-User-ID': user!.id }
+      });
+      
+      if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(errText || response.statusText);
+      }
+      
       const data = await response.json();
       window.location.href = data.url; // Redirect to Stripe
     } catch (error) {
       console.error(error);
+      alert("Billing Error: " + error); // Simple alert for MVP
     } finally {
       setLoading(false);
     }
