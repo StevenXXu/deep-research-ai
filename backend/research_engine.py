@@ -342,10 +342,14 @@ class ResearchEngine:
         """
         self.log("Phase 3B: Founder Detective (Vetting Team)...")
         
-        # 1. Identify Founders
-        # Use LLM to extract names from current context
-        # Improve context window by using only titles/summaries to save tokens
-        context = "\n".join([f"- {s['title']}: {s['content'][:150]}..." for s in self.sources[:15]])
+        # 1. Identify Founders - FORCE SEARCH FIRST to ensure CEO/Founder is found
+        # (LLM extraction from random snippets often misses the main guy if the home page is generic)
+        q_init = f"{self.company} CEO founder CTO team"
+        init_res = self.search_tavily(q_init, 2)
+        self.sources.extend(init_res)
+        
+        # Now Extract
+        context = "\n".join([f"- {s['title']}: {s['content'][:200]}..." for s in init_res])
         prompt = f"""
         Extract the names and roles of the key founders/executives of {self.company} from this context.
         Return JSON list: [{{"name": "Name", "role": "CEO"}}]
@@ -507,6 +511,7 @@ class ResearchEngine:
         5. **MANDATORY TABLES:** 
            - SWOT Analysis MUST be a Markdown table.
            - Market Landscape MUST be a Markdown table.
+        6. **FOUNDER VETTING:** The "Founding Team" section MUST include specific details on previous exits, technical depth, or red flags if found. Do not be generic. If unknown, say "No public track record found".
         
         Requirements:
         1. **Executive Summary** (Include SWOT Analysis as a Table)
@@ -515,8 +520,9 @@ class ResearchEngine:
         4. **Social Sentiment & Risk** (Reddit/User Feedback - Highlight "Real" sentiment vs PR)
         5. **Business Model** (Revenue Streams, Pricing Strategy)
         6. **Traction & Risks** (Funding, Traffic, Legal/Reg Risks)
-        7. **Founding Team** (Backgrounds, Track Record - Check LinkedIn signals)
-        8. **Data Consistency Check** (Deck vs. Web Reality - Flag discrepancies)
+        7. **Founding Team & Track Record** (MUST include: Key Founders, Previous Exits/Failures, Technical Depth. If data is missing, state "No public track record found".)
+        8. **Data Consistency Check** (Deck vs. Web Reality - Include SimilarWeb Traffic Data check)
+        9. **Exit Strategy & M&A Landscape** (Who buys this? Comparable exits, IPO potential)
         
         **FORMATTING RULES:**
         - **NO CHATTY INTROS:** Start directly with the Report Title (# Project Name).
