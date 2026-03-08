@@ -47,7 +47,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install playwright && playwright install chromium --with-deps
 
 # Force Cache Busting - Change this value to force a rebuild of the COPY step
-ARG CACHEBUST=20260308_v10_FOUNDER_VETTING
+ARG CACHEBUST=20260308_v11_COST_METRICS
 
 # Copy backend code (This step will now definitely re-run)
 COPY . .

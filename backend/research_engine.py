@@ -33,6 +33,15 @@ class ResearchEngine:
         self.domain = target_url.split("//")[-1].split("/")[0]
         self.ddg_retries = 0  # Global counter for DDG fallbacks
         
+        # Usage Counters (For Costing)
+        self.usage = {
+            "exa_queries": 0,
+            "tavily_queries": 0,
+            "apify_runs": 0,
+            "llm_input_chars": 0, # Approx 4 chars = 1 token
+            "llm_output_chars": 0
+        }
+        
         # Handle 'www.' prefix or subdomains to get proper company name
         domain_parts = self.domain.split('.')
         if domain_parts[0] == 'www' and len(domain_parts) > 2:
@@ -49,20 +58,33 @@ class ResearchEngine:
         dc.post("cipher", "PROGRESS", msg)
 
     def calculate_cost(self):
-        # Pricing Model (Estimates)
-        # Exa: $0.001 / search
-        # Tavily: $0.0005 / search (Example)
-        # Apify: $0.05 / run
-        # LLM (Gemini Pro): ~$2.00 / 1M input tokens. Assume ~30k tokens per run = $0.06
+        # Precise Pricing Model (USD)
+        RATES = {
+            "exa": 0.010,       # $10/1k searches
+            "tavily": 0.005,    # $5/1k searches
+            "apify": 0.050,     # Est per run (compute units)
+            "llm_in": 1.25 / 1_000_000, # $1.25 per 1M tokens
+            "llm_out": 5.00 / 1_000_000 # $5.00 per 1M tokens
+        }
         
-        # In a real app, we would track exact tokens. For MVP, we estimate based on steps.
-        # This function should be called at the end.
+        # Calculate
+        input_tokens = self.usage["llm_input_chars"] / 4
+        output_tokens = self.usage["llm_output_chars"] / 4
         
-        # Hardcoded MVP Estimate Logic based on phase depth
-        cost = 0.10 # Base cost (compute + overhead)
+        cost = (self.usage["exa_queries"] * RATES["exa"]) + \
+               (self.usage["tavily_queries"] * RATES["tavily"]) + \
+               (self.usage["apify_runs"] * RATES["apify"]) + \
+               (input_tokens * RATES["llm_in"]) + \
+               (output_tokens * RATES["llm_out"])
+               
+        # Add Infrastructure Overhead Estimate (Amortized)
+        # E.g. $100 fixed cost / 1000 reports = $0.10 buffer
+        overhead = 0.10
         
-        # Refine later with real counters
-        return cost
+        total = cost + overhead
+        self.log(f"Cost Analysis: API=${cost:.4f} + Fixed=${overhead:.2f} = Total ${total:.4f}")
+        
+        return round(total, 4)
 
     def extract_metadata(self, report_text):
         """
@@ -93,6 +115,7 @@ class ResearchEngine:
     def search_exa(self, query, num=3):
         if not EXA_KEY: return []
         try:
+            self.usage["exa_queries"] += 1 # Track Cost
             exa = Exa(EXA_KEY)
             res = exa.search_and_contents(query, type="neural", num_results=num, text=True)
             return [{"title": r.title, "url": r.url, "content": r.text[:1000], "source": "Exa"} for r in res.results]
@@ -103,6 +126,7 @@ class ResearchEngine:
     def search_tavily(self, query, num=3):
         if not TAVILY_KEY: return []
         try:
+            self.usage["tavily_queries"] += 1 # Track Cost
             url = "https://api.tavily.com/search"
             payload = {"api_key": TAVILY_KEY, "query": query, "search_depth": "advanced", "max_results": num}
             res = requests.post(url, json=payload, timeout=10)
@@ -248,6 +272,7 @@ class ResearchEngine:
         # 3A. Apify Intelligence (Social & LinkedIn)
         try:
             self.log(f"Phase 3A: Apify Scanning (Reddit & LinkedIn) for {self.company}...")
+            self.usage["apify_runs"] += 1 # Track Cost
             
             # 1. Reddit Sentiment
             reddit_data = apify.scrape_reddit_search(self.company)
@@ -267,6 +292,7 @@ class ResearchEngine:
         # 3C. Market Momentum (Google Trends)
         try:
             self.log(f"Phase 3C: Checking Market Momentum...")
+            self.usage["apify_runs"] += 1 # Track Cost (Another actor call)
             trends_data = apify.scrape_google_trends(self.company)
             self.sources.extend(trends_data)
         except Exception as e:
@@ -426,6 +452,9 @@ class ResearchEngine:
             content = s.get('content') or ''
             context_blob += f"Source [{ref_num}]: {str(content)[:2000]}\n\n"
             
+        # Update usage counter for input tokens (Approx)
+        self.usage["llm_input_chars"] += len(context_blob)
+            
         prompt = f"""
         You are a Senior Investment Analyst.
         Target: {self.company} ({self.url})
@@ -462,6 +491,10 @@ class ResearchEngine:
         """
         
         report = gateway.generate(prompt, "You are a thoughtful analyst. Output ONLY the report.")
+        
+        # Update usage counter for output tokens (Approx)
+        if report:
+            self.usage["llm_output_chars"] += len(report)
         
         if not report:
             self.log("Error: LLM returned None for report generation.")
