@@ -14,6 +14,11 @@ export default function Dashboard() {
   // Load Credits
   const [credits, setCredits] = useState<number | null>(null);
   
+  // Progress State
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [progressMsg, setProgressMsg] = useState("");
+
   useEffect(() => {
       if (!user) return;
       const { supabase } = require("@/lib/supabase"); // Lazy load
