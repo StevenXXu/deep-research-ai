@@ -18,6 +18,7 @@ duckduckgo-search>=6.1.0
 apify-client
 resend
 supabase
+scrapling[all]
 
 # Utilities
 markdown

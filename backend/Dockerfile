@@ -43,6 +43,9 @@ ENV NODE_PATH=/usr/lib/node_modules
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install Scrapling browsers
+RUN scrapling install
+
 # Install Playwright and Browsers
 RUN pip install playwright && playwright install chromium --with-deps
 

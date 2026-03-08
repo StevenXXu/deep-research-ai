@@ -198,13 +198,72 @@ class ResearchEngine:
     def phase_1_broad_scan(self):
         self.log(f"Phase 1: Broad Scan for '{self.company}'...")
 
-        # A. Official Site Deep Extract (Apify)
+        # A. Official Site Extract (Scrapling Anti-bot + Apify Fallback)
         try:
-            site_data = apify.scrape_website_content(self.url)
-            self.sources.extend(site_data)
-            self.log(f"Apify: Extracted {len(site_data)} pages from official site.")
+            self.log("Scrapling: Fetching target site to bypass Cloudflare...")
+            from scrapling.fetchers import StealthyFetcher
+            import re
+            
+            # Fetch Home Page
+            page = StealthyFetcher.fetch(self.url, headless=True)
+            title = page.css('title::text').get() or self.domain
+            
+            # Extract readable text
+            texts = [t.strip() for t in page.css('body *::text').getall() if t.strip()]
+            clean_text = re.sub(r'\s+', ' ', " ".join(texts))
+            
+            self.sources.append({
+                "title": title,
+                "url": self.url,
+                "content": clean_text[:6000],
+                "source": "Scrapling (Home Page)"
+            })
+            self.log(f"Scrapling: Extracted {len(clean_text)} chars from {self.url}")
+            
+            # Attempt to fetch an About/Pricing page
+            links = page.css('a::attr(href)').getall()
+            target_links = []
+            for l in set(links):
+                if not l: continue
+                l_lower = str(l).lower()
+                if "about" in l_lower or "pricing" in l_lower or "product" in l_lower or "team" in l_lower:
+                    if l.startswith("http") and self.domain in l:
+                        target_links.append(l)
+                    elif l.startswith("/"):
+                        base = self.url.rstrip("/")
+                        target_links.append(f"{base}{l}")
+                        
+            # Fetch up to 2 subpages
+            fetched_count = 1
+            for l in target_links[:2]:
+                self.log(f"Scrapling: Following internal link {l}...")
+                try:
+                    sub_page = StealthyFetcher.fetch(l, headless=True)
+                    sub_title = sub_page.css('title::text').get() or l
+                    sub_texts = [t.strip() for t in sub_page.css('body *::text').getall() if t.strip()]
+                    sub_clean_text = re.sub(r'\s+', ' ', " ".join(sub_texts))
+                    self.sources.append({
+                        "title": sub_title,
+                        "url": l,
+                        "content": sub_clean_text[:4000],
+                        "source": "Scrapling (Subpage)"
+                    })
+                    fetched_count += 1
+                except Exception as sub_e:
+                    self.log(f"Scrapling Subpage Error: {sub_e}")
+                    
+            self.log(f"Scrapling: Extracted {fetched_count} pages from official site.")
+            
         except Exception as e:
-            self.log(f"Apify Site Crawl Error: {e}")
+            self.log(f"Scrapling Error: {e}")
+            self.log("Falling back to Apify Deep Crawl...")
+            try:
+                site_data = apify.scrape_website_content(self.url)
+                self.sources.extend(site_data)
+                self.usage["apify_runs"] += 1 # Track Cost
+                self.log(f"Apify: Extracted {len(site_data)} pages from official site.")
+            except Exception as e2:
+                self.log(f"Apify Site Crawl Error: {e2}")
 
         # B. Uploaded Doc
         if self.document_content:
