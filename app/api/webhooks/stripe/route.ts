@@ -5,49 +5,63 @@ import { supabaseAdmin } from "@/lib/supabase";
 import Stripe from "stripe";
 
 export async function POST(req: Request) {
-  const body = await req.text();
-  const signature = headers().get("Stripe-Signature") as string;
-
-  let event: Stripe.Event;
-
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    );
-  } catch (error: any) {
-    return new NextResponse(`Webhook Error: ${error.message}`, { status: 400 });
+    const body = await req.text();
+    // Fix for Next.js 15+: headers() is async
+    const headerList = await headers();
+    const signature = headerList.get("Stripe-Signature") as string;
+
+    let event: Stripe.Event;
+
+    try {
+      event = stripe.webhooks.constructEvent(
+        body,
+        signature,
+        process.env.STRIPE_WEBHOOK_SECRET!
+      );
+    } catch (error: any) {
+      console.error(`[WEBHOOK_ERROR] Signature verification failed: ${error.message}`);
+      return new NextResponse(`Webhook Error: ${error.message}`, { status: 400 });
+    }
+
+    const session = event.data.object as Stripe.Checkout.Session;
+    const eventType = event.type;
+    console.log(`[WEBHOOK] Received event: ${eventType}`);
+
+    // Handle Successful Payment
+    if (eventType === "checkout.session.completed") {
+        const userId = session.metadata?.userId;
+        console.log(`[WEBHOOK] Processing Checkout for UserID: ${userId}`);
+        
+        if (userId) {
+            // Check if Admin Client is valid
+            const { data: checkData, error: checkError } = await supabaseAdmin.from('profiles').select('user_id').eq('user_id', userId).single();
+            
+            if (checkError) {
+                 console.error(`[WEBHOOK_ERROR] DB Access Check Failed: ${checkError.message}. Key configured?`);
+                 // Don't return 500 yet, try to proceed in case it's just a lookup issue
+            }
+
+            // PRO PLAN LOGIC
+            const { error: updateError } = await supabaseAdmin.from('profiles').update({
+                subscription_status: 'active',
+                credits_remaining: 30 
+            }).eq('user_id', userId);
+            
+            if (updateError) {
+                console.error(`[WEBHOOK_ERROR] Update Failed: ${updateError.message}`);
+                return new NextResponse("Database Update Failed", { status: 500 });
+            }
+            
+            console.log(`[WEBHOOK] SUCCESS! Upgraded user ${userId} to Pro (30 credits).`);
+        } else {
+            console.warn(`[WEBHOOK_WARN] No userId in session metadata.`);
+        }
+    }
+
+    return new NextResponse(null, { status: 200 });
+  } catch (err) {
+      console.error(`[WEBHOOK_CRITICAL] ${err}`);
+      return new NextResponse("Internal Server Error", { status: 500 });
   }
-
-  const session = event.data.object as Stripe.Checkout.Session;
-
-  // Handle Successful Payment
-  if (event.type === "checkout.session.completed") {
-      const userId = session.metadata?.userId;
-      
-      if (userId) {
-          // PRO PLAN LOGIC:
-          // If they bought Pro, set status to 'active' and give 30 credits
-          // Ideally check price_id to distinguish products
-          
-          await supabaseAdmin.from('profiles').update({
-              subscription_status: 'active',
-              credits_remaining: 30 // Reset to 30 or add 30? Reset is safer for subscriptions.
-          }).eq('user_id', userId);
-          
-          console.log(`[STRIPE] Upgraded user ${userId} to Pro.`);
-      }
-  }
-
-  // Handle Subscription Payment Succeeded (Recurring)
-  if (event.type === "invoice.payment_succeeded") {
-      // This fires every month. Reset credits.
-      const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
-      // We need to map customer ID to user ID if metadata is missing on invoice event
-      // This part requires a DB lookup by stripe_customer_id usually.
-      // For MVP, checkout.session.completed is enough for the first purchase.
-  }
-
-  return new NextResponse(null, { status: 200 });
 }
