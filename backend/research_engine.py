@@ -377,19 +377,21 @@ class ResearchEngine:
 
         self.log(f"Investigating Founders: {[f['name'] for f in founders]}")
         
-        # 2. Targeted Search per Founder
+        # 2. Targeted Search per Founder (Enhanced)
         for f in founders[:3]: # Limit to top 3 to save time/cost
             name = f['name']
-            # Search 1: Background & Track Record
-            q1 = f"{name} {self.company} background linkedin previous startups"
-            self.sources.extend(self.search_exa(q1, 2))
+            # Search 1: Background & Track Record (Use Tavily for depth)
+            q1 = f"{name} {self.company} previous startups exits failures history"
+            res1 = self.search_tavily(q1, 2)
+            for r in res1: r['content'] = f"[FOUNDER TRACK RECORD: {name}] " + r['content']
+            self.sources.extend(res1)
             
-            # Search 2: Interviews/Thoughts (Depth)
-            q2 = f"{name} interview podcast blog"
-            self.sources.extend(self.search_ddg(q2, 2))
+            # Search 2: Technical/Thought Leadership
+            q2 = f"{name} engineering blog github podcast interview"
+            self.sources.extend(self.search_exa(q2, 2))
             
             # Search 3: Risk Check (Reputation)
-            q3 = f"{name} scam fraud controversy lawsuit"
+            q3 = f"{name} scam fraud controversy lawsuit court"
             self.sources.extend(self.search_ddg(q3, 2))
             
             self.log(f"Deep dived into {name}.")
