@@ -35,39 +35,32 @@ export default function AdminDashboard() {
 
     async function loadAdminData() {
       try {
-        // 1. Check Admin Role
-        // We use a custom API route for this to be secure, OR relying on RLS.
-        // Let's rely on RLS: if query fails/returns empty on 'all profiles', not admin.
+        // 1. Check Admin Role via API
+        const roleRes = await fetch("/api/auth/role", { headers: { 'X-User-ID': user!.id } });
+        const roleData = await roleRes.json();
         
-        // Fetch All Reports (Only Admins can see ALL due to RLS)
-        const { data: reports, error: reportError } = await supabase
-            .from("reports")
-            .select("*")
-            .order("created_at", { ascending: false })
-            .limit(50);
-
-        if (reportError) throw reportError;
+        if (roleData.role !== 'admin') {
+            setIsAdmin(false);
+            setLoading(false);
+            return;
+        }
         
-        // If we got data, we are admin (or RLS is broken, but we trust RLS)
         setIsAdmin(true);
 
-        // Fetch All Profiles count
-        const { count: userCount } = await supabase.from("profiles").select("*", { count: 'exact', head: true });
-
-        // Calculate Stats
-        const totalReports = reports?.length || 0; // Note: this is limit 50, need count for real total
-        // For MVP stat calculation, let's just sum the fetched ones or do a separate aggregation query
-        // Let's do a quick aggregate loop on the fetched 50 for now
-        const totalCost = reports?.reduce((sum, r) => sum + (r.cost_usd || 0), 0) || 0;
+        // 2. Fetch All Reports (Only Admins can see ALL due to RLS)
+        // Since we are using client supabase here, RLS must allow it.
+        // We set "Admins can view all reports" policy earlier.
+        // BUT, frontend supabase client still needs to know "I am user X".
+        // Without JWT integration, frontend client is ANON.
+        // ANON cannot read all reports even with RLS policy "if user is admin", because DB doesn't know "who is requesting".
         
-        setStats({
-            totalReports: totalReports,
-            totalCost: totalCost,
-            totalUsers: userCount || 0,
-            avgCost: totalReports > 0 ? totalCost / totalReports : 0
-        });
-
-        setLogs(reports || []);
+        // SOLUTION: Create an Admin Data API Route. Front-end shouldn't query DB directly for admin stats.
+        const statsRes = await fetch("/api/admin/stats", { headers: { 'X-User-ID': user!.id } });
+        if (!statsRes.ok) throw new Error("Failed to load stats");
+        
+        const statsData = await statsRes.json();
+        setStats(statsData.stats);
+        setLogs(statsData.logs);
 
       } catch (e) {
         console.error("Admin Load Error:", e);

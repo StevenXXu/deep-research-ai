@@ -17,11 +17,15 @@ export default function DashboardLayout({
 
   useEffect(() => {
       if (!user) return;
-      // Fetch role
-      supabase.from("profiles").select("role").eq("user_id", user.id).single()
-        .then(({ data }) => {
-            if (data?.role === 'admin') setIsAdmin(true);
-        });
+      // Fetch role via API (Bypasses RLS issues)
+      fetch("/api/auth/role", {
+          headers: { 'X-User-ID': user.id }
+      })
+      .then(res => res.json())
+      .then(data => {
+          if (data.role === 'admin') setIsAdmin(true);
+      })
+      .catch(e => console.error("Role check failed", e));
   }, [user]);
 
   const NavLinks = () => (
