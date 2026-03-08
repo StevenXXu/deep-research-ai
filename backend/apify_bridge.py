@@ -89,7 +89,7 @@ def scrape_reddit_search(query):
         
         # Wait for finish
         run_client = client.run(run_id)
-        run_info = run_client.wait_for_finish(timeout_secs=60)
+        run_info = run_client.wait_for_finish()
         
         status = run_info.get("status")
         if status != "SUCCEEDED":
@@ -121,18 +121,19 @@ def scrape_google_trends(query):
     from apify_client import ApifyClient
     client = ApifyClient(APIFY_TOKEN)
     
-    # Actor: emotra/google-trends-scraper
+    # Actor: apify/google-trends-scraper
     run_input = {
         "searchTerms": [query],
-        "isMultiple": False,
-        "timeRange": "today 12-m", # Last 12 months
+        "timeRange": "today 5-y", # Last 5 years (fixed from 12-m)
         "geo": "", # Worldwide
+        "category": "", # All categories (string)
         "outputAsJson": True
     }
     
     try:
         print(f"[Apify Bridge] Invoking Google Trends Actor...", flush=True)
-        run = client.actor("emotra/google-trends-scraper").call(run_input=run_input, timeout_secs=60, memory_mbytes=512)
+        # Increased timeout to 90s to handle heavy initial page load
+        run = client.actor("apify/google-trends-scraper").call(run_input=run_input, timeout_secs=90, memory_mbytes=1024)
         print(f"[Apify Bridge] Trends Actor Finished.", flush=True)
         dataset_items = client.dataset(run["defaultDatasetId"]).list_items(limit=10).items
         print(f"[Apify Bridge] Fetched Trends Data.", flush=True)
