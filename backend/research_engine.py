@@ -289,19 +289,52 @@ class ResearchEngine:
         # 3B. Founder Detective (NEW)
         self.phase_founder_deep_dive()
 
-        # 3C. Market Momentum (Google Trends)
+        # 3C. Exit Analysis (NEW - Part B)
+        self.phase_exit_analysis()
+        
+        # 3D. Traffic Reality Check (NEW - Part C)
+        self.phase_traffic_check()
+
+        # 3E. Market Momentum (Google Trends)
         try:
-            self.log(f"Phase 3C: Checking Market Momentum...")
-            self.usage["apify_runs"] += 1 # Track Cost (Another actor call)
+            self.log(f"Phase 3E: Checking Market Momentum...")
+            self.usage["apify_runs"] += 1 # Track Cost
             trends_data = apify.scrape_google_trends(self.company)
             self.sources.extend(trends_data)
         except Exception as e:
             self.log(f"Trends Warning: {e}")
 
-        # 3D. Tech & Market Gaps
+        # 3F. Tech & Market Gaps
         for q in self.questions:
             self.sources.extend(self.search_exa(q, 3))
             self.sources.extend(self.search_tavily(q, 3) or self.search_ddg(q, 2))
+
+    def phase_exit_analysis(self):
+        """Phase 3C: Research potential exits (M&A, IPO)"""
+        self.log("Phase 3C: Exit Analysis & M&A Landscape...")
+        queries = [
+            f"{self.company} industry recent acquisitions 2024 2025",
+            f"top acquirers in {self.company} market",
+            f"{self.company} competitors IPO news"
+        ]
+        for q in queries:
+            self.sources.extend(self.search_tavily(q, 2))
+
+    def phase_traffic_check(self):
+        """Phase 3D: Verify traffic claims via SimilarWeb/Semrush public data"""
+        self.log("Phase 3D: Traffic Reality Check...")
+        queries = [
+            f"site:similarweb.com/website/{self.domain} traffic stats",
+            f"site:semrush.com/website/{self.domain} traffic",
+            f"{self.domain} monthly visits worthofweb"
+        ]
+        for q in queries:
+            # Use DDG for this as it indexes SimilarWeb well
+            res = self.search_ddg(q, 2)
+            if res:
+                # Tag these sources for the LLM to notice
+                for r in res: r['content'] = "[TRAFFIC DATA] " + r['content']
+                self.sources.extend(res)
 
     def phase_founder_deep_dive(self):
         """
@@ -311,6 +344,7 @@ class ResearchEngine:
         
         # 1. Identify Founders
         # Use LLM to extract names from current context
+        # Improve context window by using only titles/summaries to save tokens
         context = "\n".join([f"- {s['title']}: {s['content'][:150]}..." for s in self.sources[:15]])
         prompt = f"""
         Extract the names and roles of the key founders/executives of {self.company} from this context.
