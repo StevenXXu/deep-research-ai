@@ -1,34 +1,16 @@
-import { UserButton } from "@clerk/nextjs";
-import { auth } from "@clerk/nextjs/server";
+"use client";
+
+import { UserButton, useUser } from "@clerk/nextjs";
 import { LayoutDashboard, FileText, Settings, CreditCard, Menu, X, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase"; // Client client is fine for reading own profile
+import { supabase } from "@/lib/supabase"; 
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  // Check Admin Status on Mount
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-        // Wait, supabase.auth.getUser() won't work with Clerk unless we set session.
-        // Easier: Just fetch profile by Clerk ID (we don't have user object here easily in layout client component without hook)
-        // Actually, let's use the API route technique or simpler: useUser() from Clerk
-    });
-  }, []);
-
-  // Let's refactor to use useUser() for ID, then fetch role
-  return <DashboardContent>{children}</DashboardContent>;
-}
-
-import { useUser } from "@clerk/nextjs";
-
-function DashboardContent({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user } = useUser();
   const [isAdmin, setIsAdmin] = useState(false);
