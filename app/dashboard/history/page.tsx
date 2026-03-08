@@ -94,27 +94,31 @@ export default function HistoryPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {reports.map((report) => (
                 <tr key={report.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 max-w-xs truncate">
                     {report.target_url}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(report.created_at).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 flex items-center gap-2">
-                    {getStatusIcon(report.status)}
-                    <span className="capitalize">{report.status}</span>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex items-center gap-2">
+                        {getStatusIcon(report.status)}
+                        <span className="capitalize">{report.status}</span>
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end gap-4 items-center">
-                    {report.status === 'completed' && (
-                        <>
-                            <button onClick={() => handleDownloadMD(report)} className="text-gray-400 hover:text-gray-600 transition-colors" title="Download Markdown">
-                                <Download className="w-5 h-5" />
-                            </button>
-                            <Link href={`/dashboard/history/${report.id}`} className="text-indigo-600 hover:text-indigo-900 font-medium">
-                                View Report
-                            </Link>
-                        </>
-                    )}
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex justify-end items-center gap-4">
+                        {report.status === 'completed' && (
+                            <>
+                                <button onClick={() => handleDownloadMD(report)} className="text-gray-400 hover:text-gray-600 transition-colors p-1" title="Download Markdown">
+                                    <Download className="w-4 h-4" />
+                                </button>
+                                <Link href={`/dashboard/history/${report.id}`} className="text-indigo-600 hover:text-indigo-900 font-semibold text-xs border border-indigo-200 rounded px-3 py-1 hover:bg-indigo-50">
+                                    View Report
+                                </Link>
+                            </>
+                        )}
+                    </div>
                   </td>
                 </tr>
               ))}
