@@ -45,7 +45,7 @@ export async function POST(req: Request) {
             // PRO PLAN LOGIC
             const { error: updateError } = await supabaseAdmin.from('profiles').update({
                 subscription_status: 'active',
-                credits_remaining: 30 
+                credits_remaining: 20  // Changed from 30 to 20 per month ($1.45/unit)
             }).eq('user_id', userId);
             
             if (updateError) {
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
                 return new NextResponse("Database Update Failed", { status: 500 });
             }
             
-            console.log(`[WEBHOOK] SUCCESS! Upgraded user ${userId} to Pro (30 credits).`);
+            console.log(`[WEBHOOK] SUCCESS! Upgraded user ${userId} to Pro (20 credits).`);
         } else {
             console.warn(`[WEBHOOK_WARN] No userId in session metadata.`);
         }

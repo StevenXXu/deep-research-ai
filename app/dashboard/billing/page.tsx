@@ -90,7 +90,7 @@ export default function BillingPage() {
             <p className="mt-2 text-sm text-gray-500">For active investors & founders.</p>
             
             <ul className="mt-6 space-y-3 text-sm text-gray-600">
-                {['30 Credits per month', 'Priority Processing', 'PDF Exports', 'Email Delivery'].map((feat) => (
+                {['20 Credits per month', 'Priority Processing', 'PDF Exports', 'Email Delivery'].map((feat) => (
                     <li key={feat} className="flex gap-2">
                         <Check className="w-5 h-5 text-indigo-500 flex-shrink-0" /> {feat}
                     </li>
