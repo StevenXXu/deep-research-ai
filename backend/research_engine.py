@@ -312,13 +312,19 @@ class ResearchEngine:
     def phase_exit_analysis(self):
         """Phase 3C: Research potential exits (M&A, IPO)"""
         self.log("Phase 3C: Exit Analysis & M&A Landscape...")
+        # Get sector from LLM context or guess
+        # We'll use broad queries to capture the sector automatically
         queries = [
-            f"{self.company} industry recent acquisitions 2024 2025",
-            f"top acquirers in {self.company} market",
-            f"{self.company} competitors IPO news"
+            f"recent acquisitions in {self.company} industry 2024 2025",
+            f"who acquires companies like {self.company}",
+            f"{self.company} competitors M&A strategy",
+            f"top strategic acquirers in {self.company} sector"
         ]
         for q in queries:
-            self.sources.extend(self.search_tavily(q, 2))
+            res = self.search_tavily(q, 2)
+            # Tag content for LLM
+            for r in res: r['content'] = "[EXIT/M&A DATA] " + r['content']
+            self.sources.extend(res)
 
     def phase_traffic_check(self):
         """Phase 3D: Verify traffic claims via SimilarWeb/Semrush public data"""
