@@ -184,6 +184,7 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
     update_status(25, "Site Scraped. Engaging Research Engine...")
     dc.post("cipher", "PROGRESS", f"Scraped site. Screenshot saved.")
 
+    try:
         # 2. Research Engine (The New Brain)
         update_status(30, "Phase 1: Broad Market Scan (Exa/Tavily)...")
         engine = ResearchEngine(url, document_content=document_text)
