@@ -38,7 +38,17 @@ export default function ReportDetailPage() {
     }
 
     fetchReport();
-  }, [user, id]);
+
+    // Polling logic for Processing Reports
+    let interval: NodeJS.Timeout;
+    if (report?.status === 'processing') {
+      interval = setInterval(fetchReport, 3000);
+    }
+
+    return () => {
+        if (interval) clearInterval(interval);
+    };
+  }, [user, id, report?.status]);
 
   const handlePrint = () => {
     window.print();
@@ -60,10 +70,14 @@ export default function ReportDetailPage() {
   if (error) return <div className="p-12 text-center text-red-500 bg-red-50 rounded-lg border border-red-100">{error}</div>;
   if (!report) return null;
 
+  const isProcessing = report.status === 'processing';
+  const progressText = report.meta?.status_text || "Gathering intelligence...";
+  const progressPercent = report.meta?.progress || 0;
+
   return (
     <div className="max-w-5xl mx-auto pb-20 print:p-0 print:max-w-none">
       {/* Header (Hidden when printing) */}
-      <div className="flex items-center justify-between mb-8 print:hidden">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 print:hidden">
         <div className="flex items-center gap-4">
             <Link href="/dashboard/history" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
             <ArrowLeft className="w-5 h-5 text-gray-600" />
@@ -73,24 +87,45 @@ export default function ReportDetailPage() {
             <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
                 <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> {new Date(report.created_at).toLocaleDateString()}</span>
                 <a href={report.target_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-indigo-600 transition-colors">
-                    <LinkIcon className="w-4 h-4" /> Visit Target
+                    <LinkIcon className="w-4 h-4" /> {report.target_url}
                 </a>
             </div>
             </div>
         </div>
 
         <div className="flex gap-3">
-            <button onClick={handleDownloadMD} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
+            <button onClick={handleDownloadMD} disabled={isProcessing} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50">
                 <FileText className="w-4 h-4" /> Download MD
             </button>
-            <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm">
+            <button onClick={handlePrint} disabled={isProcessing} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50">
                 <Printer className="w-4 h-4" /> Export PDF
             </button>
         </div>
       </div>
 
-      {/* Report Content (The "Paper" Look) */}
-      <div className="bg-white p-12 rounded-xl shadow-lg border border-gray-200 print:shadow-none print:border-none print:p-0">
+      {isProcessing ? (
+        <div className="bg-white p-12 rounded-xl shadow-lg border border-gray-200 text-center space-y-6">
+            <div className="animate-pulse flex justify-center">
+                <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+            </div>
+            <div>
+                <h2 className="text-xl font-semibold text-gray-900">Research in Progress</h2>
+                <p className="text-gray-500 mt-2">{progressText}</p>
+            </div>
+            <div className="max-w-md mx-auto bg-gray-100 rounded-full h-2.5 mt-4 overflow-hidden">
+                <div className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500 ease-out" style={{ width: `${progressPercent}%` }}></div>
+            </div>
+            <p className="text-sm text-gray-400">This usually takes 2-4 minutes. You can leave this page and come back later.</p>
+            
+            <div className="mt-8 pt-8 border-t border-gray-100 flex justify-center">
+                <button onClick={() => window.location.reload()} className="text-indigo-600 text-sm hover:underline">
+                    Refresh Status
+                </button>
+            </div>
+        </div>
+      ) : (
+        /* Report Content (The "Paper" Look) */
+        <div className="bg-white p-12 rounded-xl shadow-lg border border-gray-200 print:shadow-none print:border-none print:p-0">
         
         {/* Print Header */}
         <div className="hidden print:block mb-8 border-b-2 border-black pb-4">

@@ -62,33 +62,63 @@ export async function POST(req: Request) {
       return new NextResponse("Insufficient credits. Please upgrade.", { status: 403 });
   }
 
-  // 2. Decrement Credit
+  // 2. Decrement Credit and Insert Initial Report Row
   await supabase
     .from('profiles')
     .update({ credits_remaining: profile.credits_remaining - 1 })
     .eq('user_id', userId);
 
-  // 3. Forward to Python Backend
+  // CREATE HISTORY ROW IMMEDIATELY
+  const { data: reportRow, error: reportError } = await supabase
+    .from('reports')
+    .insert({
+        user_id: userId,
+        target_url: body.url,
+        status: 'processing',
+        meta: { "progress": 0, "status_text": "Queued" }
+    })
+    .select('id')
+    .single();
+
+  if (reportError || !reportRow) {
+      console.error("[API] Failed to create initial report:", reportError);
+      return new NextResponse("Database Error: Could not initialize report", { status: 500 });
+  }
+
+  const reportId = reportRow.id;
+
+  // 3. Forward to Python Backend (Include report_id)
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://deep-research-ai-production.up.railway.app";
   
   try {
+      const payload = {
+          ...body,
+          report_id: reportId
+      };
+      
       const res = await fetch(`${API_BASE}/research`, {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json',
           },
-          body: JSON.stringify(body) // Re-use the body which contains url, email, user_id
+          body: JSON.stringify(payload)
       });
       
       if (!res.ok) {
           const errText = await res.text();
+          // Revert status to failed if backend rejects
+          await supabase.from('reports').update({ status: 'failed', meta: {"error": errText} }).eq('id', reportId);
           throw new Error(`Backend Error: ${res.status} ${errText}`);
       }
 
       const data = await res.json();
+      // Inject our internal reportId into the response so frontend can route to it
+      data.report_id = reportId; 
+      
       return NextResponse.json(data);
       
   } catch (e) {
+      await supabase.from('reports').update({ status: 'failed', meta: {"error": String(e)} }).eq('id', reportId);
       return new NextResponse(`Backend Error: ${String(e)}`, { status: 500 });
   }
 }

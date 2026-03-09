@@ -80,11 +80,21 @@ if SUPABASE_URL and SUPABASE_KEY:
 else:
     print(f"[WARN] Supabase init skipped due to missing vars.", flush=True)
 
-def run_research(url, target_email=None, document_text=None, progress_callback=None, user_id=None):
+def run_research(url, target_email=None, document_text=None, progress_callback=None, user_id=None, report_id=None):
     def update_status(progress, status):
         if progress_callback:
             progress_callback(progress, status)
         print(f"[RESEARCH] {progress}% - {status}", flush=True)
+        # SUPABASE REALTIME SYNC (Optional, but great UX)
+        if supabase and report_id:
+            try:
+                # Update progress in the JSONB meta field so frontend can listen to it
+                supabase.table('reports').update({
+                    "meta": {"progress": progress, "status_text": status}
+                }).eq('id', report_id).execute()
+            except Exception as e:
+                # Silently fail progress updates to avoid crashing the main run
+                pass
 
     # Helper: Save to DB
     def save_history(status, content=None, meta=None):
@@ -96,7 +106,7 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
             return
             
         try:
-            print(f"[DB] Saving report for user {user_id}...", flush=True)
+            print(f"[DB] Saving/Updating report for user {user_id}...", flush=True)
             data = {
                 "user_id": user_id,
                 "target_url": url,
@@ -108,14 +118,20 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
                 
             # Add Metadata if available
             if meta:
+                # Merge existing meta fields
+                data["meta"] = meta
                 if "company_name" in meta: data["company_name"] = meta.get("company_name")
                 if "sector_tags" in meta: data["sector_tags"] = meta.get("sector_tags")
                 if "cost_usd" in meta: data["cost_usd"] = meta.get("cost_usd")
                 
-            # Perform Insert
+            # Perform Update if report_id exists, else Insert
             try:
-                res = supabase.table("reports").insert(data).execute()
-                print(f"[DB] Saved report to history.", flush=True)
+                if report_id:
+                    res = supabase.table("reports").update(data).eq("id", report_id).execute()
+                    print(f"[DB] Updated existing report {report_id} to status: {status}.", flush=True)
+                else:
+                    res = supabase.table("reports").insert(data).execute()
+                    print(f"[DB] Inserted new report to history.", flush=True)
             except Exception as e:
                 # Handle Foreign Key Violation (Missing Profile)
                 if "foreign key constraint" in str(e) or "23503" in str(e):
@@ -129,8 +145,11 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
                     }
                     supabase.table("profiles").insert(profile_data).execute()
                     print(f"[DB] Fallback profile created. Retrying report save...", flush=True)
-                    # Retry Report Insert
-                    supabase.table("reports").insert(data).execute()
+                    # Retry Report Update/Insert
+                    if report_id:
+                        supabase.table("reports").update(data).eq("id", report_id).execute()
+                    else:
+                        supabase.table("reports").insert(data).execute()
                     print(f"[DB] Saved report on retry.", flush=True)
                 else:
                     raise e

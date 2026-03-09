@@ -61,6 +61,7 @@ export default function HistoryPage() {
     switch (status) {
       case "completed": return <CheckCircle className="w-5 h-5 text-green-500" />;
       case "failed": return <AlertCircle className="w-5 h-5 text-red-500" />;
+      case "processing": return <div className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>;
       default: return <Clock className="w-5 h-5 text-yellow-500" />;
     }
   };
