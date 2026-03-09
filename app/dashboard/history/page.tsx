@@ -43,7 +43,18 @@ export default function HistoryPage() {
     }
 
     fetchReports();
-  }, [user]);
+
+    // Auto-refresh the list if any report is processing
+    const hasProcessing = reports.some(r => r.status?.startsWith('processing'));
+    let interval: NodeJS.Timeout;
+    if (hasProcessing) {
+        interval = setInterval(fetchReports, 5000);
+    }
+    
+    return () => {
+        if (interval) clearInterval(interval);
+    }
+  }, [user, reports]);
 
   const handleDownloadMD = (report: Report) => {
     if (!report.report_content) return;
@@ -102,7 +113,7 @@ export default function HistoryPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center gap-2">
                         {getStatusIcon(report.status)}
-                        <span className="capitalize">{report.status}</span>
+                        <span className="capitalize">{report.status?.replace(':', ' ')}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
