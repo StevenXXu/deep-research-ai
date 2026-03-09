@@ -451,11 +451,14 @@ except Exception as e:
         dc.post("cipher", "DONE", f"Research Complete. Cost: ${meta['cost_usd']}. Company: {meta.get('company_name')}")
         
         # Save to Supabase (With new Meta fields)
+        # We save "completed" here, but we MUST make sure update_status doesn't overwrite it!
         save_history("completed", analysis, meta=meta)
         
         # Email Logic
         if target_email:
-            update_status(95, f"Sending Email to {target_email}...")
+            # DO NOT call update_status() here with progress updates, because update_status 
+            # blindly sets status back to 'processing:95', wiping out 'completed'.
+            print(f"[EMAIL] Sending Email to {target_email}...", flush=True)
             
             # Debug: Verify Resend Key loaded
             resend_key = os.getenv("RESEND_API_KEY", "")
@@ -486,11 +489,12 @@ except Exception as e:
             if success:
                 print(f"[EMAIL] Sent successfully.", flush=True)
             else:
-                update_status(99, "Email failed. Uploading report to Discord backup.")
+                print("[EMAIL] Email failed. Uploading report to Discord backup.", flush=True)
                 # Fallback: Upload File to Discord
                 dc.post("cipher", "ERROR", f"Email failed (Network/Auth). Uploading report directly:", file_path=report_path)
         
-        update_status(100, "Done! Check your email or Discord.")
+        # Don't call update_status(100) because it overwrites 'completed' in Supabase with 'processing:100'
+        print("[RESEARCH] Done! Check your email or Discord.", flush=True)
         try:
             os.remove(js_path)
         except:
