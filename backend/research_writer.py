@@ -158,17 +158,28 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
     update_status(15, "Browsing Target Website (Scrapling)...")
     raw_text = ""
     
+    # Take screenshot using standard Python Playwright
+    try:
+        from playwright.sync_api import sync_playwright
+        print("[RESEARCH] Taking screenshot with standard Playwright...", flush=True)
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            page.goto(url, wait_until="domcontentloaded", timeout=45000)
+            page.screenshot(path=screenshot_path, full_page=False)
+            browser.close()
+        print(f"[RESEARCH] Screenshot saved successfully.", flush=True)
+    except Exception as se:
+        print(f"[WARN] Screenshot capture failed: {se}", flush=True)
+
     try:
         from scrapling.fetchers import StealthyFetcher
         print("[RESEARCH] Browsing site using Scrapling StealthyFetcher...", flush=True)
-        # Using stealthy fetcher to bypass Cloudflare and get content and screenshot
+        # Using stealthy fetcher to bypass Cloudflare and get content
         page = StealthyFetcher.fetch(url, headless=True, network_idle=True)
         raw_text = page.css('body::text').getall()
         raw_text = " ".join([t.strip() for t in raw_text if t.strip()])
-        
-        # Save screenshot
-        page.page.screenshot(path=screenshot_path, full_page=False)
-        print(f"[RESEARCH] Extracted landing page text and saved screenshot.", flush=True)
+        print(f"[RESEARCH] Extracted landing page text.", flush=True)
         
     except Exception as e:
         print(f"[WARN] Scrapling failed: {e}. Falling back to basic requests.", flush=True)
