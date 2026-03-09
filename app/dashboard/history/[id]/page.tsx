@@ -41,7 +41,7 @@ export default function ReportDetailPage() {
 
     // Polling logic for Processing Reports
     let interval: NodeJS.Timeout;
-    if (report?.status === 'processing') {
+    if (report?.status?.startsWith('processing')) {
       interval = setInterval(fetchReport, 3000);
     }
 
@@ -70,9 +70,17 @@ export default function ReportDetailPage() {
   if (error) return <div className="p-12 text-center text-red-500 bg-red-50 rounded-lg border border-red-100">{error}</div>;
   if (!report) return null;
 
-  const isProcessing = report.status === 'processing';
-  const progressText = report.meta?.status_text || "Gathering intelligence...";
-  const progressPercent = report.meta?.progress || 0;
+  const isProcessing = report.status?.startsWith('processing');
+  
+  // Try to extract percentage if it's packed in the status like "processing:45"
+  let progressPercent = 0;
+  if (report.status?.includes(':')) {
+      progressPercent = parseInt(report.status.split(':')[1]) || 0;
+  }
+  
+  const progressText = progressPercent > 0 
+    ? `Analysis at ${progressPercent}%...` 
+    : "Gathering intelligence...";
 
   return (
     <div className="max-w-5xl mx-auto pb-20 print:p-0 print:max-w-none">

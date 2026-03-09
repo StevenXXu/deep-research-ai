@@ -69,13 +69,13 @@ export async function POST(req: Request) {
     .eq('user_id', userId);
 
   // CREATE HISTORY ROW IMMEDIATELY
+  // Note: We use existing columns, not 'meta' since it might not exist in the DB schema yet.
   const { data: reportRow, error: reportError } = await supabase
     .from('reports')
     .insert({
         user_id: userId,
         target_url: body.url,
-        status: 'processing',
-        meta: { "progress": 0, "status_text": "Queued" }
+        status: 'processing'
     })
     .select('id'); // Removed single() to prevent error if it returns array of 1
 
@@ -106,7 +106,7 @@ export async function POST(req: Request) {
       if (!res.ok) {
           const errText = await res.text();
           // Revert status to failed if backend rejects
-          await supabase.from('reports').update({ status: 'failed', meta: {"error": errText} }).eq('id', reportId);
+          await supabase.from('reports').update({ status: 'failed' }).eq('id', reportId);
           throw new Error(`Backend Error: ${res.status} ${errText}`);
       }
 
@@ -117,7 +117,7 @@ export async function POST(req: Request) {
       return NextResponse.json(data);
       
   } catch (e) {
-      await supabase.from('reports').update({ status: 'failed', meta: {"error": String(e)} }).eq('id', reportId);
+      await supabase.from('reports').update({ status: 'failed' }).eq('id', reportId);
       return new NextResponse(`Backend Error: ${String(e)}`, { status: 500 });
   }
 }

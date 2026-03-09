@@ -88,9 +88,10 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
         # SUPABASE REALTIME SYNC (Optional, but great UX)
         if supabase and report_id:
             try:
-                # Update progress in the JSONB meta field so frontend can listen to it
+                # Update progress using a regular update. 
+                # Avoid touching 'meta' column here if it doesn't exist in schema yet.
                 supabase.table('reports').update({
-                    "meta": {"progress": progress, "status_text": status}
+                    "status": f"processing:{progress}"
                 }).eq('id', report_id).execute()
             except Exception as e:
                 # Silently fail progress updates to avoid crashing the main run
@@ -119,7 +120,6 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
             # Add Metadata if available
             if meta:
                 # Merge existing meta fields
-                data["meta"] = meta
                 if "company_name" in meta: data["company_name"] = meta.get("company_name")
                 if "sector_tags" in meta: data["sector_tags"] = meta.get("sector_tags")
                 if "cost_usd" in meta: data["cost_usd"] = meta.get("cost_usd")
