@@ -154,60 +154,35 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
         memory_context = consult_notebooklm.query_notebooklm(query, notebook_id=NOTEBOOK_ID)
         print(f"[RESEARCH] Memory Context: {memory_context[:200]}...")
 
-    # 1. Browser Automation (Screenshot + Text)
-    # ... (Keep existing Playwright JS script generation) ...
-    update_status(15, "Browsing Target Website...")
-    js_script = f"""
-    const {{ chromium }} = require('playwright');
-    (async () => {{
-      const browser = await chromium.launch();
-      const page = await browser.newPage();
-      try {{
-        console.log("Navigating...");
-        await page.goto('{url}', {{ waitUntil: 'domcontentloaded', timeout: 60000 }});
-        await page.waitForTimeout(3000); 
-        await page.screenshot({{ path: '{screenshot_path.replace(os.sep, "/")}', fullPage: false }}); 
-        
-        const content = await page.innerText('body');
-        console.log("__CONTENT_START__");
-        console.log(content);
-        console.log("__CONTENT_END__");
-      }} catch (e) {{
-        console.error(e);
-      }} finally {{
-        await browser.close();
-      }}
-    }})();
-    """
+    # 1. Web Extraction (Using Scrapling instead of Node.js Playwright for stealth)
+    update_status(15, "Browsing Target Website (Scrapling)...")
+    raw_text = ""
     
-    js_path = f"{OUTPUT_DIR}/temp_scraper_{timestamp}.js"
-    with open(js_path, "w", encoding="utf-8") as f:
-        f.write(js_script)
-        
     try:
-        print("[RESEARCH] Browsing site...", flush=True)
-        # Linux/Cloud-First Node Resolution
-        node_exec = "node"
-        if shutil.which("node"):
-            node_exec = shutil.which("node")
-            
-        # Execute Scraper
-        result = subprocess.run([node_exec, js_path], capture_output=True, text=True, encoding="utf-8")
+        from scrapling.fetchers import StealthyFetcher
+        print("[RESEARCH] Browsing site using Scrapling StealthyFetcher...", flush=True)
+        # Using stealthy fetcher to bypass Cloudflare and get content and screenshot
+        page = StealthyFetcher.fetch(url, headless=True, network_idle=True)
+        raw_text = page.css('body::text').getall()
+        raw_text = " ".join([t.strip() for t in raw_text if t.strip()])
         
-        output = result.stdout
-        # Ensure we capture errors if stdout is empty
-        if result.returncode != 0:
-             print(f"[WARN] Node script error: {result.stderr}", flush=True)
-
-        raw_text = ""
-        if "__CONTENT_START__" in output:
-            raw_text = output.split("__CONTENT_START__")[1].split("__CONTENT_END__")[0]
-        else:
-            print(f"[WARN] Browser Output format mismatch. Raw output: {output[:200]}...", flush=True)
+        # Save screenshot
+        page.page.screenshot(path=screenshot_path, full_page=False)
+        print(f"[RESEARCH] Extracted landing page text and saved screenshot.", flush=True)
+        
+    except Exception as e:
+        print(f"[WARN] Scrapling failed: {e}. Falling back to basic requests.", flush=True)
+        try:
+            import requests
+            from bs4 import BeautifulSoup
+            res = requests.get(url, timeout=15)
+            soup = BeautifulSoup(res.text, "html.parser")
+            raw_text = soup.get_text(separator=" ", strip=True)
+        except Exception as e2:
+            print(f"[WARN] Fallback failed: {e2}", flush=True)
             
-        print(f"[RESEARCH] Extracted landing page text.", flush=True)
-        update_status(25, "Site Scraped. Engaging Research Engine...")
-        dc.post("cipher", "PROGRESS", f"Scraped site. Screenshot saved.")
+    update_status(25, "Site Scraped. Engaging Research Engine...")
+    dc.post("cipher", "PROGRESS", f"Scraped site. Screenshot saved.")
 
         # 2. Research Engine (The New Brain)
         update_status(30, "Phase 1: Broad Market Scan (Exa/Tavily)...")
