@@ -37,12 +37,27 @@ export async function POST(req: Request) {
             // Check if Admin Client is valid
             const { data: checkData, error: checkError } = await supabaseAdmin.from('profiles').select('user_id').eq('user_id', userId).single();
             
-            if (checkError) {
-                 console.error(`[WEBHOOK_ERROR] DB Access Check Failed: ${checkError.message}. Key configured?`);
-                 // Don't return 500 yet, try to proceed in case it's just a lookup issue
+            if (checkError && checkError.code === 'PGRST116') {
+                 // Profile does not exist yet (Clerk webhook might have failed or been delayed)
+                 console.log(`[WEBHOOK] Profile not found. Creating fallback profile for ${userId}`);
+                 const { error: insertError } = await supabaseAdmin.from('profiles').insert({
+                     user_id: userId,
+                     email: "stripe-fallback@unknown.com",
+                     full_name: "User (Stripe Fallback)",
+                     credits_remaining: 20,
+                     subscription_status: 'active'
+                 });
+                 
+                 if (insertError) {
+                     console.error(`[WEBHOOK_ERROR] Insert Fallback Failed: ${insertError.message}`);
+                     return new NextResponse("Database Insert Failed", { status: 500 });
+                 }
+                 
+                 console.log(`[WEBHOOK] SUCCESS! Created and Upgraded user ${userId} to Pro (20 credits).`);
+                 return new NextResponse(null, { status: 200 });
             }
 
-            // PRO PLAN LOGIC
+            // PRO PLAN LOGIC (If profile exists)
             const { error: updateError } = await supabaseAdmin.from('profiles').update({
                 subscription_status: 'active',
                 credits_remaining: 20  // Changed from 30 to 20 per month ($1.45/unit)

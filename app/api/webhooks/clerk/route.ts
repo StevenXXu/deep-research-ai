@@ -1,7 +1,7 @@
 import { Webhook } from 'svix'
 import { headers } from 'next/headers'
 import { WebhookEvent } from '@clerk/nextjs/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function POST(req: Request) {
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET
@@ -55,8 +55,8 @@ export async function POST(req: Request) {
       const email = email_addresses[0]?.email_address;
       const name = `${first_name || ''} ${last_name || ''}`.trim();
 
-      // Insert into Supabase
-      const { error } = await supabase
+      // Insert into Supabase (Use Admin key to bypass RLS)
+      const { error } = await supabaseAdmin
         .from('profiles')
         .insert({
             user_id: id,
