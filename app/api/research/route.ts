@@ -77,15 +77,14 @@ export async function POST(req: Request) {
         status: 'processing',
         meta: { "progress": 0, "status_text": "Queued" }
     })
-    .select('id')
-    .single();
+    .select('id'); // Removed single() to prevent error if it returns array of 1
 
-  if (reportError || !reportRow) {
+  if (reportError || !reportRow || reportRow.length === 0) {
       console.error("[API] Failed to create initial report:", reportError);
-      return new NextResponse("Database Error: Could not initialize report", { status: 500 });
+      return new NextResponse(`Database Error: Could not initialize report. Details: ${reportError?.message || 'Unknown error'}`, { status: 500 });
   }
 
-  const reportId = reportRow.id;
+  const reportId = reportRow[0].id;
 
   // 3. Forward to Python Backend (Include report_id)
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://deep-research-ai-production.up.railway.app";
