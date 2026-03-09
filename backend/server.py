@@ -35,6 +35,7 @@ class ResearchRequest(BaseModel):
     email: str
     user_id: str = None # Optional for backward compatibility, but required for history
     report_id: str = None # New parameter to bind progress to a specific row in the DB
+    language: str = "English" # New parameter for report language
 
 def update_job_progress(job_id, progress, status):
     """Callback to update job status"""
@@ -59,7 +60,7 @@ async def start_research(req: ResearchRequest):
     # Run in background thread
     thread = threading.Thread(
         target=run_research, 
-        args=(req.url, req.email, None, lambda p, s: update_job_progress(job_id, p, s), req.user_id, req.report_id)
+        args=(req.url, req.email, None, lambda p, s: update_job_progress(job_id, p, s), req.user_id, req.report_id, req.language)
     )
     thread.start()
     
@@ -71,6 +72,7 @@ async def start_research_with_file(
     email: str = Form(...),
     user_id: str = Form(None), # Accept user_id from form
     report_id: str = Form(None), # Accept report_id from form
+    language: str = Form("English"), # Accept language from form
     file: UploadFile = File(None)
 ):
     document_text = None
@@ -102,7 +104,7 @@ async def start_research_with_file(
 
     thread = threading.Thread(
         target=run_research, 
-        args=(url, email, document_text, lambda p, s: update_job_progress(job_id, p, s), user_id, report_id)
+        args=(url, email, document_text, lambda p, s: update_job_progress(job_id, p, s), user_id, report_id, language)
     )
     thread.start()
 

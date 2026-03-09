@@ -28,9 +28,10 @@ TAVILY_KEY = os.getenv("TAVILY_API_KEY")
 BRAVE_KEY = os.getenv("BRAVE_API_KEY")
 
 class ResearchEngine:
-    def __init__(self, target_url, document_content=None):
+    def __init__(self, target_url, document_content=None, language="English"):
         self.url = target_url
         self.domain = target_url.split("//")[-1].split("/")[0]
+        self.language = language
         self.ddg_retries = 0  # Global counter for DDG fallbacks
         
         # Usage Counters (For Costing)
@@ -579,6 +580,7 @@ class ResearchEngine:
         
         Task: Write a comprehensive Investment Memo (Minimum 2000 words).
         Style: Professional, Objective, Thorough. Use Markdown.
+        Output Language: You MUST write the entire report, including all headers, tables, and analysis, in {self.language}.
         
         **CRITICAL SAFETY & STYLE RULES:**
         1. **OBJECTIVE FACTS ONLY:** Do NOT provide "Recommendations", "Verdicts", "Next Steps", or "Advice". Do not say "Wait and observe", "Buy", or "Sell". Your job is data aggregation, not consulting.

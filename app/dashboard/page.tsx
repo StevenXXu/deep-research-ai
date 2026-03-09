@@ -7,6 +7,7 @@ import { UploadCloud, Search, CheckCircle, Loader2 } from "lucide-react";
 export default function Dashboard() {
   const { user } = useUser();
   const [url, setUrl] = useState("");
+  const [language, setLanguage] = useState("English");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -56,6 +57,7 @@ export default function Dashboard() {
       formData.append("url", url);
       formData.append("email", userEmail);
       formData.append("user_id", user.id); // Pass User ID
+      formData.append("language", language);
       if (file) formData.append("file", file);
 
       // Use Local Proxy for Billing (URL Mode)
@@ -66,7 +68,7 @@ export default function Dashboard() {
       
       let endpoint = "/api/research"; // Local Next.js API
       let headers: HeadersInit = { 'Content-Type': 'application/json' };
-      let body: any = JSON.stringify({ url, email: userEmail, user_id: user.id }); // Pass User ID
+      let body: any = JSON.stringify({ url, email: userEmail, user_id: user.id, language }); // Pass User ID
 
       if (file) {
           // Fallback for File Upload (Direct to Railway for now to avoid multipart complexity)
@@ -228,6 +230,18 @@ export default function Dashboard() {
                 onChange={(e) => setUrl(e.target.value)}
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Report Language</label>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="w-full p-3 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+            >
+              <option value="English">English</option>
+              <option value="Chinese">中文 (Chinese)</option>
+            </select>
           </div>
 
           <div>

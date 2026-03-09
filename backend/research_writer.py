@@ -80,7 +80,7 @@ if SUPABASE_URL and SUPABASE_KEY:
 else:
     print(f"[WARN] Supabase init skipped due to missing vars.", flush=True)
 
-def run_research(url, target_email=None, document_text=None, progress_callback=None, user_id=None, report_id=None):
+def run_research(url, target_email=None, document_text=None, progress_callback=None, user_id=None, report_id=None, language="English"):
     def update_status(progress, status):
         if progress_callback:
             progress_callback(progress, status)
@@ -237,7 +237,7 @@ except Exception as e:
     try:
         # 2. Research Engine (The New Brain)
         update_status(30, "Phase 1: Broad Market Scan (Exa/Tavily)...")
-        engine = ResearchEngine(url, document_content=document_text)
+        engine = ResearchEngine(url, document_content=document_text, language=language)
         
         # Inject Landing Page + Memory Context
         engine.sources.append({"title": "Landing Page", "url": url, "content": raw_text[:2000], "source": "Landing Page"})
