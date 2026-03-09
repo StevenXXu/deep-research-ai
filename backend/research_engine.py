@@ -588,8 +588,8 @@ class ResearchEngine:
         3. **NO REFERENCES SECTION:** Do NOT write a References/Sources section at the end. The system appends this automatically.
         4. **NO NUMBERED HEADERS:** Do NOT number the sections (e.g. use "Executive Summary", NOT "1. Executive Summary").
         5. **MANDATORY TABLES:** 
-           - SWOT Analysis MUST be a Markdown table with EXACTLY these columns: | Strengths | Weaknesses | Opportunities | Threats |
-           - Market Landscape MUST be a Markdown table with EXACTLY these columns: | Competitor | Features | Pricing |
+           - SWOT Analysis MUST be a Markdown table. If Output Language is Chinese, use columns: | 优势 (Strengths) | 劣势 (Weaknesses) | 机会 (Opportunities) | 威胁 (Threats) |. Otherwise use: | Strengths | Weaknesses | Opportunities | Threats |
+           - Market Landscape MUST be a Markdown table. If Output Language is Chinese, use columns: | 竞争对手 (Competitor) | 核心功能 (Features) | 定价 (Pricing) |. Otherwise use: | Competitor | Features | Pricing |
         6. **FOUNDER VETTING:** The "Founding Team" section MUST include specific details on previous exits, technical depth, or red flags if found. Do not be generic. If unknown, say "No public track record found".
         
         Requirements:
