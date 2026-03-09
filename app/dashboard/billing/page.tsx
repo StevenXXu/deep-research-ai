@@ -73,7 +73,7 @@ export default function BillingPage() {
             </div>
             <p className="text-sm text-gray-500">Each report costs 1 credit.</p>
             <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm font-medium text-gray-900">Current Plan: <span className="capitalize">{plan}</span></div>
+                <div className="text-sm font-medium text-gray-900">Current Plan: <span className="capitalize font-bold text-indigo-600">{plan === 'active' ? 'Pro' : (plan || 'Free Trial')}</span></div>
             </div>
         </div>
 
