@@ -606,6 +606,7 @@ class ResearchEngine:
         **FORMATTING RULES:**
         - **NO CHATTY INTROS:** Start directly with the Report Title (# Project Name).
         - **IMPORTANT:** Ensure all tables are preceded by an empty line.
+        - **NO HTML TAGS:** Do not use <br> or any HTML tags in tables or text. Use standard Markdown.
         - Use citations like [1], [2] in the text.
         """
         
