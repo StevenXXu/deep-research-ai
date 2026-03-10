@@ -102,7 +102,7 @@ export default function BillingPage() {
                 disabled={loading}
                 className="mt-8 w-full block bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg text-center transition-colors disabled:opacity-50"
             >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Upgrade to Pro"}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (plan === 'active' ? "Top up Credits" : "Upgrade to Pro")}
             </button>
         </div>
       </div>
