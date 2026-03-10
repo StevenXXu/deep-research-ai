@@ -108,6 +108,20 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
             
         try:
             print(f"[DB] Saving/Updating report for user {user_id}...", flush=True)
+            
+            # REFUND LOGIC: If status is failed, refund 1 credit
+            if status == "failed":
+                try:
+                    # 1. Fetch current credits
+                    print(f"[DB] Initiating refund for user {user_id}...", flush=True)
+                    user_res = supabase.table("profiles").select("credits_remaining").eq("user_id", user_id).single().execute()
+                    current_credits = user_res.data.get("credits_remaining", 0)
+                    # 2. Add 1 credit back
+                    supabase.table("profiles").update({"credits_remaining": current_credits + 1}).eq("user_id", user_id).execute()
+                    print(f"[DB] Refund successful. Credits restored to {current_credits + 1}.", flush=True)
+                except Exception as refund_e:
+                    print(f"[DB-ERROR] Failed to refund credit: {refund_e}", flush=True)
+
             data = {
                 "user_id": user_id,
                 "target_url": url,
