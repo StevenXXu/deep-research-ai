@@ -360,6 +360,12 @@ class ResearchEngine:
         
         # 3D. Traffic Reality Check (NEW - Part C)
         self.phase_traffic_check()
+        
+        # 3E. Hiring Detective
+        self.phase_hiring_detective()
+        
+        # 3F. Time Machine
+        self.phase_time_machine()
 
         # 3E. Market Momentum (Google Trends)
         try:
@@ -374,6 +380,54 @@ class ResearchEngine:
         for q in self.questions:
             self.sources.extend(self.search_exa(q, 3))
             self.sources.extend(self.search_tavily(q, 3) or self.search_ddg(q, 2))
+
+    def phase_hiring_detective(self):
+        """Phase 3E: The Hiring Signal (Job Board Scraper)"""
+        self.log("Phase 3E: Hiring Detective (Analyzing Job Boards)...")
+        # Search major ATS platforms for active roles to infer company focus
+        queries = [
+            f"site:jobs.lever.co {self.company}",
+            f"site:boards.greenhouse.io {self.company}",
+            f"site:jobs.ashbyhq.com {self.company}"
+        ]
+        hiring_sources = []
+        for q in queries:
+            res = self.search_ddg(q, 2) # Free search is enough for finding job board links
+            if res:
+                for r in res: r['content'] = "[HIRING SIGNAL DATA] " + r['content']
+                hiring_sources.extend(res)
+        
+        if hiring_sources:
+            self.sources.extend(hiring_sources)
+            self.log(f"Found {len(hiring_sources)} active job board signals.")
+
+    def phase_time_machine(self):
+        """Phase 3F: Wayback Machine check for Pivot Alerts"""
+        self.log("Phase 3F: Time Machine Audit (Wayback Machine)...")
+        try:
+            # Call the public Internet Archive API for the closest snapshot from 6-12 months ago
+            import datetime
+            import requests
+            # Target timestamp: 6 months ago
+            target_date = (datetime.datetime.now() - datetime.timedelta(days=180)).strftime("%Y%md")
+            # Wayback Availability API
+            url = f"http://archive.org/wayback/available?url={self.domain}&timestamp={target_date}"
+            res = requests.get(url, timeout=5).json()
+            
+            if res.get("archived_snapshots") and res["archived_snapshots"].get("closest"):
+                snapshot = res["archived_snapshots"]["closest"]
+                archive_url = snapshot.get("url")
+                timestamp = snapshot.get("timestamp")
+                if archive_url:
+                    self.sources.append({
+                        "title": f"Historical Archive ({timestamp})",
+                        "url": archive_url,
+                        "content": f"[PIVOT CHECK] Historical website snapshot available at: {archive_url}. The LLM should note if current messaging heavily deviates from past positioning.",
+                        "source": "Wayback Machine"
+                    })
+                    self.log(f"Found historical snapshot from {timestamp}.")
+        except Exception as e:
+            self.log(f"Time Machine Warning: {e}")
 
     def phase_exit_analysis(self):
         """Phase 3C: Research potential exits (M&A, IPO)"""
@@ -606,7 +660,7 @@ class ResearchEngine:
         5. **Business Model** (Revenue Streams, Pricing Strategy)
         6. **Traction & Risks** (Funding, Traffic, Legal/Reg Risks)
         7. **Founding Team & Track Record** (MUST include: Key Founders, Previous Exits/Failures, Technical Depth. If data is missing, state "No public track record found".)
-        8. **Data Consistency Check** (Deck vs. Web Reality - Include SimilarWeb Traffic Data check)
+        8. **Data Consistency Check & Hidden Signals** (Analyze Traffic Reality, Hiring Signals, and Wayback Machine Pivot Alerts. What does their hiring or traffic tell us about their real stage?)
         9. **Exit Strategy & M&A Landscape** (Who buys this? Comparable exits, IPO potential)
         
         **FORMATTING RULES:**
