@@ -77,24 +77,37 @@ export default function BillingPage() {
             </div>
         </div>
 
-        {/* Upgrade Card */}
+        {/* Upgrade / Top-up Card */}
         <div className="bg-white p-8 rounded-xl shadow-sm border border-indigo-100 ring-1 ring-indigo-500 relative">
-            <div className="absolute top-0 right-0 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg">RECOMMENDED</div>
+            {plan !== 'active' && <div className="absolute top-0 right-0 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg">RECOMMENDED</div>}
+            
             <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <Zap className="w-5 h-5 text-indigo-500" /> Pro Plan
+                <Zap className="w-5 h-5 text-indigo-500" /> {plan === 'active' ? "Credit Refill" : "Pro Plan"}
             </h3>
+            
             <div className="mt-4 flex items-baseline gap-1">
                 <span className="text-4xl font-bold text-gray-900">$29</span>
-                <span className="text-gray-500">/month</span>
+                {plan !== 'active' && <span className="text-gray-500">/month</span>}
             </div>
-            <p className="mt-2 text-sm text-gray-500">For active investors & founders.</p>
+            
+            <p className="mt-2 text-sm text-gray-500">
+                {plan === 'active' ? "Add 20 more credits to your account immediately." : "For active investors & founders."}
+            </p>
             
             <ul className="mt-6 space-y-3 text-sm text-gray-600">
-                {['20 Credits per month', 'Priority Processing', 'PDF Exports', 'Email Delivery'].map((feat) => (
-                    <li key={feat} className="flex gap-2">
-                        <Check className="w-5 h-5 text-indigo-500 flex-shrink-0" /> {feat}
-                    </li>
-                ))}
+                {plan === 'active' ? (
+                    <>
+                        <li className="flex gap-2"><Check className="w-5 h-5 text-indigo-500 flex-shrink-0" /> +20 Additional Credits</li>
+                        <li className="flex gap-2"><Check className="w-5 h-5 text-indigo-500 flex-shrink-0" /> Never expire while active</li>
+                        <li className="flex gap-2"><Check className="w-5 h-5 text-indigo-500 flex-shrink-0" /> Available instantly</li>
+                    </>
+                ) : (
+                    ['20 Credits per month', 'Priority Processing', 'PDF Exports', 'Email Delivery'].map((feat) => (
+                        <li key={feat} className="flex gap-2">
+                            <Check className="w-5 h-5 text-indigo-500 flex-shrink-0" /> {feat}
+                        </li>
+                    ))
+                )}
             </ul>
 
             <button
@@ -102,7 +115,7 @@ export default function BillingPage() {
                 disabled={loading}
                 className="mt-8 w-full block bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg text-center transition-colors disabled:opacity-50"
             >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (plan === 'active' ? "Top up Credits" : "Upgrade to Pro")}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (plan === 'active' ? "Buy 20 Credits" : "Upgrade to Pro")}
             </button>
         </div>
       </div>
