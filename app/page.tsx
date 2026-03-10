@@ -45,10 +45,10 @@ export default function LandingPage() {
           </div>
           <div className="text-center">
             <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-              Investment-Grade Memos, <span className="text-indigo-600">Generated in Minutes.</span>
+              Don't bring a Google search<br/><span className="text-indigo-600">to an investment meeting.</span>
             </h1>
-            <p className="mt-6 text-lg leading-8 text-gray-600">
-              Stop spending hours scraping data. Our autonomous agents scan the web, analyze competitors, and write comprehensive pre-screen memos for VCs and Founders.
+            <p className="mt-6 text-lg leading-8 text-gray-600 max-w-2xl mx-auto">
+              Get the hard data Pitchbook charges $20k for. Our autonomous agents bypass Cloudflare, extract real traffic data, verify funding rounds, and hunt down founder histories to generate a VC-grade due diligence report in 3 minutes.
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
               {!isLoaded ? (
@@ -83,27 +83,27 @@ export default function LandingPage() {
                 <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600">
                   <BarChart3 className="h-6 w-6 text-white" aria-hidden="true" />
                 </div>
-                Deep Market Scan
+                The "Ugly Truth" Engine
               </dt>
-              <dd className="mt-2 text-base leading-7 text-gray-600">We check Reddit, LinkedIn, Google Trends, and Competitor sites to find the truth behind the pitch deck.</dd>
+              <dd className="mt-2 text-base leading-7 text-gray-600">We bypass PR fluff. Our agents extract Crunchbase funding history, cross-reference SimilarWeb traffic, and track down pivot histories via Wayback Machine.</dd>
             </div>
             <div className="relative pl-16">
               <dt className="text-base font-semibold leading-7 text-gray-900">
                 <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600">
                   <ShieldCheck className="h-6 w-6 text-white" aria-hidden="true" />
                 </div>
-                Objective Analysis
+                Founder Detective
               </dt>
-              <dd className="mt-2 text-base leading-7 text-gray-600">No fluff. No "Buy/Sell" advice. Just raw data, SWOT analysis, and clickable references for your own verification.</dd>
+              <dd className="mt-2 text-base leading-7 text-gray-600">We reverse-engineer job boards and track past exits. Know if they are heavily hiring engineers or just SDRs before you write the check.</dd>
             </div>
             <div className="relative pl-16">
               <dt className="text-base font-semibold leading-7 text-gray-900">
                 <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600">
                   <Clock className="h-6 w-6 text-white" aria-hidden="true" />
                 </div>
-                Save 4+ Hours/Deal
+                Bilingual Delivery
               </dt>
-              <dd className="mt-2 text-base leading-7 text-gray-600">What used to take an analyst half a day now takes 3 minutes. Focus on the meeting, not the googling.</dd>
+              <dd className="mt-2 text-base leading-7 text-gray-600">Looking at overseas deals? We analyze English raw data and output perfectly structured, native-level Chinese PDF reports for your IC meetings.</dd>
             </div>
           </dl>
         </div>
