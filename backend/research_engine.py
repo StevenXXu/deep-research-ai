@@ -329,10 +329,10 @@ class ResearchEngine:
     def phase_3_deep_dive(self):
         self.log("Phase 3: Targeted Deep Dive...")
 
-        # 3A. Apify Intelligence (Social & LinkedIn)
+        # 3A. Apify Intelligence (Reddit & Crunchbase)
         try:
-            self.log(f"Phase 3A: Apify Scanning (Reddit & LinkedIn) for {self.company}...")
-            self.usage["apify_runs"] += 1 # Track Cost
+            self.log(f"Phase 3A: Apify Scanning (Reddit & Crunchbase) for {self.company}...")
+            self.usage["apify_runs"] += 2 # Track Cost (2 actors)
             
             # 1. Reddit Sentiment
             reddit_data = apify.scrape_reddit_search(self.company)
@@ -343,6 +343,12 @@ class ResearchEngine:
                     "content": f"[Reddit Sentiment] {item.get('description') or item.get('title')}",
                     "source": "Reddit (Apify)"
                 })
+                
+            # 2. Crunchbase Funding Data (Replaces Pitchbook API)
+            crunchbase_data = apify.scrape_crunchbase(self.company)
+            if crunchbase_data:
+                self.sources.extend(crunchbase_data)
+                
         except Exception as e:
             self.log(f"Apify Module Warning: {e}")
 

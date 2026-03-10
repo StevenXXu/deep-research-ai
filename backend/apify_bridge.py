@@ -167,27 +167,54 @@ def scrape_google_trends(query):
         print(f"[Bridge Error - Trends] {e}", flush=True)
         return []
 
-def scrape_linkedin_company(linkedin_url):
-    """Bridge for 'consummate_mandala/linkedin-company-scraper'"""
-    print(f"[Apify Bridge] Scraping LinkedIn: {linkedin_url}...", flush=True)
+def scrape_crunchbase(query):
+    """Bridge for 'epctex/crunchbase-scraper' to fetch funding data"""
+    print(f"[Apify Bridge] Scraping Crunchbase for '{query}'...", flush=True)
     from apify_client import ApifyClient
     client = ApifyClient(APIFY_TOKEN)
 
-    # Actor: consummate_mandala/linkedin-company-scraper
+    # Actor: epctex/crunchbase-scraper (A popular crunchbase actor)
     run_input = {
-        "companyUrls": [linkedin_url],
-        "maxPosts": 5
+        "search": query,
+        "mode": "organizations",
+        "maxItems": 1
     }
 
     try:
-        print(f"[Apify Bridge] Invoking LinkedIn Actor...", flush=True)
-        run = client.actor("consummate_mandala/linkedin-company-scraper").call(run_input=run_input, timeout_secs=90, memory_mbytes=1024)
-        print(f"[Apify Bridge] LinkedIn Actor Finished.", flush=True)
-        dataset_items = client.dataset(run["defaultDatasetId"]).list_items(limit=5).items
+        print(f"[Apify Bridge] Invoking Crunchbase Actor...", flush=True)
+        # Fast timeout since we only need the top result
+        run = client.actor("epctex/crunchbase-scraper").call(run_input=run_input, timeout_secs=60, memory_mbytes=1024)
+        print(f"[Apify Bridge] Crunchbase Actor Finished.", flush=True)
         
-        print(f"[Apify Bridge] Fetched {len(dataset_items)} LinkedIn items.", flush=True)
-        return dataset_items
+        dataset_items = client.dataset(run["defaultDatasetId"]).list_items(limit=1).items
+        
+        if not dataset_items:
+            return []
+            
+        company_data = dataset_items[0]
+        
+        # Extract critical funding data
+        funding_rounds = company_data.get('funding_rounds', [])
+        total_funding = company_data.get('total_funding_amount', 'Unknown')
+        last_funding_type = company_data.get('last_funding_type', 'Unknown')
+        
+        # Build a tight summary for the LLM
+        summary = f"Total Funding: {total_funding}. Last Round: {last_funding_type}. "
+        if funding_rounds:
+            summary += "Recent Rounds: "
+            for r in funding_rounds[:3]: # Top 3 recent
+                amt = r.get('money_raised', 'Undisclosed')
+                date = r.get('announced_on', 'Unknown date')
+                investors = ", ".join([i.get('investor_name', '') for i in r.get('investors', [])[:2]])
+                summary += f"[{r.get('funding_type', 'Round')} in {date}: {amt} (Investors: {investors})] "
+                
+        return [{
+            "title": f"Crunchbase: {company_data.get('name', query)}",
+            "url": company_data.get('url', 'https://crunchbase.com'),
+            "content": f"[FUNDING & VALUATION DATA] {summary}",
+            "source": "Crunchbase (Apify)"
+        }]
         
     except Exception as e:
-        print(f"[Bridge Error - LinkedIn] {e}", flush=True)
+        print(f"[Bridge Error - Crunchbase] {e}", flush=True)
         return []
