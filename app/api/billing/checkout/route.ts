@@ -68,6 +68,11 @@ export async function GET(req: Request) {
     // 2. Create Checkout Session
     const settingsUrl = getAbsoluteUrl("/dashboard/billing");
 
+    if (!STRIPE_PRICE_ID) {
+        console.error("[STRIPE_CRITICAL] STRIPE_PRICE_ID is not configured in environment variables!");
+        return new NextResponse("Server Configuration Error: Missing Price ID", { status: 500 });
+    }
+
     const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
       line_items: [
