@@ -11,6 +11,7 @@ type AdminStats = {
   totalCost: number;
   totalUsers: number;
   avgCost: number;
+  failureRate: number;
 };
 
 type ReportLog = {
@@ -20,7 +21,9 @@ type ReportLog = {
   sector_tags: string[];
   cost_usd: number;
   created_at: string;
-  user_email?: string; // Need join for this, or just show ID for now
+  user_email?: string; 
+  status: string;
+  meta?: any;
 };
 
 export default function AdminDashboard() {
@@ -104,11 +107,17 @@ export default function AdminDashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
             <StatCard title="Total Users" value={stats.totalUsers} icon={<Users className="w-5 h-5 text-blue-600" />} />
             <StatCard title="Reports Generated" value={stats.totalReports} sub="(Last 50)" icon={<Activity className="w-5 h-5 text-purple-600" />} />
             <StatCard title="Total Cost" value={`$${stats.totalCost.toFixed(2)}`} icon={<DollarSign className="w-5 h-5 text-green-600" />} />
             <StatCard title="Avg Cost / Report" value={`$${stats.avgCost.toFixed(3)}`} icon={<TrendingUp className="w-5 h-5 text-orange-600" />} />
+            <StatCard 
+              title="Failure Rate" 
+              value={`${stats.failureRate?.toFixed(1)}%`} 
+              icon={<ShieldAlert className={`w-5 h-5 ${stats.failureRate > 10 ? 'text-red-600' : 'text-gray-400'}`} />} 
+              textColor={stats.failureRate > 10 ? 'text-red-600' : 'text-gray-900'}
+            />
         </div>
 
         {/* Intelligence Table */}
@@ -121,8 +130,9 @@ export default function AdminDashboard() {
                 <thead className="bg-gray-50">
                     <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sector</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Est. Cost</th>
                     </tr>
                 </thead>
@@ -130,16 +140,21 @@ export default function AdminDashboard() {
                     {logs.map((log) => (
                         <tr key={log.id} className="hover:bg-gray-50">
                             <td className="px-6 py-4 text-xs text-gray-500">{new Date(log.created_at).toLocaleString()}</td>
+                            <td className="px-6 py-4 text-xs font-medium text-gray-600">{log.user_email || 'Unknown'}</td>
                             <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                                {log.company_name || "Processing..."}
-                                <a href={log.target_url} target="_blank" className="block text-xs text-gray-400 font-normal hover:text-indigo-500 truncate max-w-[150px]">{log.target_url}</a>
+                                {log.company_name || log.target_url.replace('https://', '')}
+                                <a href={log.target_url} target="_blank" className="block text-xs text-gray-400 font-normal hover:text-indigo-500 truncate max-w-[200px]">{log.target_url}</a>
                             </td>
                             <td className="px-6 py-4">
-                                <div className="flex flex-wrap gap-1">
-                                    {log.sector_tags?.map(t => (
-                                        <span key={t} className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium">{t}</span>
-                                    ))}
-                                </div>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    log.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                    log.status === 'failed' ? 'bg-red-100 text-red-700' :
+                                    'bg-yellow-100 text-yellow-700'
+                                }`}>
+                                    {log.status === 'completed' && log.meta?.language === 'Chinese' ? '✅ Completed (CN)' : 
+                                     log.status === 'completed' ? '✅ Completed' :
+                                     log.status === 'failed' ? '❌ Failed (Refunded)' : '⏳ Processing'}
+                                </span>
                             </td>
                             <td className="px-6 py-4 text-right text-sm font-mono text-gray-600">
                                 ${Number(log.cost_usd || 0).toFixed(3)}
@@ -155,13 +170,13 @@ export default function AdminDashboard() {
   );
 }
 
-function StatCard({ title, value, sub, icon }: any) {
+function StatCard({ title, value, sub, icon, textColor }: any) {
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex justify-between items-start">
                 <div>
                     <p className="text-sm font-medium text-gray-500">{title}</p>
-                    <h3 className="text-2xl font-bold text-gray-900 mt-2">{value}</h3>
+                    <h3 className={`text-2xl font-bold mt-2 ${textColor || 'text-gray-900'}`}>{value}</h3>
                     {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
                 </div>
                 <div className="p-2 bg-gray-50 rounded-lg">{icon}</div>

@@ -23,10 +23,13 @@ export async function GET(req: Request) {
       return new NextResponse("Forbidden", { status: 403 });
   }
 
-  // Fetch Data
+  // Fetch Data (Join with profiles to get user email)
   const { data: reports } = await supabaseAdmin
     .from("reports")
-    .select("*")
+    .select(`
+      *,
+      profiles!inner(email)
+    `)
     .order("created_at", { ascending: false })
     .limit(50);
     
@@ -34,13 +37,21 @@ export async function GET(req: Request) {
 
   const totalReports = reports?.length || 0;
   const totalCost = reports?.reduce((sum, r) => sum + (r.cost_usd || 0), 0) || 0;
+  const failedReports = reports?.filter(r => r.status === 'failed').length || 0;
   
   const stats = {
       totalReports,
       totalCost,
       totalUsers: userCount || 0,
-      avgCost: totalReports > 0 ? totalCost / totalReports : 0
+      avgCost: totalReports > 0 ? totalCost / totalReports : 0,
+      failureRate: totalReports > 0 ? (failedReports / totalReports) * 100 : 0
   };
 
-  return NextResponse.json({ stats, logs: reports });
+  // Flatten the profile email into the report object for easier frontend rendering
+  const formattedLogs = reports?.map(r => ({
+      ...r,
+      user_email: r.profiles?.email || 'Unknown'
+  })) || [];
+
+  return NextResponse.json({ stats, logs: formattedLogs });
 }

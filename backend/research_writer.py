@@ -463,6 +463,7 @@ except Exception as e:
         update_status(95, "Finalizing Metadata...")
         meta = engine.extract_metadata(analysis)
         meta["cost_usd"] = engine.calculate_cost()
+        meta["language"] = language # Save the language choice for admin stats
         
         print(f"[SUCCESS] Reports saved: {report_path}", flush=True)
         dc.post("cipher", "DONE", f"Research Complete. Cost: ${meta['cost_usd']}. Company: {meta.get('company_name')}")
