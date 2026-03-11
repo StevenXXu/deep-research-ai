@@ -510,7 +510,11 @@ except Exception as e:
                 # Fallback: Upload File to Discord
                 dc.post("cipher", "ERROR", f"Email failed (Network/Auth). Uploading report directly:", file_path=report_path)
         
-        # Don't call update_status(100) because it overwrites 'completed' in Supabase with 'processing:100'
+        # WE MUST NOTIFY THE LOCAL IN-MEMORY STORE THAT IT IS 100% DONE
+        # The frontend New Research page polls `/status/{job_id}` which reads from `jobs` memory.
+        if progress_callback:
+            progress_callback(100, "Done! Check your email or Discord.")
+            
         print("[RESEARCH] Done! Check your email or Discord.", flush=True)
         try:
             os.remove(js_path)
