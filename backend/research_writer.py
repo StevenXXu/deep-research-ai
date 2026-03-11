@@ -138,6 +138,9 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
                 if "sector_tags" in meta: data["sector_tags"] = meta.get("sector_tags")
                 if "cost_usd" in meta: data["cost_usd"] = meta.get("cost_usd")
                 
+                # Try to write 'meta' as a JSONB column (will fail silently if schema isn't updated, but won't crash the main fields)
+                data["meta"] = meta
+                
             # Perform Update if report_id exists, else Insert
             try:
                 if report_id:
