@@ -38,11 +38,6 @@ export default function LandingPage() {
       {/* Hero Section */}
       <div className="relative isolate px-6 pt-14 lg:px-8">
         <div className="mx-auto max-w-2xl py-32 sm:py-48 lg:py-56">
-          <div className="hidden sm:mb-8 sm:flex sm:justify-center">
-            <div className="relative rounded-full px-3 py-1 text-sm leading-6 text-gray-600 ring-1 ring-gray-900/10 hover:ring-gray-900/20">
-              New: PDF Export & Resend Integration. <a href="#" className="font-semibold text-indigo-600"><span className="absolute inset-0" aria-hidden="true" />Read more <span aria-hidden="true">&rarr;</span></a>
-            </div>
-          </div>
           <div className="text-center">
             <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
               Don't bring a Google search<br/><span className="text-indigo-600">to an investment meeting.</span>
@@ -62,7 +57,7 @@ export default function LandingPage() {
                     Get Started <ArrowRight className="w-4 h-4" />
                   </Link>
               )}
-              <a href="#" className="text-sm font-semibold leading-6 text-gray-900">Live Demo <span aria-hidden="true">→</span></a>
+              <a href="/demo-report.pdf" target="_blank" className="text-sm font-semibold leading-6 text-gray-900">View Sample Report <span aria-hidden="true">→</span></a>
             </div>
           </div>
         </div>
