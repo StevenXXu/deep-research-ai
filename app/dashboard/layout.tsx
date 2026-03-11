@@ -44,7 +44,7 @@ export default function DashboardLayout({
       </Link>
       
       <div className="pt-4 mt-4 border-t border-gray-100">
-        <a href="mailto:support@inpjc.com?subject=SoloAnalyst%20Feedback" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50 hover:text-indigo-600 transition-colors group">
+        <a href="mailto:support@soloanalyst.com?subject=SoloAnalyst%20Feedback" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50 hover:text-indigo-600 transition-colors group">
           <MessageSquareWarning className="w-5 h-5 mr-3 text-gray-400 group-hover:text-indigo-500" />
           Feedback & Bugs
         </a>
