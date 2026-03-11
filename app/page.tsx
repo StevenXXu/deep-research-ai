@@ -108,6 +108,45 @@ export default function LandingPage() {
           </dl>
         </div>
       </div>
+
+      {/* Founder's Letter / About Us Section */}
+      <div className="bg-slate-50 py-24 sm:py-32 border-t border-gray-100">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto max-w-3xl text-left">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl mb-8">The Table is Flipped.</h2>
+            <div className="space-y-6 text-lg leading-8 text-gray-600">
+              <p>
+                For a long time, the privilege of discovering the next "unicorn" was blocked by a massive data wall.
+              </p>
+              <p>
+                Top-tier VC funds spend tens of thousands of dollars a year on Pitchbook accounts and employ armies of analysts. They use complex systems to monitor real startup traffic, dig up founders' hidden pasts, and uncover the true funding rounds beneath the surface.
+              </p>
+              <p>
+                Meanwhile, solo investors, angels, and everyday founders are left looking at polished PR articles, beautifully faked websites, and inflated Pitch Decks.
+              </p>
+              <p className="font-semibold text-gray-900">
+                This isn't fair. Information asymmetry shouldn't be the only moat for elite capital to harvest the market.
+              </p>
+              <p>
+                That's why we built <strong>SoloAnalyst</strong>. We took the heavy artillery used by Wall Street for due diligence and packed it into a simple search bar. No $20,000 annual fees. No 50-person analyst teams. Just drop a domain, and our autonomous agent swarm will force its way through anti-bot shields, cross-reference dozens of raw data sources, and reverse-engineer hiring signals.
+              </p>
+              <p>
+                In 3 minutes, it hands you the bleeding, unfiltered truth about a company.
+              </p>
+              <p className="font-bold text-indigo-600 text-xl mt-8">
+                Our mission is simple: Break the monopoly on capital information, and give everyone institutional-grade intelligence.
+              </p>
+              <p>
+                When you have the same line of sight as a top VC, why shouldn't you be the one to back the next unicorn?
+              </p>
+              <p className="mt-8 italic text-sm text-gray-500">
+                — The SoloAnalyst Team
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 }
