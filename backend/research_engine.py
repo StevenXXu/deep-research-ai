@@ -657,7 +657,7 @@ class ResearchEngine:
         
         Task: Write a comprehensive Investment Memo (Minimum 2000 words).
         Style: Professional, Objective, Thorough. Use Markdown.
-        Output Language: You MUST write the entire report, including all headers, tables, and analysis, in {self.language}.
+        Output Language: You MUST write the entire report, including all headers, tables, and analysis, in English. (Even if requested in another language, your raw output here must be English for maximum reasoning quality).
         
         **CRITICAL SAFETY & STYLE RULES:**
         1. **OBJECTIVE FACTS ONLY:** Do NOT provide "Recommendations", "Verdicts", "Next Steps", or "Advice". Do not say "Wait and observe", "Buy", or "Sell". Your job is data aggregation, not consulting.
@@ -665,8 +665,8 @@ class ResearchEngine:
         3. **NO REFERENCES SECTION:** Do NOT write a References/Sources section at the end. The system appends this automatically.
         4. **NO NUMBERED HEADERS:** Do NOT number the sections (e.g. use "Executive Summary", NOT "1. Executive Summary").
         5. **MANDATORY TABLES:** 
-           - SWOT Analysis MUST be a Markdown table. If Output Language is Chinese, use columns: | 优势 (Strengths) | 劣势 (Weaknesses) | 机会 (Opportunities) | 威胁 (Threats) |. Otherwise use: | Strengths | Weaknesses | Opportunities | Threats |
-           - Market Landscape MUST be a Markdown table. If Output Language is Chinese, use columns: | 竞争对手 (Competitor) | 核心功能 (Features) | 定价 (Pricing) |. Otherwise use: | Competitor | Features | Pricing |
+           - SWOT Analysis MUST be a Markdown table with EXACTLY these columns: | Strengths | Weaknesses | Opportunities | Threats |
+           - Market Landscape MUST be a Markdown table with EXACTLY these columns: | Competitor | Features | Pricing |
         6. **FOUNDER VETTING:** The "Founding Team" section MUST include specific details on previous exits, technical depth, or red flags if found. Do not be generic. If unknown, say "No public track record found".
         
         Requirements:
@@ -688,7 +688,31 @@ class ResearchEngine:
         """
         
         report = gateway.generate(prompt, "You are a thoughtful analyst. Output ONLY the report.")
-        
+
+        # ---- PHASE 4.5: TRANSLATION (If requested) ----
+        if report and self.language.lower() != "english":
+            self.log(f"Phase 4.5: Translating high-density English report to {self.language}...")
+            translation_prompt = f"""
+            You are a professional financial translator and investment analyst.
+            Your task is to translate the following deep research report into {self.language}.
+            
+            CRITICAL RULES:
+            1. DO NOT summarize or omit ANY data, numbers, or company names. Keep the exact factual density of the original.
+            2. Maintain all Markdown formatting perfectly, especially tables, headers, and citation brackets like [1].
+            3. Translate table headers properly.
+            4. If a term is a specific product name or proper noun (like 'Cloudflare', 'Series A'), keep the English term or use industry-standard terminology.
+            5. Ensure the tone is objective, professional, and native to an investment memo.
+            
+            Original Report:
+            {report}
+            """
+            translated_report = gateway.generate(translation_prompt, f"Output ONLY the perfectly translated markdown report in {self.language}.")
+            
+            if translated_report:
+                report = translated_report
+                self.usage["llm_input_chars"] += len(report) * 2 # Rough estimate of translation token usage
+                self.usage["llm_output_chars"] += len(translated_report)
+
         # Update usage counter for output tokens (Approx)
         if report:
             self.usage["llm_output_chars"] += len(report)

@@ -267,7 +267,7 @@ except Exception as e:
         update_status(60, "Phase 3: Deep Dive (Social/Trends)...")
         engine.phase_3_deep_dive()
         
-        update_status(80, "Phase 4: Synthesizing Investment Memo...")
+        update_status(80, "Phase 4: Synthesizing Native Investment Memo...")
         analysis = engine.phase_4_synthesis() # Returns Markdown Report
 
         # 3. Generate HTML Report (Premium Style)
