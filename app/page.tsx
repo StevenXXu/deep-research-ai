@@ -57,7 +57,7 @@ export default function LandingPage() {
                     Get Started <ArrowRight className="w-4 h-4" />
                   </Link>
               )}
-              <a href="/demo-report.pdf" target="_blank" className="text-sm font-semibold leading-6 text-gray-900">View Sample Report <span aria-hidden="true">→</span></a>
+              <a href="/sample" className="text-sm font-semibold leading-6 text-gray-900">View Sample Report <span aria-hidden="true">→</span></a>
             </div>
           </div>
         </div>
