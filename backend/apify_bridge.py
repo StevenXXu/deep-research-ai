@@ -218,3 +218,48 @@ def scrape_crunchbase(query):
     except Exception as e:
         print(f"[Bridge Error - Crunchbase] {e}", flush=True)
         return []
+
+def scrape_linkedin_company(linkedin_url):
+    """Bridge for 'consummate_mandala/linkedin-company-scraper' or similar"""
+    print(f"[Apify Bridge] Scraping LinkedIn: {linkedin_url}...", flush=True)
+    from apify_client import ApifyClient
+    client = ApifyClient(APIFY_TOKEN)
+
+    # Actor: consummate_mandala/linkedin-company-scraper
+    run_input = {
+        "companyUrls": [linkedin_url],
+        "maxPosts": 0, # We just want the company profile info, not posts
+        "scrapeAbout": True,
+        "scrapeEmployees": True
+    }
+
+    try:
+        print(f"[Apify Bridge] Invoking LinkedIn Actor...", flush=True)
+        run = client.actor("consummate_mandala/linkedin-company-scraper").call(run_input=run_input, timeout_secs=90, memory_mbytes=1024)
+        print(f"[Apify Bridge] LinkedIn Actor Finished.", flush=True)
+        
+        dataset_items = client.dataset(run["defaultDatasetId"]).list_items(limit=1).items
+        
+        if not dataset_items:
+            return []
+            
+        company_data = dataset_items[0]
+        
+        # Extract 'About Us' and founder info
+        about = company_data.get('about', '')
+        tagline = company_data.get('tagline', '')
+        employee_count = company_data.get('employeeCount', 'Unknown')
+        
+        # Build summary
+        summary = f"Tagline: {tagline}\nCompany Size: {employee_count} employees on LinkedIn\nAbout: {about[:1000]}"
+        
+        return [{
+            "title": f"LinkedIn Company Profile: {company_data.get('name', 'Unknown')}",
+            "url": linkedin_url,
+            "content": f"[LINKEDIN ABOUT & TEAM DATA] {summary}",
+            "source": "LinkedIn (Apify)"
+        }]
+        
+    except Exception as e:
+        print(f"[Bridge Error - LinkedIn] {e}", flush=True)
+        return []

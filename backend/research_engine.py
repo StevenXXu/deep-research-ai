@@ -478,6 +478,20 @@ class ResearchEngine:
         """
         self.log("Phase 3B: Founder Detective (Vetting Team)...")
         
+        # 0. LinkedIn Company Search (Apify)
+        self.log(f"Phase 3B: Checking LinkedIn for {self.company}...")
+        try:
+            # Search for the LinkedIn URL first
+            li_url_res = self.search_tavily(f"site:linkedin.com/company {self.company}", 1)
+            if li_url_res and "linkedin.com/company" in li_url_res[0]['url']:
+                li_url = li_url_res[0]['url']
+                self.usage["apify_runs"] += 1
+                li_data = apify.scrape_linkedin_company(li_url)
+                if li_data:
+                    self.sources.extend(li_data)
+        except Exception as e:
+            self.log(f"LinkedIn Company Scrape Error: {e}")
+
         # 1. Identify Founders - FORCE SEARCH FIRST to ensure CEO/Founder is found
         # (LLM extraction from random snippets often misses the main guy if the home page is generic)
         q_init = f"{self.company} CEO founder CTO team"
