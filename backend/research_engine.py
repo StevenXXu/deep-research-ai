@@ -111,6 +111,13 @@ class ResearchEngine:
             if not resp: return {}
             # Clean up potential markdown formatting and decode
             clean_resp = resp.replace("```json", "").replace("```", "").strip()
+            
+            # Find the first '{' and last '}' to handle LLM preamble/postamble
+            start_idx = clean_resp.find('{')
+            end_idx = clean_resp.rfind('}')
+            if start_idx != -1 and end_idx != -1:
+                clean_resp = clean_resp[start_idx:end_idx+1]
+                
             return json.loads(clean_resp)
         except Exception as e:
             self.log(f"Metadata Extraction Warning: {e}")
