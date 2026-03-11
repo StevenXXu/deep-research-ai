@@ -250,7 +250,7 @@ except Exception as e:
 
     try:
         # 2. Research Engine (The New Brain)
-        update_status(30, "Phase 1: Broad Market Scan (Exa/Tavily)...")
+        update_status(30, "Phase 1: Broad Market Scan...")
         engine = ResearchEngine(url, document_content=document_text, language=language)
         
         # Inject Landing Page + Memory Context
@@ -264,7 +264,7 @@ except Exception as e:
         update_status(50, "Phase 2: Identifying Knowledge Gaps...")
         engine.phase_2_gap_analysis()
         
-        update_status(60, "Phase 3: Deep Dive (Apify/Social/Trends)...")
+        update_status(60, "Phase 3: Deep Dive (Social/Trends)...")
         engine.phase_3_deep_dive()
         
         update_status(80, "Phase 4: Synthesizing Investment Memo...")
