@@ -102,15 +102,18 @@ class ResearchEngine:
             "company_name": "Exact Company Name",
             "sector_tags": ["Sector1", "Sector2"],
             "funding_stage": "Seed/Series A/Public/Unknown",
-            "risk_score": 1-10 (1=Safe, 10=High Risk)
+            "risk_score": 1-10
         }}
         """
         try:
             # Re-use gateway. No extra cost for this extraction usually (or minimal)
             resp = gateway.generate(prompt, "Return valid JSON only.")
             if not resp: return {}
-            return json.loads(resp.replace("```json", "").replace("```", "").strip())
-        except:
+            # Clean up potential markdown formatting and decode
+            clean_resp = resp.replace("```json", "").replace("```", "").strip()
+            return json.loads(clean_resp)
+        except Exception as e:
+            self.log(f"Metadata Extraction Warning: {e}")
             return {"company_name": self.company, "sector_tags": []}
     
     def search_exa(self, query, num=3):
