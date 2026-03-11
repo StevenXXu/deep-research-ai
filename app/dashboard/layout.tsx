@@ -60,7 +60,7 @@ export default function DashboardLayout({
       {/* Desktop Sidebar */}
       <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col">
         <div className="p-6 h-16 flex items-center border-b border-gray-100">
-          <span className="text-xl font-bold text-indigo-600 tracking-tight">Deep Research</span>
+          <span className="text-xl font-bold text-indigo-600 tracking-tight">SoloAnalyst</span>
         </div>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           <NavLinks />
@@ -77,7 +77,7 @@ export default function DashboardLayout({
         <div className="fixed inset-0 z-50 bg-gray-800/50 md:hidden" onClick={() => setIsMobileMenuOpen(false)}>
           <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-xl flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="p-4 flex items-center justify-between border-b border-gray-100 h-16">
-               <span className="text-xl font-bold text-indigo-600">Deep Research</span>
+               <span className="text-xl font-bold text-indigo-600">SoloAnalyst</span>
                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-gray-500">
                  <X className="w-6 h-6" />
                </button>
@@ -100,7 +100,7 @@ export default function DashboardLayout({
              <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-md">
                <Menu className="w-6 h-6" />
              </button>
-             <span className="text-lg font-bold text-indigo-600">Deep Research</span>
+             <span className="text-lg font-bold text-indigo-600">SoloAnalyst</span>
            </div>
            <UserButton />
         </div>

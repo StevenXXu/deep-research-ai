@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Deep Research AI",
-  description: "Autonomous Investment Memo Generator",
+  title: "SoloAnalyst | Deep Research AI",
+  description: "Autonomous Investment Memo Generator for VCs and Founders",
 };
 
 export default function RootLayout({
