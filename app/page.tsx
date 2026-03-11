@@ -36,32 +36,38 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <div className="relative isolate px-6 pt-14 lg:px-8">
-        <div className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80" aria-hidden="true">
-          <div className="relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-[#ff80b5] to-[#9089fc] opacity-10 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]"></div>
+      <div className="relative isolate px-6 pt-24 pb-20 lg:px-8 bg-slate-900 text-white">
+        {/* Subtle background glow effect */}
+        <div className="absolute inset-x-0 top-0 -z-10 transform-gpu overflow-hidden blur-3xl" aria-hidden="true">
+          <div className="relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-[#3b82f6] to-[#8b5cf6] opacity-20 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]"></div>
         </div>
-        <div className="mx-auto max-w-3xl py-32 sm:py-48 lg:py-56">
+
+        <div className="mx-auto max-w-3xl py-24 sm:py-32">
           <div className="text-center">
-            <h1 className="text-5xl font-bold tracking-tight text-gray-900 sm:text-7xl mb-6">
-              The Due Diligence Engine
+            <div className="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold text-indigo-400 bg-indigo-500/10 ring-1 ring-indigo-500/20 mb-8">
+              The AI Due Diligence Engine
+            </div>
+            <h1 className="text-5xl font-bold tracking-tight text-white sm:text-7xl mb-8 leading-tight">
+              Know Their Hand <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Before The Meeting.</span>
             </h1>
-            <p className="mt-6 text-xl leading-8 text-gray-600 max-w-2xl mx-auto">
-              Institutional-grade startup intelligence for solo investors and founders. Penetrate paywalls, verify funding, and extract the real data pitch decks leave out.
+            <p className="mt-6 text-xl leading-8 text-gray-300 max-w-2xl mx-auto">
+              Get the hard data Pitchbook charges $20k for. Bypass PR fluff, extract real traffic data, verify funding rounds, and hunt down founder histories in 3 minutes.
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
               {!isLoaded ? (
-                  <div className="h-12 w-32 bg-gray-100 rounded-full animate-pulse"></div>
+                  <div className="h-14 w-36 bg-slate-800 rounded-full animate-pulse"></div>
               ) : isSignedIn ? (
-                  <Link href="/dashboard" className="rounded-full bg-slate-900 px-6 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 flex items-center gap-2 transition-all">
-                    Open Dashboard <ArrowRight className="w-4 h-4" />
+                  <Link href="/dashboard" className="rounded-full bg-indigo-600 px-8 py-4 text-sm font-bold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 flex items-center gap-2 transition-all">
+                    Open Dashboard <ArrowRight className="w-5 h-5" />
                   </Link>
               ) : (
-                  <Link href="/sign-up" className="rounded-full bg-slate-900 px-6 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 flex items-center gap-2 transition-all">
-                    Get Started <ArrowRight className="w-4 h-4" />
+                  <Link href="/sign-up" className="rounded-full bg-indigo-600 px-8 py-4 text-sm font-bold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 flex items-center gap-2 transition-all">
+                    Start Your Audit <ArrowRight className="w-5 h-5" />
                   </Link>
               )}
-              <a href="/sample" className="text-sm font-semibold leading-6 text-gray-900 hover:text-slate-600 transition-colors">
-                View Sample Report <span aria-hidden="true">→</span>
+              <a href="/sample" className="text-sm font-semibold leading-6 text-gray-300 hover:text-white transition-colors flex items-center gap-1">
+                View Sample Report <ArrowRight className="w-4 h-4" />
               </a>
             </div>
           </div>
@@ -69,42 +75,42 @@ export default function LandingPage() {
       </div>
 
       {/* Feature Section */}
-      <div className="bg-slate-900 py-24 sm:py-32">
+      <div className="bg-white py-24 sm:py-32 border-b border-gray-100">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-2xl lg:text-center">
-            <h2 className="text-base font-semibold leading-7 text-indigo-400">Institutional Grade</h2>
-            <p className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            <h2 className="text-base font-bold tracking-widest uppercase text-indigo-600">Institutional Grade</h2>
+            <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
               Intelligence previously reserved for tier-one funds.
             </p>
           </div>
           <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-4xl">
             <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-10 lg:max-w-none lg:grid-cols-3 lg:gap-y-16">
               <div className="relative pl-16">
-                <dt className="text-base font-semibold leading-7 text-white">
-                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/10 ring-1 ring-indigo-500/20">
-                    <BarChart3 className="h-6 w-6 text-indigo-400" aria-hidden="true" />
+                <dt className="text-base font-bold leading-7 text-gray-900">
+                  <div className="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 border border-indigo-100">
+                    <BarChart3 className="h-6 w-6 text-indigo-600" aria-hidden="true" />
                   </div>
                   Bypass the Fluff
                 </dt>
-                <dd className="mt-2 text-base leading-7 text-gray-400">We extract Crunchbase funding history, cross-reference SimilarWeb traffic, and track down pivot histories via Wayback Machine.</dd>
+                <dd className="mt-2 text-base leading-7 text-gray-600">We extract Crunchbase funding history, cross-reference SimilarWeb traffic, and track down pivot histories via Wayback Machine.</dd>
               </div>
               <div className="relative pl-16">
-                <dt className="text-base font-semibold leading-7 text-white">
-                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/10 ring-1 ring-indigo-500/20">
-                    <ShieldCheck className="h-6 w-6 text-indigo-400" aria-hidden="true" />
+                <dt className="text-base font-bold leading-7 text-gray-900">
+                  <div className="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 border border-indigo-100">
+                    <ShieldCheck className="h-6 w-6 text-indigo-600" aria-hidden="true" />
                   </div>
                   Founder Detective
                 </dt>
-                <dd className="mt-2 text-base leading-7 text-gray-400">We reverse-engineer job boards and track past exits. Know if they are heavily hiring engineers or just SDRs before you write the check.</dd>
+                <dd className="mt-2 text-base leading-7 text-gray-600">We reverse-engineer job boards and track past exits. Know if they are heavily hiring engineers or just SDRs before you write the check.</dd>
               </div>
               <div className="relative pl-16">
-                <dt className="text-base font-semibold leading-7 text-white">
-                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/10 ring-1 ring-indigo-500/20">
-                    <Clock className="h-6 w-6 text-indigo-400" aria-hidden="true" />
+                <dt className="text-base font-bold leading-7 text-gray-900">
+                  <div className="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 border border-indigo-100">
+                    <Clock className="h-6 w-6 text-indigo-600" aria-hidden="true" />
                   </div>
                   Bilingual Delivery
                 </dt>
-                <dd className="mt-2 text-base leading-7 text-gray-400">Looking at overseas deals? We analyze English raw data and output perfectly structured, native-level Chinese PDF reports for your IC meetings.</dd>
+                <dd className="mt-2 text-base leading-7 text-gray-600">Looking at overseas deals? We analyze English raw data and output perfectly structured, native-level Chinese PDF reports for your IC meetings.</dd>
               </div>
             </dl>
           </div>
