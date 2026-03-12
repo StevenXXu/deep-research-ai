@@ -203,7 +203,12 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
     dc.post("cipher", "START", f"Starting Deep Research (Premium) on {url}")
     
     timestamp = int(time.time())
-    site_name = url.split("//")[-1].replace("/", "_")
+    
+    if url.startswith("http://") or url.startswith("https://"):
+        site_name = url.split("//")[-1].replace("/", "_")
+    else:
+        site_name = url.replace(" ", "_").replace("/", "_")[:50]
+        
     screenshot_path = os.path.abspath(f"{OUTPUT_DIR}/{site_name}_{timestamp}.png")
     
     # 0. Check Memory (NotebookLM)
@@ -219,10 +224,14 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
     update_status(15, "Browsing Target Website (Scrapling)...")
     raw_text = ""
     
-    # Take screenshot in an isolated subprocess to avoid asyncio Event Loop conflicts in Threads
-    try:
-        print("[RESEARCH] Taking screenshot using isolated subprocess...", flush=True)
-        py_script = f"""
+    # Check if URL is valid (not just a project name)
+    is_valid_url = url.startswith("http://") or url.startswith("https://")
+    
+    if is_valid_url:
+        # Take screenshot in an isolated subprocess to avoid asyncio Event Loop conflicts in Threads
+        try:
+            print("[RESEARCH] Taking screenshot using isolated subprocess...", flush=True)
+            py_script = f"""
 from playwright.sync_api import sync_playwright
 try:
     with sync_playwright() as p:
@@ -234,47 +243,50 @@ try:
 except Exception as e:
     print("Screenshot error:", e)
 """
-        py_path = f"{OUTPUT_DIR}/temp_screenshot_{timestamp}.py"
-        with open(py_path, "w", encoding="utf-8") as f:
-            f.write(py_script)
-            
-        import subprocess
-        subprocess.run([sys.executable, py_path], capture_output=True, text=True, timeout=60)
+            py_path = f"{OUTPUT_DIR}/temp_screenshot_{timestamp}.py"
+            with open(py_path, "w", encoding="utf-8") as f:
+                f.write(py_script)
+                
+            import subprocess
+            subprocess.run([sys.executable, py_path], capture_output=True, text=True, timeout=60)
+            try:
+                os.remove(py_path)
+            except:
+                pass
+                
+            if os.path.exists(screenshot_path):
+                print(f"[RESEARCH] Screenshot saved successfully.", flush=True)
+            else:
+                print(f"[WARN] Screenshot file was not created.", flush=True)
+                
+        except Exception as se:
+            print(f"[WARN] Screenshot subprocess failed: {se}", flush=True)
+    
         try:
-            os.remove(py_path)
-        except:
-            pass
+            from scrapling.fetchers import StealthyFetcher
+            print("[RESEARCH] Browsing site using Scrapling StealthyFetcher...", flush=True)
+            # Using stealthy fetcher to bypass Cloudflare and get content
+            page = StealthyFetcher.fetch(url, headless=True, network_idle=True)
+            raw_text = page.css('body::text').getall()
+            raw_text = " ".join([t.strip() for t in raw_text if t.strip()])
+            print(f"[RESEARCH] Extracted landing page text.", flush=True)
             
-        if os.path.exists(screenshot_path):
-            print(f"[RESEARCH] Screenshot saved successfully.", flush=True)
-        else:
-            print(f"[WARN] Screenshot file was not created.", flush=True)
-            
-    except Exception as se:
-        print(f"[WARN] Screenshot subprocess failed: {se}", flush=True)
-
-    try:
-        from scrapling.fetchers import StealthyFetcher
-        print("[RESEARCH] Browsing site using Scrapling StealthyFetcher...", flush=True)
-        # Using stealthy fetcher to bypass Cloudflare and get content
-        page = StealthyFetcher.fetch(url, headless=True, network_idle=True)
-        raw_text = page.css('body::text').getall()
-        raw_text = " ".join([t.strip() for t in raw_text if t.strip()])
-        print(f"[RESEARCH] Extracted landing page text.", flush=True)
-        
-    except Exception as e:
-        print(f"[WARN] Scrapling failed: {e}. Falling back to basic requests.", flush=True)
-        try:
-            import requests
-            from bs4 import BeautifulSoup
-            res = requests.get(url, timeout=15)
-            soup = BeautifulSoup(res.text, "html.parser")
-            raw_text = soup.get_text(separator=" ", strip=True)
-        except Exception as e2:
-            print(f"[WARN] Fallback failed: {e2}", flush=True)
-            
-    update_status(25, "Site Scraped. Engaging Research Engine...")
-    dc.post("cipher", "PROGRESS", f"Scraped site. Screenshot saved.")
+        except Exception as e:
+            print(f"[WARN] Scrapling failed: {e}. Falling back to basic requests.", flush=True)
+            try:
+                import requests
+                from bs4 import BeautifulSoup
+                res = requests.get(url, timeout=15)
+                soup = BeautifulSoup(res.text, "html.parser")
+                raw_text = soup.get_text(separator=" ", strip=True)
+            except Exception as e2:
+                print(f"[WARN] Fallback failed: {e2}", flush=True)
+                
+        update_status(25, "Site Scraped. Engaging Research Engine...")
+        dc.post("cipher", "PROGRESS", f"Scraped site. Screenshot saved.")
+    else:
+        update_status(25, "No valid URL provided. Bypassing scrapers, using provided documents...")
+        dc.post("cipher", "PROGRESS", f"Bypassing scrapers for stealth project.")
 
     try:
         # 2. Research Engine (The New Brain)

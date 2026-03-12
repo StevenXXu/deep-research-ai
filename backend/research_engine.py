@@ -30,7 +30,11 @@ BRAVE_KEY = os.getenv("BRAVE_API_KEY")
 class ResearchEngine:
     def __init__(self, target_url, document_content=None, language="English"):
         self.url = target_url
-        self.domain = target_url.split("//")[-1].split("/")[0]
+        if target_url.startswith("http://") or target_url.startswith("https://"):
+            self.domain = target_url.split("//")[-1].split("/")[0]
+        else:
+            self.domain = target_url # It's a project name
+            
         self.language = language
         self.ddg_retries = 0  # Global counter for DDG fallbacks
         
@@ -45,10 +49,13 @@ class ResearchEngine:
         
         # Handle 'www.' prefix or subdomains to get proper company name
         domain_parts = self.domain.split('.')
-        if domain_parts[0] == 'www' and len(domain_parts) > 2:
-            self.company = domain_parts[1].capitalize()
+        if len(domain_parts) > 1:
+            if domain_parts[0] == 'www' and len(domain_parts) > 2:
+                self.company = domain_parts[1].capitalize()
+            else:
+                self.company = domain_parts[0].capitalize()
         else:
-            self.company = domain_parts[0].capitalize()
+            self.company = self.domain.capitalize()
             
         self.sources = []  
         self.questions = [] 

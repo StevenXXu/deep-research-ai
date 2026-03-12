@@ -32,6 +32,12 @@ export default function Dashboard() {
     e.preventDefault();
     if (!user) return;
     
+    // Safety Check: Must have URL/Name or File
+    if (!url.trim() && !file) {
+        setStatus("Error: Please provide a Target URL, Project Name, or upload a document.");
+        return;
+    }
+    
     // Client-Side Credit Check (Soft Check)
     if (credits !== null && credits <= 0) {
         setShowUpgradeModal(true);
@@ -52,9 +58,11 @@ export default function Dashboard() {
 
     const userEmail = user.primaryEmailAddress?.emailAddress || "";
 
+    const targetIdentifier = url.trim() || file?.name || "Stealth Project";
+
     try {
       const formData = new FormData();
-      formData.append("url", url);
+      formData.append("url", targetIdentifier);
       formData.append("email", userEmail);
       formData.append("user_id", user.id); // Pass User ID
       formData.append("language", language);
@@ -68,7 +76,7 @@ export default function Dashboard() {
       
       let endpoint = "/api/research"; // Local Next.js API
       let headers: HeadersInit = { 'Content-Type': 'application/json' };
-      let body: any = JSON.stringify({ url, email: userEmail, user_id: user.id, language }); // Pass User ID
+      let body: any = JSON.stringify({ url: targetIdentifier, email: userEmail, user_id: user.id, language }); // Pass User ID
 
       if (file) {
           // Fallback for File Upload (Direct to Railway for now to avoid multipart complexity)
@@ -211,21 +219,20 @@ export default function Dashboard() {
       </div>
 
       <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-        <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
           
           <div>
-            <label htmlFor="url" className="block text-sm font-medium text-gray-700 mb-2">Target URL</label>
+            <label htmlFor="url" className="block text-sm font-medium text-gray-700 mb-2">Target URL or Project Name</label>
             <div className="relative rounded-md shadow-sm">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-gray-400" />
               </div>
               <input
-                type="url"
+                type="text"
                 name="url"
                 id="url"
                 className="block w-full pl-10 pr-12 py-3 border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border"
-                placeholder="https://example.com"
-                required
+                placeholder="https://example.com or Project Name"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
               />
