@@ -597,7 +597,8 @@ class ResearchEngine:
         Target Company: {self.company}
         Target URL: {self.url}
         
-        Task: Review the list of gathered sources. Identify any source that clearly refers to a DIFFERENT company (e.g. same name but wrong industry/country).
+        Task: Review the list of gathered sources. Identify any source that is IRRELEVANT.
+        CRITICAL: You MUST aggressively flag sources that refer to fiction novels, video games, fictional characters (e.g., magic schools, anime), or completely unrelated companies with the same name.
         
         Sources:
         {json.dumps(source_list, indent=2)}
@@ -676,8 +677,9 @@ class ResearchEngine:
         **CRITICAL SAFETY & STYLE RULES:**
         1. **OBJECTIVE FACTS ONLY:** Do NOT provide "Recommendations", "Verdicts", "Next Steps", or "Advice". Do not say "Wait and observe", "Buy", or "Sell". Your job is data aggregation, not consulting.
         2. **NO 'SCAM' ACCUSATIONS:** Unless proven by government/major news, assume innocence. Label issues as "User Controversy".
-        3. **NO REFERENCES SECTION:** Do NOT write a References/Sources section at the end. The system appends this automatically.
-        4. **NO NUMBERED HEADERS:** Do NOT number the sections (e.g. use "Executive Summary", NOT "1. Executive Summary").
+        3. **SILENCE ON IRRELEVANT DATA (NO OVER-REPORTING):** If you notice that some provided data clearly refers to a fictional character, a video game, a novel, or a completely unrelated entity with the same name, YOU MUST IGNOR IT COMPLETELY. DO NOT mention it in the report. Do not explain that it is unrelated. Simply state: "No relevant social sentiment data found for this specific company."
+        4. **NO REFERENCES SECTION:** Do NOT write a References/Sources section at the end. The system appends this automatically.
+        5. **NO NUMBERED HEADERS:** Do NOT number the sections (e.g. use "Executive Summary", NOT "1. Executive Summary").
         5. **MANDATORY TABLES:** 
            - SWOT Analysis MUST be a Markdown table with EXACTLY these columns: | Strengths | Weaknesses | Opportunities | Threats |
            - Market Landscape MUST be a Markdown table with EXACTLY these columns: | Competitor | Features | Pricing |
