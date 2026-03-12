@@ -686,6 +686,7 @@ class ResearchEngine:
         7. **Founding Team & Track Record** (MUST include: Key Founders, Previous Exits/Failures, Technical Depth. If data is missing, state "No public track record found".)
         8. **Data Consistency Check & Hidden Signals** (Analyze Traffic Reality, Hiring Signals, and Wayback Machine Pivot Alerts. What does their hiring or traffic tell us about their real stage?)
         9. **Exit Strategy & M&A Landscape** (Who buys this? Comparable exits, IPO potential)
+        10. **Due Diligence Interrogation** (Provide 3-5 aggressive, highly specific questions to ask the founders in a first meeting to test their moat and uncover risks. Do NOT ask generic questions like "What is your vision?". Ask hard questions based on the weaknesses and hidden signals found above.)
         
         **FORMATTING RULES:**
         - **NO CHATTY INTROS:** Start directly with the Report Title (# Project Name).
