@@ -133,10 +133,13 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
                 
             # Add Metadata if available
             if meta:
-                # ONLY push columns explicitly known to exist in the schema
+                # Map extracted fields directly to their corresponding SQL columns
                 if "company_name" in meta: data["company_name"] = meta.get("company_name")
                 if "sector_tags" in meta: data["sector_tags"] = meta.get("sector_tags")
                 if "cost_usd" in meta: data["cost_usd"] = meta.get("cost_usd")
+                
+                # Store the entire raw metadata dict into the JSONB column "usage_meta"
+                data["usage_meta"] = meta
                 
             # Perform Update if report_id exists, else Insert
             try:
