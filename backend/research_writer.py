@@ -133,7 +133,7 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
                 
             # Add Metadata if available
             if meta:
-                # Merge existing meta fields
+                # ONLY push columns explicitly known to exist in the schema
                 if "company_name" in meta: data["company_name"] = meta.get("company_name")
                 if "sector_tags" in meta: data["sector_tags"] = meta.get("sector_tags")
                 if "cost_usd" in meta: data["cost_usd"] = meta.get("cost_usd")
@@ -141,11 +141,36 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
             # Perform Update if report_id exists, else Insert
             try:
                 if report_id:
-                    res = supabase.table("reports").update(data).eq("id", report_id).execute()
-                    print(f"[DB] Updated existing report {report_id} to status: {status}.", flush=True)
+                    try:
+                        res = supabase.table("reports").update(data).eq("id", report_id).execute()
+                        print(f"[DB] Updated existing report {report_id} to status: {status}.", flush=True)
+                    except Exception as db_e:
+                        print(f"[DB-WARN] Full update failed ({db_e}). Retrying with safe payload...", flush=True)
+                        safe_data = {
+                            "status": status,
+                            "user_id": user_id,
+                            "target_url": url
+                        }
+                        if content: safe_data["report_content"] = content
+                        if meta and "company_name" in meta: safe_data["company_name"] = meta.get("company_name")
+                        res = supabase.table("reports").update(safe_data).eq("id", report_id).execute()
+                        print(f"[DB] Updated existing report {report_id} using safe payload.", flush=True)
                 else:
-                    res = supabase.table("reports").insert(data).execute()
-                    print(f"[DB] Inserted new report to history.", flush=True)
+                    try:
+                        res = supabase.table("reports").insert(data).execute()
+                        print(f"[DB] Inserted new report to history.", flush=True)
+                    except Exception as db_e:
+                        print(f"[DB-WARN] Full insert failed ({db_e}). Retrying with safe payload...", flush=True)
+                        safe_data = {
+                            "status": status,
+                            "user_id": user_id,
+                            "target_url": url,
+                            "created_at": datetime.utcnow().isoformat()
+                        }
+                        if content: safe_data["report_content"] = content
+                        if meta and "company_name" in meta: safe_data["company_name"] = meta.get("company_name")
+                        res = supabase.table("reports").insert(safe_data).execute()
+                        print(f"[DB] Inserted new report using safe payload.", flush=True)
             except Exception as e:
                 # Handle Foreign Key Violation (Missing Profile)
                 if "foreign key constraint" in str(e) or "23503" in str(e):
