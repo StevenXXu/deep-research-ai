@@ -92,7 +92,7 @@ export default function HistoryPage() {
             <p className="mt-1 text-sm text-gray-500">Get started by creating a new research task.</p>
           </div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-200">
+          <div className="w-full overflow-x-auto"><table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
@@ -133,7 +133,7 @@ export default function HistoryPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
     </div>

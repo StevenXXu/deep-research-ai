@@ -15,8 +15,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #f9fafb; /* force light gray bg on dark mode, to match bg-gray-50 */
+    --foreground: #111827; /* force dark text */
   }
 }
 
