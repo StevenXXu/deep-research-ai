@@ -684,7 +684,7 @@ class ResearchEngine:
         5. **Business Model** (Revenue Streams, Pricing Strategy)
         6. **Traction & Risks** (Funding, Traffic, Legal/Reg Risks)
         7. **Founding Team & Track Record** (MUST include: Key Founders, Previous Exits/Failures, Technical Depth. If data is missing, state "No public track record found".)
-        8. **Data Consistency Check & Hidden Signals** (Analyze Traffic Reality, Hiring Signals, and Wayback Machine Pivot Alerts. What does their hiring or traffic tell us about their real stage?)
+        8. **Data Consistency Check & Hidden Signals** (CRITICAL: You MUST use the [TRAFFIC DATA], [HIRING SIGNAL DATA], and [PIVOT CHECK] tags provided in the Research Data to answer this. State the EXACT numbers and facts found. Do NOT write theoretical explanations about what these tools could do. If no data was found for a section, simply state "No anomalies detected.")
         9. **Exit Strategy & M&A Landscape** (Who buys this? Comparable exits, IPO potential)
         10. **Due Diligence Interrogation** (Provide 3-5 aggressive, highly specific questions to ask the founders in a first meeting to test their moat and uncover risks. Do NOT ask generic questions like "What is your vision?". Ask hard questions based on the weaknesses and hidden signals found above.)
         
