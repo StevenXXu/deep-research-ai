@@ -82,8 +82,9 @@ export default function HistoryPage() {
         <p className="mt-2 text-gray-600">Your past investment memos and analysis reports.</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        {loading ? (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+        <div className="inline-block min-w-full align-middle">
+          {loading ? (
           <div className="p-8 text-center text-gray-500">Loading history...</div>
         ) : reports.length === 0 ? (
           <div className="p-12 text-center">
@@ -133,7 +134,8 @@ export default function HistoryPage() {
                 </tr>
               ))}
             </tbody>
-          </table></div>
+          </table>
+          </div>
         )}
       </div>
     </div>
