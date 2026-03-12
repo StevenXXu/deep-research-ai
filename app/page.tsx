@@ -74,6 +74,18 @@ export default function LandingPage() {
         </div>
       </div>
 
+        {/* Who is this for Section */}
+        <div className="bg-slate-50 py-16 border-b border-gray-100">
+          <div className="mx-auto max-w-7xl px-6 lg:px-8 text-center">
+            <p className="text-sm font-semibold uppercase tracking-widest text-gray-500 mb-8">Built as a strategic weapon for</p>
+            <div className="flex flex-col sm:flex-row justify-center gap-8 sm:gap-16 items-center">
+              <div className="text-gray-900 text-xl font-bold">👼 Angel Investors</div>
+              <div className="text-gray-900 text-xl font-bold">📊 M&A Analysts</div>
+              <div className="text-gray-900 text-xl font-bold">🚀 Startup Founders</div>
+            </div>
+          </div>
+        </div>
+
       {/* Feature Section */}
       <div className="bg-white py-24 sm:py-32 border-b border-gray-100">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -113,6 +125,54 @@ export default function LandingPage() {
                 <dd className="mt-2 text-base leading-7 text-gray-600">Looking at overseas deals? We analyze English raw data and output perfectly structured, native-level Chinese PDF reports for your IC meetings.</dd>
               </div>
             </dl>
+          </div>
+        </div>
+      </div>
+
+      {/* Pricing Section */}
+      <div className="bg-white py-24 sm:py-32 border-b border-gray-100">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl text-center mb-16">
+            <h2 className="text-base font-bold tracking-widest uppercase text-indigo-600">Transparent Pricing</h2>
+            <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              Pay for insights, not for a database seat.
+            </p>
+          </div>
+          <div className="mx-auto max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            
+            {/* Trial Card */}
+            <div className="bg-slate-50 rounded-3xl p-8 ring-1 ring-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Trial</h3>
+              <p className="mt-4 flex items-baseline gap-x-2">
+                <span className="text-5xl font-bold tracking-tight text-gray-900">$0</span>
+              </p>
+              <p className="mt-4 text-sm leading-6 text-gray-600">Test our data depth on your hardest deal.</p>
+              <ul className="mt-8 space-y-3 text-sm leading-6 text-gray-600">
+                <li className="flex gap-x-3"><ShieldCheck className="h-6 w-5 flex-none text-indigo-600" /> 1 Free Due Diligence Report</li>
+                <li className="flex gap-x-3"><ShieldCheck className="h-6 w-5 flex-none text-indigo-600" /> No Credit Card Required</li>
+              </ul>
+              <Link href="/sign-up" className="mt-8 block rounded-full px-3.5 py-2.5 text-center text-sm font-semibold text-indigo-600 ring-1 ring-inset ring-indigo-200 hover:ring-indigo-300">Get Started</Link>
+            </div>
+
+            {/* Pro Card */}
+            <div className="bg-slate-900 rounded-3xl p-8 ring-1 ring-slate-900 shadow-xl relative">
+              <div className="absolute top-0 right-6 transform -translate-y-1/2">
+                <span className="bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Most Popular</span>
+              </div>
+              <h3 className="text-lg font-semibold text-white">Pro Plan</h3>
+              <p className="mt-4 flex items-baseline gap-x-2">
+                <span className="text-5xl font-bold tracking-tight text-white">$29</span>
+                <span className="text-sm font-semibold leading-6 text-gray-400">/month</span>
+              </p>
+              <p className="mt-4 text-sm leading-6 text-gray-300">For active investors scanning weekly deal flow.</p>
+              <ul className="mt-8 space-y-3 text-sm leading-6 text-gray-300">
+                <li className="flex gap-x-3"><ShieldCheck className="h-6 w-5 flex-none text-indigo-400" /> 20 Reports per month ($1.45/each)</li>
+                <li className="flex gap-x-3"><ShieldCheck className="h-6 w-5 flex-none text-indigo-400" /> Rollover unused credits</li>
+                <li className="flex gap-x-3"><ShieldCheck className="h-6 w-5 flex-none text-indigo-400" /> PDF & Email Delivery</li>
+              </ul>
+              <Link href="/sign-up" className="mt-8 block rounded-full bg-indigo-500 px-3.5 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-400">Upgrade to Pro</Link>
+            </div>
+
           </div>
         </div>
       </div>
