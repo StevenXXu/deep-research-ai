@@ -215,7 +215,7 @@ export default function Dashboard() {
 
       <div>
         <h1 className="text-3xl font-bold text-gray-900">New Research Task</h1>
-        <p className="mt-2 text-gray-600">Enter a company URL to generate a comprehensive pre-screen investment memo.</p>
+        <p className="mt-2 text-gray-600">Enter a company URL or upload a pitch deck to generate a comprehensive pre-screen investment memo.</p>
       </div>
 
       <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
