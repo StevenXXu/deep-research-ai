@@ -511,19 +511,17 @@ except Exception as e:
                 print(f"[EMAIL] Sent successfully.", flush=True)
             else:
                 print("[EMAIL] Email failed. Uploading report to Discord backup.", flush=True)
+                # Force status to completed even if email fails, so frontend doesn't hang
                 # Fallback: Upload File to Discord
                 dc.post("cipher", "ERROR", f"Email failed (Network/Auth). Uploading report directly:", file_path=report_path)
         
         # WE MUST NOTIFY THE LOCAL IN-MEMORY STORE THAT IT IS 100% DONE
         # The frontend New Research page polls `/status/{job_id}` which reads from `jobs` memory.
+        # THIS WILL NOW RUN WHETHER EMAIL FAILS OR SUCCEEDS.
         if progress_callback:
-            progress_callback(100, "Done! Check your email or Discord.")
+            progress_callback(100, "Done! Check your history.")
             
-        print("[RESEARCH] Done! Check your email or Discord.", flush=True)
-        try:
-            os.remove(js_path)
-        except:
-            pass
+        print("[RESEARCH] Done! Check your history.", flush=True)
         return report_path
 
     except Exception as e:
