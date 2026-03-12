@@ -45,14 +45,14 @@ export default function LandingPage() {
         <div className="mx-auto max-w-3xl py-24 sm:py-32">
           <div className="text-center">
             <div className="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold text-indigo-400 bg-indigo-500/10 ring-1 ring-indigo-500/20 mb-8">
-              The AI Due Diligence Engine
+              The Pre-Meeting Recon Engine
             </div>
             <h1 className="text-5xl font-bold tracking-tight text-white sm:text-7xl mb-8 leading-tight">
               Know Their Hand <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Before The Meeting.</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Before The First Call.</span>
             </h1>
             <p className="mt-6 text-xl leading-8 text-gray-300 max-w-2xl mx-auto">
-              Get the hard data Pitchbook charges $20k for. Bypass PR fluff, extract real traffic data, verify funding rounds, and hunt down founder histories in 3 minutes.
+              Just drop a URL. In 3 minutes, our autonomous agents penetrate paywalls, verify funding, and arm you with the hard questions you need to ask. No more blind intro calls.
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
               {!isLoaded ? (
@@ -90,9 +90,9 @@ export default function LandingPage() {
       <div className="bg-white py-24 sm:py-32 border-b border-gray-100">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-2xl lg:text-center">
-            <h2 className="text-base font-bold tracking-widest uppercase text-indigo-600">Institutional Grade</h2>
+            <h2 className="text-base font-bold tracking-widest uppercase text-indigo-600">URL-to-Memo</h2>
             <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Intelligence previously reserved for tier-one funds.
+              Screen deals faster with data-backed reconnaissance.
             </p>
           </div>
           <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-4xl">
@@ -102,9 +102,9 @@ export default function LandingPage() {
                   <div className="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 border border-indigo-100">
                     <BarChart3 className="h-6 w-6 text-indigo-600" aria-hidden="true" />
                   </div>
-                  Bypass the Fluff
+                  The "Ugly Truth" Scanner
                 </dt>
-                <dd className="mt-2 text-base leading-7 text-gray-600">We extract Crunchbase funding history, cross-reference SimilarWeb traffic, and track down pivot histories via Wayback Machine.</dd>
+                <dd className="mt-2 text-base leading-7 text-gray-600">We cross-reference SimilarWeb traffic and Crunchbase histories to check if their pitch deck matches reality.</dd>
               </div>
               <div className="relative pl-16">
                 <dt className="text-base font-bold leading-7 text-gray-900">
@@ -113,16 +113,16 @@ export default function LandingPage() {
                   </div>
                   Founder Detective
                 </dt>
-                <dd className="mt-2 text-base leading-7 text-gray-600">We reverse-engineer job boards and track past exits. Know if they are heavily hiring engineers or just SDRs before you write the check.</dd>
+                <dd className="mt-2 text-base leading-7 text-gray-600">We scrape job boards and track down past pivots. Know their actual stage before you jump on a call.</dd>
               </div>
               <div className="relative pl-16">
                 <dt className="text-base font-bold leading-7 text-gray-900">
                   <div className="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 border border-indigo-100">
                     <Clock className="h-6 w-6 text-indigo-600" aria-hidden="true" />
                   </div>
-                  Bilingual Delivery
+                  The Interrogation List
                 </dt>
-                <dd className="mt-2 text-base leading-7 text-gray-600">Looking at overseas deals? We analyze English raw data and output perfectly structured, native-level Chinese PDF reports for your IC meetings.</dd>
+                <dd className="mt-2 text-base leading-7 text-gray-600">Don't ask generic questions. Every report ends with 3-5 aggressive, data-backed questions designed to test their moat.</dd>
               </div>
             </dl>
           </div>
@@ -188,34 +188,41 @@ export default function LandingPage() {
             <h2 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl mb-8">The Table is Flipped.</h2>
             <div className="space-y-6 text-lg leading-8 text-gray-600 bg-white p-8 sm:p-10 rounded-2xl shadow-sm border border-gray-200">
               <p>
-                For a long time, the privilege of discovering the next "unicorn" was blocked by a massive data wall.
+                For solo investors and startup founders, time is your most expensive asset.
               </p>
               <p>
-                Top-tier VC funds spend tens of thousands of dollars a year on Pitchbook accounts and employ armies of analysts. They use complex systems to monitor real startup traffic, dig up founders' hidden pasts, and uncover the true funding rounds beneath the surface.
+                You look at dozens of companies a week. You don't have the time to spend 4 hours running deep diligence on every single one before the first meeting. But walking into a call blind, armed with nothing but a polished Pitch Deck and a Google search, is how bad deals are made.
               </p>
               <p>
-                Meanwhile, solo investors, angels, and everyday founders are left looking at polished PR articles, beautifully faked websites, and inflated Pitch Decks.
-              </p>
-              <p className="font-semibold text-gray-900">
-                This isn't fair. Information asymmetry shouldn't be the only moat for elite capital to harvest the market.
+                That's why we built <strong>SoloAnalyst</strong>.
               </p>
               <p>
-                That's why we built <strong>SoloAnalyst</strong>. We took the heavy artillery used by Wall Street for due diligence and packed it into a simple search bar. No $20,000 annual fees. No 50-person analyst teams. Just drop a domain, and our autonomous agent swarm will force its way through anti-bot shields, cross-reference dozens of raw data sources, and reverse-engineer hiring signals.
-              </p>
-              <p>
-                In 3 minutes, it hands you the bleeding, unfiltered truth about a company.
+                For the price of a cup of coffee, our agent swarm rips through the PR packaging. It checks the traffic they claim against reality. It pulls the actual funding history. It reverse-engineers their hiring board. And it generates the exact 3-5 hard-hitting questions you need to ask them.
               </p>
               <p className="font-bold text-indigo-600 text-xl mt-8">
-                Our mission is simple: Break the monopoly on capital information, and give everyone institutional-grade intelligence.
+                Stop being pitched to. Start interrogating.
               </p>
               <p>
-                When you have the same line of sight as a top VC, why shouldn't you be the one to back the next unicorn?
+                Get the institutional-grade recon you need, right when you need it.
               </p>
               <p className="mt-8 text-base font-bold text-gray-900 border-t border-gray-100 pt-6">
                 — The SoloAnalyst Team
               </p>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Upsell / Waitlist Section */}
+      <div className="bg-slate-900 py-16">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8 text-center">
+          <h2 className="text-2xl font-bold tracking-tight text-white mb-4">Need a full Data Room audit?</h2>
+          <p className="text-gray-400 max-w-2xl mx-auto mb-8">
+            SoloAnalyst provides rapid pre-meeting recon. But if you have access to a company's data room (financials, cap tables, legal docs) and need a comprehensive technical and financial due diligence audit, we are building something for you.
+          </p>
+          <a href="mailto:support@soloanalyst.com?subject=Enterprise%20Audit%20Waitlist" className="inline-block rounded-full bg-white/10 px-6 py-3 text-sm font-semibold text-white hover:bg-white/20 ring-1 ring-inset ring-white/20 transition-all">
+            Join Enterprise Waitlist →
+          </a>
         </div>
       </div>
 
