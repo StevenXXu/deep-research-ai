@@ -639,7 +639,7 @@ class ResearchEngine:
             self.log(f"Audit Warning: Failed to run consistency check. {e}")
 
     def phase_4_synthesis(self):
-        self.log("Phase 4: Writing 2000+ Word Report...")
+        self.log("Phase 4: Synthesis using KERNEL Pattern...")
         
         # Deduplicate sources by URL
         seen_urls = set()
@@ -654,65 +654,119 @@ class ResearchEngine:
         context_blob = ""
         for i, s in enumerate(unique_sources):
             ref_num = i + 1
-            # Hyperlink Format: [1] [Title](URL)
-            # Safe title handling
-            raw_title = s.get('title')
-            if not raw_title:
-                raw_title = 'Unknown Source'
+            raw_title = s.get('title') or 'Unknown Source'
             title = str(raw_title).replace('[', '(').replace(']', ')')
-            
             url = s.get('url', '#')
             citations.append(f"[{ref_num}] [{title}]({url})")
             
-            # Safe content handling
             content = s.get('content') or ''
             context_blob += f"Source [{ref_num}]: {str(content)[:2000]}\n\n"
             
-        # Update usage counter for input tokens (Approx)
         self.usage["llm_input_chars"] += len(context_blob)
-            
-        prompt = f"""
-        You are a Senior Investment Analyst.
-        Target: {self.company} ({self.url})
-        
-        Research Data:
+
+        # --- AGENT 1: The Purifier (Extract Facts into JSON) ---
+        self.log("Agent 1 (Purifier): Extracting core facts...")
+        prompt_agent1 = f"""
+        Task: Extract factual data about {self.company} into a structured JSON format.
+        Input:
         {context_blob}
         
-        Task: Write a comprehensive Investment Memo (Minimum 2000 words).
-        Style: Professional, Objective, Thorough. Use Markdown.
-        Output Language: You MUST write the entire report, including all headers, tables, and analysis, in English. (Even if requested in another language, your raw output here must be English for maximum reasoning quality).
+        Constraints:
+        - Output ONLY valid JSON. No markdown wrappers.
+        - Ignore data about fictional characters (e.g., novels, games).
+        - If a section lacks data, return an empty string or empty list. DO NOT hallucinate.
         
-        **CRITICAL SAFETY & STYLE RULES:**
-        1. **OBJECTIVE FACTS ONLY:** Do NOT provide "Recommendations", "Verdicts", "Next Steps", or "Advice". Do not say "Wait and observe", "Buy", or "Sell". Your job is data aggregation, not consulting.
-        2. **NO 'SCAM' ACCUSATIONS:** Unless proven by government/major news, assume innocence. Label issues as "User Controversy".
-        3. **SILENCE ON IRRELEVANT DATA (NO OVER-REPORTING):** If you notice that some provided data clearly refers to a fictional character, a video game, a novel, or a completely unrelated entity with the same name, YOU MUST IGNOR IT COMPLETELY. DO NOT mention it in the report. Do not explain that it is unrelated. Simply state: "No relevant social sentiment data found for this specific company."
-        4. **NO REFERENCES SECTION:** Do NOT write a References/Sources section at the end. The system appends this automatically.
-        5. **NO NUMBERED HEADERS:** Do NOT number the sections (e.g. use "Executive Summary", NOT "1. Executive Summary").
-        5. **MANDATORY TABLES:** 
-           - SWOT Analysis MUST be a Markdown table with EXACTLY these columns: | Strengths | Weaknesses | Opportunities | Threats |
-           - Market Landscape MUST be a Markdown table with EXACTLY these columns: | Competitor | Features | Pricing |
-        6. **FOUNDER VETTING:** The "Founding Team" section MUST include specific details on previous exits, technical depth, academic publications, or red flags if found. Do not be generic. If they are researchers/professors, highlight their academic focus. If unknown, say "No public track record found".
-        
-        Requirements:
-        1. **Executive Summary** (Include SWOT Analysis as a Table)
-        2. **Due Diligence Interrogation** (CRITICAL: Provide 3-5 aggressive, highly specific questions to ask the founders in a first meeting to test their moat and uncover risks. Place this immediately after the Executive Summary so it is front-and-center.)
-        3. **Product Deep Dive** (Features, Tech Stack, UX)
-        4. **Market Landscape** (Competitor Table - columns: Competitor, Features, Pricing)
-        5. **Social Sentiment & Risk** (Reddit/User Feedback - Highlight "Real" sentiment vs PR)
-        6. **Business Model** (Revenue Streams, Pricing Strategy)
-        7. **Traction & Risks** (Funding, Traffic, Legal/Reg Risks)
-        8. **Founding Team & Track Record** (MUST include: Key Founders, Previous Exits/Failures, Academic/Technical Depth.)
-        9. **Data Consistency Check & Hidden Signals** (CRITICAL: You MUST use the [TRAFFIC DATA], [HIRING SIGNAL DATA], and [PIVOT CHECK] tags provided in the Research Data to answer this. State the EXACT numbers and facts found. Do NOT write theoretical explanations about what these tools could do. If no data was found for a section, simply state "No anomalies detected.")
-        10. **Exit Strategy & M&A Landscape** (Who buys this? Comparable exits, IPO potential)
-        
-        **FORMATTING RULES:**
-        - **NO CHATTY INTROS:** Start directly with the Report Title (# Project Name).
-        - **IMPORTANT:** Ensure all tables are preceded by an empty line.
-        - **NO HTML TAGS:** Do not use <br> or any HTML tags in tables or text. Use standard Markdown.
-        - Use citations like [1], [2] in the text.
+        Output Format:
+        {{
+            "executive_summary": "Company overview and mission",
+            "swot": {{"strengths": [], "weaknesses": [], "opportunities": [], "threats": []}},
+            "product_features": [],
+            "competitors": [{{"name": "", "features": "", "pricing": ""}}],
+            "social_sentiment": "Summary of real user sentiment",
+            "business_model": "Revenue and pricing strategy",
+            "traction_and_risks": "Funding, traffic, and legal risks",
+            "founding_team": [{{"name": "", "background": ""}}],
+            "data_consistency": "Conflicts between PR and reality based on [TRAFFIC DATA] or [HIRING SIGNAL]",
+            "exit_strategy": "Potential acquirers or IPO landscape"
+        }}
         """
         
-        report = gateway.generate(prompt, "You are a thoughtful analyst. Output ONLY the report.")
+        try:
+            resp1 = gateway.generate(prompt_agent1, "Return valid JSON only.")
+            facts_json = resp1.replace("```json", "").replace("```", "").strip()
+            # Test parse
+            json.loads(facts_json)
+        except Exception as e:
+            self.log(f"Agent 1 Failed: {e}. Falling back to monolithic generation.")
+            facts_json = context_blob # Fallback to raw text if JSON fails
+
+        # --- AGENT 2: The Interrogator (Generate 5 Kill Questions) ---
+        self.log("Agent 2 (Interrogator): Generating Due Diligence questions...")
+        prompt_agent2 = f"""
+        Task: Generate 5 aggressive, highly specific due diligence questions to ask the founders of {self.company}.
+        Input:
+        {facts_json}
+        
+        Constraints:
+        - Output ONLY a JSON list of 5 strings. No markdown wrappers.
+        - Base questions strictly on the weaknesses, funding gaps, or missing data in the Input.
+        - Do not ask generic questions ("What is your vision?").
+        
+        Output Format:
+        [
+            "Question 1...",
+            "Question 2...",
+            "Question 3...",
+            "Question 4...",
+            "Question 5..."
+        ]
+        """
+        
+        try:
+            resp2 = gateway.generate(prompt_agent2, "Return valid JSON list only.")
+            questions_json = resp2.replace("```json", "").replace("```", "").strip()
+            questions = json.loads(questions_json)
+        except Exception as e:
+            self.log(f"Agent 2 Failed: {e}")
+            questions = ["What is the specific proprietary advantage of your technology?", "Can you provide detailed financial metrics and customer acquisition costs?", "What is your strategy for overcoming regulatory hurdles?"]
+
+        # --- AGENT 3: The Formatter (Build the final Markdown) ---
+        self.log("Agent 3 (Formatter): Assembling the final report...")
+        # Add questions into the facts payload for the formatter
+        formatting_payload = f"FACTS:\n{facts_json}\n\nINTERROGATION QUESTIONS:\n{json.dumps(questions)}"
+        
+        prompt_agent3 = f"""
+        Task: Write a comprehensive, highly dense Investment Memo for {self.company}.
+        Input:
+        {formatting_payload}
+        
+        Constraints:
+        - DO NOT invent information. If the Input lacks data for a section, write "Insufficient data available."
+        - Do NOT write a References section at the end.
+        - Do NOT number the headers.
+        
+        Output Format:
+        Must include EXACTLY these sections with these headers:
+        # {self.company} Pre-Screen Memo
+        
+        ## Executive Summary
+        (Include a Markdown table for SWOT Analysis: | Strengths | Weaknesses | Opportunities | Threats |)
+        
+        ## Due Diligence Interrogation
+        (List the 5 questions provided in the Input)
+        
+        ## Product Deep Dive
+        ## Market Landscape
+        (Markdown table: | Competitor | Features | Pricing |)
+        ## Social Sentiment & Risk
+        ## Business Model
+        ## Traction & Risks
+        ## Founding Team & Track Record
+        ## Data Consistency Check & Hidden Signals
+        ## Exit Strategy & M&A Landscape
+        """
+        
+        report = gateway.generate(prompt_agent3, "Output ONLY the Markdown report.")
 
         # ---- PHASE 4.5: TRANSLATION (If requested) ----
         if report and self.language.lower() != "english":
