@@ -60,6 +60,7 @@ class ResearchEngine:
         self.sources = []  
         self.questions = [] 
         self.document_content = document_content # New: Uploaded Deck
+        self.truth_keywords = [] # NEW: Keywords extracted from official sources to guide filtering
 
     def log(self, msg):
         print(f"[RESEARCH] {msg}")
@@ -312,36 +313,46 @@ class ResearchEngine:
         self.log(f"Found {len(self.sources)} initial sources.")
 
     def phase_2_gap_analysis(self):
-        self.log("Phase 2: Identifying Knowledge Gaps...")
+        self.log("Phase 2: Identifying Knowledge Gaps & Ground Truth...")
         
-        # Summarize current knowledge for LLM
-        context = "\n".join([f"- {s['title']} ({s['source']}): {s['content'][:200]}..." for s in self.sources])
+        # Summarize ONLY the official sources for truth extraction
+        official_sources = [s for s in self.sources if s['source'] in ['Scrapling (Home Page)', 'Scrapling (Subpage)', 'Apify', 'Upload']]
+        official_context = "\n".join([f"- {s['title']}: {s['content'][:1000]}..." for s in official_sources])
         
+        # We need the LLM to extract 3 distinct keywords that define this company's exact technology,
+        # AND 3 gap questions for further search.
         prompt = f"""
         You are a Research Director.
         Target: {self.company} ({self.url})
         
-        Current Knowledge:
-        {context}
+        Official Data (Ground Truth):
+        {official_context}
         
-        Task: Identify 3 critical missing pieces of information needed for an Investment Memo.
-        Examples: "Pricing model is unclear", "No info on founders", "Tech stack unknown".
+        Task:
+        1. Extract exactly 3 highly specific, distinctive technical or industry keywords that uniquely define what this company does based ONLY on the official data provided. (e.g. "Biopotential", "Optrode", "Photonics"). These will be used to filter out noise later.
+        2. Identify 3 critical missing pieces of information needed for an Investment Memo.
         
-        Output: JSON List of 3 search queries to find this info.
-        Example: ["{self.company} pricing tier", "{self.company} founders background", "{self.company} API documentation"]
+        Output JSON ONLY (no markdown, just raw JSON):
+        {{
+            "truth_keywords": ["keyword1", "keyword2", "keyword3"],
+            "search_queries": ["query 1", "query 2", "query 3"]
+        }}
         """
         
         try:
-            resp = gateway.generate(prompt, "Return valid JSON list only.")
+            resp = gateway.generate(prompt, "Return valid JSON only.")
             if not resp:
-                resp = "[]"
-            # Clean JSON
+                resp = "{}"
             resp = resp.replace("```json", "").replace("```", "").strip()
-            self.questions = json.loads(resp)
+            data = json.loads(resp)
+            self.truth_keywords = [k.lower() for k in data.get("truth_keywords", [])]
+            self.questions = data.get("search_queries", [f"{self.company} business model", f"{self.company} technology stack", f"{self.company} competitors"])
+            self.log(f"Ground Truth Keywords Locked: {self.truth_keywords}")
             self.log(f"Gaps Identified: {self.questions}")
         except Exception as e:
             self.log(f"Gap Analysis Failed: {e}")
             self.questions = [f"{self.company} business model", f"{self.company} technology stack", f"{self.company} user reviews"]
+            self.truth_keywords = []
 
     def phase_3_deep_dive(self):
         self.log("Phase 3: Targeted Deep Dive...")
@@ -590,9 +601,62 @@ class ResearchEngine:
             
         self.log(f"Total Sources: {len(self.sources)}")
 
+    def _iron_firewall(self):
+        """Pre-Phase 3.5: The Iron Firewall. Destroy any source that lacks BOTH the company name and truth keywords."""
+        self.log("Phase 3.5a: Engaging The Iron Firewall (Data Purge)...")
+        clean_sources = []
+        target_name_lower = self.company.lower()
+        
+        for s in self.sources:
+            # 1. Exempt Official/Safe Sources
+            if s.get("source") in ["Scrapling (Home Page)", "Scrapling (Subpage)", "Upload"]:
+                clean_sources.append(s)
+                continue
+                
+            text_blob = (str(s.get("title", "")) + " " + str(s.get("content", ""))).lower()
+            
+            # 2. Chinese SEO Spam Filter (Burn on sight)
+            spam_words = ["截图", "知乎", "快捷键", "下载", "教程", "怎么用"]
+            if any(w in text_blob for w in spam_words):
+                self.log(f"Firewall Blocked (SEO Spam): {s.get('title')}")
+                continue
+                
+            # 3. Fiction/Game Noise Filter (Burn on sight)
+            fiction_words = ["novel", "chapter", "anime", "manga", "episode", "tbate"]
+            if any(w in text_blob for w in fiction_words):
+                self.log(f"Firewall Blocked (Fiction/Game): {s.get('title')}")
+                continue
+                
+            # 4. Hard Name Match (If it doesn't even mention the target name, it's garbage)
+            # We relax this slightly if it's a direct URL match, but mostly it must have the name.
+            if target_name_lower not in text_blob:
+                self.log(f"Firewall Blocked (Name Missing): {s.get('title')}")
+                continue
+                
+            # 5. The Truth Keyword Check
+            # If we extracted truth keywords from the homepage, ANY external news/article MUST contain
+            # at least ONE of these keywords. Otherwise, it's a "same name, wrong company" hallucination.
+            if self.truth_keywords:
+                matched_truth = False
+                for kw in self.truth_keywords:
+                    if kw in text_blob:
+                        matched_truth = True
+                        break
+                if not matched_truth:
+                    self.log(f"Firewall Blocked (Identity Mismatch): {s.get('title')} - Contains name but no truth keywords {self.truth_keywords}")
+                    continue
+                    
+            # If it survived all that, it's clean.
+            clean_sources.append(s)
+            
+        self.log(f"Iron Firewall complete. Kept {len(clean_sources)} out of {len(self.sources)} sources.")
+        self.sources = clean_sources
+
     def phase_audit_consistency(self):
         """Phase 3.5: Audit sources for identity mismatch (e.g. wrong company with same name)"""
-        self.log("Phase 3.5: Auditing Sources for Consistency...")
+        self._iron_firewall() # Run hard physical filter FIRST
+        
+        self.log("Phase 3.5b: LLM Auditing Sources for Consistency...")
         
         # Prepare context for LLM Audit
         # We limit to title/url/snippet to save context window
