@@ -239,22 +239,36 @@ class ResearchEngine:
             })
             self.log(f"Scrapling: Extracted {len(clean_text)} chars from {self.url}")
             
-            # Attempt to fetch an About/Pricing page
+            # Attempt to fetch deeper core pages (About, Product, Team, etc.)
             links = page.css('a::attr(href)').getall()
             target_links = []
+            
+            # Expanded keyword list based on First Principles for deep website extraction
+            core_page_keywords = ["about", "product", "service", "solution", "business", "case", "tech", "contact", "team", "pricing"]
+            
             for l in set(links):
                 if not l: continue
                 l_lower = str(l).lower()
-                if "about" in l_lower or "pricing" in l_lower or "product" in l_lower or "team" in l_lower:
+                
+                # Check if the link contains any of our core keywords
+                if any(keyword in l_lower for keyword in core_page_keywords):
                     if l.startswith("http") and self.domain in l:
                         target_links.append(l)
                     elif l.startswith("/"):
                         base = self.url.rstrip("/")
                         target_links.append(f"{base}{l}")
                         
-            # Fetch up to 2 subpages
+            # Fetch up to 4 subpages (increased from 2 to capture more internal ground truth)
             fetched_count = 1
-            for l in target_links[:2]:
+            # Sort links to prioritize "about" and "team" over "contact"
+            def score_link(url_str):
+                url_str = url_str.lower()
+                if "about" in url_str or "team" in url_str: return 3
+                if "product" in url_str or "tech" in url_str: return 2
+                return 1
+            target_links.sort(key=score_link, reverse=True)
+            
+            for l in target_links[:4]:
                 self.log(f"Scrapling: Following internal link {l}...")
                 try:
                     sub_page = StealthyFetcher.fetch(l, headless=True)
@@ -271,7 +285,7 @@ class ResearchEngine:
                 except Exception as sub_e:
                     self.log(f"Scrapling Subpage Error: {sub_e}")
                     
-            self.log(f"Scrapling: Extracted {fetched_count} pages from official site.")
+            self.log(f"Scrapling: Extracted {fetched_count} core pages from official site.")
             
         except Exception as e:
             self.log(f"Scrapling Error: {e}")
