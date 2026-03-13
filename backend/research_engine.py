@@ -804,12 +804,14 @@ class ResearchEngine:
         formatting_payload = f"FACTS:\n{facts_json}\n\nINTERROGATION QUESTIONS:\n{json.dumps(questions)}"
         
         prompt_agent3 = f"""
-        Task: Write a comprehensive, highly dense Investment Memo for {self.company}.
+        Task: Write a comprehensive, highly detailed Investment Memo for {self.company}. Ensure the final report is robust, professional, and exceeds 1500 words by expanding on technical implications, market dynamics, and deep strategic analysis of the provided facts.
         Input:
         {formatting_payload}
         
         Constraints:
-        - DO NOT invent information. If the Input lacks data for a section, write "Insufficient data available."
+        - Expand significantly on the provided facts using your analytical capabilities as a senior VC. Do not just repeat the JSON; interpret it deeply to meet the word count requirement (>1500 words).
+        - However, DO NOT invent raw facts (like names, numbers, or non-existent competitor companies).
+        - If the Input lacks data for a section, acknowledge it but provide strategic commentary on why that missing data is critical.
         - Do NOT write a References section at the end.
         - Do NOT number the headers.
         - For the "Founding Team & Track Record" section, you MUST include any LinkedIn URLs found in the Input facts.
