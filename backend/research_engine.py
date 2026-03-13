@@ -327,27 +327,29 @@ class ResearchEngine:
         self.log(f"Found {len(self.sources)} initial sources.")
 
     def phase_2_gap_analysis(self):
-        self.log("Phase 2: Identifying Knowledge Gaps & Ground Truth...")
+        self.log("Phase 2: Extracting Ground Truth & Knowledge Gaps...")
         
         # Summarize ONLY the official sources for truth extraction
         official_sources = [s for s in self.sources if s['source'] in ['Scrapling (Home Page)', 'Scrapling (Subpage)', 'Apify', 'Upload']]
-        official_context = "\n".join([f"- {s['title']}: {s['content'][:1000]}..." for s in official_sources])
+        # Increased context limit to 3000 chars per page to ensure team names and deep tech aren't truncated
+        official_context = "\n".join([f"- {s['title']}: {s['content'][:3000]}..." for s in official_sources])
         
-        # We need the LLM to extract 3 distinct keywords that define this company's exact technology,
-        # AND 3 gap questions for further search.
         prompt = f"""
-        You are a Research Director.
-        Target: {self.company} ({self.url})
+        You are an elite OSINT (Open Source Intelligence) Director analyzing a target company's official materials.
+        Target Company: {self.company}
+        Target URL: {self.url}
         
         Official Data (Ground Truth):
         {official_context}
         
         Task:
-        1. Extract exactly 3 highly specific, distinctive technical or industry keywords that uniquely define what this company does based ONLY on the official data provided. (e.g. "Biopotential", "Optrode", "Photonics"). These will be used to filter out noise later.
-        2. Identify 3 critical missing pieces of information needed for an Investment Memo.
+        1. Extract the names and exact roles of ALL founders, executives, or key team members mentioned.
+        2. Extract exactly 3 highly specific, distinctive technical/industry keywords that uniquely define what this company does. (e.g., if they do Brain-Computer Interfaces using light, use "Optrode", "Photonics", "Neural". Do NOT use generic words like "AI", "Software", "Tech").
+        3. Identify 3 critical missing pieces of information needed for a VC Investment Memo (e.g., funding history, direct competitors, real user traction).
         
-        Output JSON ONLY (no markdown, just raw JSON):
+        Output MUST be valid JSON ONLY:
         {{
+            "founding_team": [{{"name": "John Doe", "role": "CEO"}}, ...],
             "truth_keywords": ["keyword1", "keyword2", "keyword3"],
             "search_queries": ["query 1", "query 2", "query 3"]
         }}
@@ -359,14 +361,19 @@ class ResearchEngine:
                 resp = "{}"
             resp = resp.replace("```json", "").replace("```", "").strip()
             data = json.loads(resp)
+            
             self.truth_keywords = [k.lower() for k in data.get("truth_keywords", [])]
             self.questions = data.get("search_queries", [f"{self.company} business model", f"{self.company} technology stack", f"{self.company} competitors"])
+            self.official_team = data.get("founding_team", []) # NEW: Store official team to bypass hallucinated names later
+            
+            self.log(f"Ground Truth Team: {self.official_team}")
             self.log(f"Ground Truth Keywords Locked: {self.truth_keywords}")
             self.log(f"Gaps Identified: {self.questions}")
         except Exception as e:
             self.log(f"Gap Analysis Failed: {e}")
             self.questions = [f"{self.company} business model", f"{self.company} technology stack", f"{self.company} user reviews"]
             self.truth_keywords = []
+            self.official_team = []
 
     def phase_3_deep_dive(self):
         self.log("Phase 3: Targeted Deep Dive...")
@@ -524,75 +531,58 @@ class ResearchEngine:
 
     def phase_founder_deep_dive(self):
         """
-        Specialized phase to vet the founding team.
+        Specialized phase to vet the founding team using Ground Truth.
         """
         self.log("Phase 3B: Founder Detective (Vetting Team)...")
         
-        # 0. LinkedIn Company Search (Apify)
-        self.log(f"Phase 3B: Checking LinkedIn for {self.company}...")
-        try:
-            # Search for the LinkedIn URL first
-            li_url_res = self.search_tavily(f"site:linkedin.com/company {self.company}", 1)
-            if li_url_res and "linkedin.com/company" in li_url_res[0]['url']:
-                li_url = li_url_res[0]['url']
-                self.usage["apify_runs"] += 1
-                li_data = apify.scrape_linkedin_company(li_url)
-                if li_data:
-                    self.sources.extend(li_data)
-        except Exception as e:
-            self.log(f"LinkedIn Company Scrape Error: {e}")
-
-        # 1. Identify Founders - FORCE SEARCH FIRST to ensure CEO/Founder is found
-        # (LLM extraction from random snippets often misses the main guy if the home page is generic)
-        q_init = f"{self.company} CEO founder CTO team"
-        init_res = self.search_tavily(q_init, 2)
-        self.sources.extend(init_res)
+        founders = getattr(self, "official_team", [])
         
-        # Now Extract
-        context = "\n".join([f"- {s['title']}: {s['content'][:200]}..." for s in init_res])
-        prompt = f"""
-        Extract the names and roles of the key founders/executives of {self.company} from this context.
-        Return JSON list: [{{"name": "Name", "role": "CEO"}}]
-        If none found, return [].
-        Context:
-        {context}
-        """
-        founders = []
-        try:
-            resp = gateway.generate(prompt, "Return valid JSON only.")
-            if resp:
-                founders = json.loads(resp.replace("```json", "").replace("```", "").strip())
-        except Exception as e:
-            self.log(f"Founder Extraction Failed: {e}")
+        if not founders:
+            self.log("No founders found in Official Ground Truth. Attempting precise external extraction...")
+            # We ONLY search if we didn't find them on the official site.
+            q_init = f'"{self.company}" CEO OR Founder OR CTO'
+            init_res = self.search_tavily(q_init, 2)
+            self.sources.extend(init_res)
+            
+            context = "\n".join([f"- {s['title']}: {s['content'][:200]}..." for s in init_res])
+            prompt = f"""
+            Extract the names and roles of the key founders/executives of {self.company}.
+            CRITICAL: Only extract them if they are explicitly stated to be founders/executives of {self.company}. Do not hallucinate.
+            Return JSON list: [{{"name": "Name", "role": "CEO"}}]
+            If none found, return [].
+            Context:
+            {context}
+            """
+            try:
+                resp = gateway.generate(prompt, "Return valid JSON only.")
+                if resp:
+                    founders = json.loads(resp.replace("```json", "").replace("```", "").strip())
+            except Exception as e:
+                self.log(f"Founder Extraction Failed: {e}")
 
         if not founders:
-            self.log("No founders identified in initial scan. Trying broad search...")
-            # Fallback search
-            q = f"{self.company} founders team linkedin"
-            res = self.search_tavily(q, 2)
-            self.sources.extend(res)
-            # Try extraction again (simplified)
-            # For now, just let the main synthesis handle it if extraction fails twice.
+            self.log("No founders identified. Skipping targeted search.")
             return
 
-        self.log(f"Investigating Founders: {[f['name'] for f in founders]}")
+        self.log(f"Investigating Verified Founders: {[f['name'] for f in founders]}")
         
-        # 2. Targeted Search per Founder (Enhanced)
+        # 2. Targeted Search per Founder (Enhanced & Anchored)
         for f in founders[:3]: # Limit to top 3 to save time/cost
             name = f['name']
-            # Search 1: Background & Track Record (Use Tavily for depth)
-            q1 = f"{name} {self.company} previous startups exits failures history university research publications background"
+            
+            # Direct LinkedIn URL Sniffing using Dorking
+            q_li = f'"{name}" "{self.company}" site:linkedin.com/in'
+            li_res = self.search_tavily(q_li, 1)
+            if not li_res:
+                li_res = self.search_brave(q_li, 1)
+            for r in li_res: r['content'] = f"[FOUNDER LINKEDIN: {name}] {r.get('url')} - " + r['content']
+            self.sources.extend(li_res)
+
+            # Background Search
+            q1 = f'"{name}" "{self.company}" previous startups exits failures history university research publications background'
             res1 = self.search_tavily(q1, 2)
             for r in res1: r['content'] = f"[FOUNDER TRACK RECORD: {name}] " + r['content']
             self.sources.extend(res1)
-            
-            # Search 2: Technical/Thought Leadership
-            q2 = f"{name} engineering blog github podcast interview"
-            self.sources.extend(self.search_exa(q2, 2))
-            
-            # Search 3: Risk Check (Reputation)
-            q3 = f"{name} scam fraud controversy lawsuit court"
-            self.sources.extend(self.search_ddg(q3, 2))
             
             self.log(f"Deep dived into {name}.")
 
@@ -822,6 +812,7 @@ class ResearchEngine:
         - DO NOT invent information. If the Input lacks data for a section, write "Insufficient data available."
         - Do NOT write a References section at the end.
         - Do NOT number the headers.
+        - For the "Founding Team & Track Record" section, you MUST include any LinkedIn URLs found in the Input facts.
         
         Output Format:
         Must include EXACTLY these sections with these headers:
