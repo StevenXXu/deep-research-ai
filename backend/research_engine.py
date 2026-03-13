@@ -815,14 +815,11 @@ class ResearchEngine:
         - For the "Founding Team & Track Record" section, you MUST include any LinkedIn URLs found in the Input facts.
         
         Output Format:
-        Must include EXACTLY these sections with these headers:
+        Must include EXACTLY these sections with these headers in this EXACT order:
         # {self.company} Pre-Screen Memo
         
         ## Executive Summary
         (Include a Markdown table for SWOT Analysis: | Strengths | Weaknesses | Opportunities | Threats |)
-        
-        ## Due Diligence Interrogation
-        (List the 5 questions provided in the Input)
         
         ## Product Deep Dive
         ## Market Landscape
@@ -833,6 +830,9 @@ class ResearchEngine:
         ## Founding Team & Track Record
         ## Data Consistency Check & Hidden Signals
         ## Exit Strategy & M&A Landscape
+        
+        ## Due Diligence Interrogation
+        (List the 5 questions provided in the Input. This must be the very last section before the references.)
         """
         
         report = gateway.generate(prompt_agent3, "Output ONLY the Markdown report.")
