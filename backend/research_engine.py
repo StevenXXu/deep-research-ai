@@ -352,8 +352,16 @@ class ResearchEngine:
             self.usage["apify_runs"] += 2 # Track Cost (2 actors)
             
             # 1. Reddit Sentiment
-            reddit_data = apify.scrape_reddit_search(self.company)
+            reddit_query = f'"{self.company}" (startup OR tech OR software OR business)'
+            reddit_data = apify.scrape_reddit_search(reddit_query)
             for item in reddit_data:
+                # PHYSICAL FILTER: Drop irrelevant fiction/game noise
+                content_lower = str(item.get('description', '')).lower() + " " + str(item.get('title', '')).lower()
+                bad_words = ['novel', 'chapter', 'fiction', 'anime', 'book', 'manga', 'character', 'episode', 'fantasy', 'tbate']
+                if any(bw in content_lower for bw in bad_words):
+                    self.log(f"Filtered out Reddit noise: {item.get('title')}")
+                    continue
+                    
                 self.sources.append({
                     "title": item.get('title'),
                     "url": item.get('url'),
@@ -548,7 +556,7 @@ class ResearchEngine:
         for f in founders[:3]: # Limit to top 3 to save time/cost
             name = f['name']
             # Search 1: Background & Track Record (Use Tavily for depth)
-            q1 = f"{name} {self.company} previous startups exits failures history"
+            q1 = f"{name} {self.company} previous startups exits failures history university research publications background"
             res1 = self.search_tavily(q1, 2)
             for r in res1: r['content'] = f"[FOUNDER TRACK RECORD: {name}] " + r['content']
             self.sources.extend(res1)
@@ -683,19 +691,19 @@ class ResearchEngine:
         5. **MANDATORY TABLES:** 
            - SWOT Analysis MUST be a Markdown table with EXACTLY these columns: | Strengths | Weaknesses | Opportunities | Threats |
            - Market Landscape MUST be a Markdown table with EXACTLY these columns: | Competitor | Features | Pricing |
-        6. **FOUNDER VETTING:** The "Founding Team" section MUST include specific details on previous exits, technical depth, or red flags if found. Do not be generic. If unknown, say "No public track record found".
+        6. **FOUNDER VETTING:** The "Founding Team" section MUST include specific details on previous exits, technical depth, academic publications, or red flags if found. Do not be generic. If they are researchers/professors, highlight their academic focus. If unknown, say "No public track record found".
         
         Requirements:
         1. **Executive Summary** (Include SWOT Analysis as a Table)
-        2. **Product Deep Dive** (Features, Tech Stack, UX)
-        3. **Market Landscape** (Competitor Table - columns: Competitor, Features, Pricing)
-        4. **Social Sentiment & Risk** (Reddit/User Feedback - Highlight "Real" sentiment vs PR)
-        5. **Business Model** (Revenue Streams, Pricing Strategy)
-        6. **Traction & Risks** (Funding, Traffic, Legal/Reg Risks)
-        7. **Founding Team & Track Record** (MUST include: Key Founders, Previous Exits/Failures, Technical Depth. If data is missing, state "No public track record found".)
-        8. **Data Consistency Check & Hidden Signals** (CRITICAL: You MUST use the [TRAFFIC DATA], [HIRING SIGNAL DATA], and [PIVOT CHECK] tags provided in the Research Data to answer this. State the EXACT numbers and facts found. Do NOT write theoretical explanations about what these tools could do. If no data was found for a section, simply state "No anomalies detected.")
-        9. **Exit Strategy & M&A Landscape** (Who buys this? Comparable exits, IPO potential)
-        10. **Due Diligence Interrogation** (Provide 3-5 aggressive, highly specific questions to ask the founders in a first meeting to test their moat and uncover risks. Do NOT ask generic questions like "What is your vision?". Ask hard questions based on the weaknesses and hidden signals found above.)
+        2. **Due Diligence Interrogation** (CRITICAL: Provide 3-5 aggressive, highly specific questions to ask the founders in a first meeting to test their moat and uncover risks. Place this immediately after the Executive Summary so it is front-and-center.)
+        3. **Product Deep Dive** (Features, Tech Stack, UX)
+        4. **Market Landscape** (Competitor Table - columns: Competitor, Features, Pricing)
+        5. **Social Sentiment & Risk** (Reddit/User Feedback - Highlight "Real" sentiment vs PR)
+        6. **Business Model** (Revenue Streams, Pricing Strategy)
+        7. **Traction & Risks** (Funding, Traffic, Legal/Reg Risks)
+        8. **Founding Team & Track Record** (MUST include: Key Founders, Previous Exits/Failures, Academic/Technical Depth.)
+        9. **Data Consistency Check & Hidden Signals** (CRITICAL: You MUST use the [TRAFFIC DATA], [HIRING SIGNAL DATA], and [PIVOT CHECK] tags provided in the Research Data to answer this. State the EXACT numbers and facts found. Do NOT write theoretical explanations about what these tools could do. If no data was found for a section, simply state "No anomalies detected.")
+        10. **Exit Strategy & M&A Landscape** (Who buys this? Comparable exits, IPO potential)
         
         **FORMATTING RULES:**
         - **NO CHATTY INTROS:** Start directly with the Report Title (# Project Name).
