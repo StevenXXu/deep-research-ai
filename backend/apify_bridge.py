@@ -1,7 +1,10 @@
 import os
 import json
 import subprocess
+from typing import Optional
 from dotenv import load_dotenv
+
+from scraper_config import ScraperConfig, DEFAULT_CONFIG
 
 # Load Env for APIFY_TOKEN
 load_dotenv()
@@ -27,41 +30,56 @@ def run_node_script(script_path, payload):
 
 # --- IMPLEMENTATION ---
 
-def scrape_website_content(url):
+def scrape_website_content(url: str, scraper_config: Optional[ScraperConfig] = None):
     """Replaces old 'scrape_website_content' using 'apify-ultimate-scraper'"""
-    print(f"[Apify Bridge] Scraping {url} via Ultimate Scraper...", flush=True)
-    
+    if not APIFY_TOKEN:
+        print("[Apify Bridge] Missing APIFY_TOKEN. Cannot run crawler.", flush=True)
+        return []
+
+    config = scraper_config or DEFAULT_CONFIG
+
+    print(
+        f"[Apify Bridge] Scraping {url} via Ultimate Scraper (proxy={'on' if config.proxy_url else 'off'})...",
+        flush=True,
+    )
+
     from apify_client import ApifyClient
+
     client = ApifyClient(APIFY_TOKEN)
-    
-    run_input = {
+
+    base_run_input = {
         "startUrls": [{"url": url}],
-        "maxCrawlPages": 5, # Limit for speed
-        "crawlerType": "playwright:firefox", # UPGRADED: Use Playwright Firefox to bypass Cloudflare and render JS SPA
+        "maxCrawlPages": 5,
+        "crawlerType": "playwright:firefox",
         "proxyConfiguration": {"useApifyProxy": True},
         "useBuilder": "latest",
-        "removeElementsCssSelector": "nav, footer, script, style, noscript, svg, img, iframe, iframe, header, aside"
+        "removeElementsCssSelector": "nav, footer, script, style, noscript, svg, img, iframe, iframe, header, aside",
     }
-    
+    run_input = config.to_apify_run_input(base_run_input)
+
     try:
         # Actor: apify/website-content-crawler (The "Ultimate" one for text)
-        print(f"[Apify Bridge] Invoking Actor with Playwright & JS Rendering...", flush=True)
-        run = client.actor("apify/website-content-crawler").call(run_input=run_input, timeout_secs=240, memory_mbytes=4096)
-        print(f"[Apify Bridge] Actor Finished. Fetching results...", flush=True)
-        
+        print("[Apify Bridge] Invoking Actor with Playwright & JS Rendering...", flush=True)
+        run = client.actor("apify/website-content-crawler").call(
+            run_input=run_input, timeout_secs=240, memory_mbytes=4096
+        )
+        print("[Apify Bridge] Actor Finished. Fetching results...", flush=True)
+
         # Fetch results
         dataset_items = client.dataset(run["defaultDatasetId"]).list_items(limit=20).items
-        
+
         results = []
         for item in dataset_items:
-            results.append({
-                "title": item.get("metadata", {}).get("title") or item.get("title"),
-                "url": item.get("url"),
-                "content": item.get("markdown") or item.get("text"),
-                "source": "Apify" # Unified source name for Iron Firewall
-            })
+            results.append(
+                {
+                    "title": item.get("metadata", {}).get("title") or item.get("title"),
+                    "url": item.get("url"),
+                    "content": item.get("markdown") or item.get("text"),
+                    "source": "Apify",
+                }
+            )
         return results
-        
+
     except Exception as e:
         print(f"[Bridge Error] {e}", flush=True)
         return []
