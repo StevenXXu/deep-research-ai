@@ -231,6 +231,10 @@ class ResearchEngine:
             texts = [t.strip() for t in page.css('body *::text').getall() if t.strip()]
             clean_text = re.sub(r'\s+', ' ', " ".join(texts))
             
+            # CF / Anti-bot detection
+            if "Just a moment..." in title or "Cloudflare" in title or len(clean_text) < 50:
+                raise Exception("Scrapling hit Cloudflare Challenge or empty DOM. Triggering deep Apify Playwright fallback.")
+            
             self.sources.append({
                 "title": title,
                 "url": self.url,
@@ -622,7 +626,7 @@ class ResearchEngine:
             
         for s in self.sources:
             # 1. Exempt Official/Safe Sources
-            if s.get("source") in ["Scrapling (Home Page)", "Scrapling (Subpage)", "Upload", "LinkedIn (Apify)", "OSINT X-Ray"]:
+            if s.get("source") in ["Scrapling (Home Page)", "Scrapling (Subpage)", "Upload", "LinkedIn (Apify)", "OSINT X-Ray", "Apify"]:
                 clean_sources.append(s)
                 continue
                 

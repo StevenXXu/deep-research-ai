@@ -37,14 +37,16 @@ def scrape_website_content(url):
     run_input = {
         "startUrls": [{"url": url}],
         "maxCrawlPages": 5, # Limit for speed
-        "crawlerType": "cheerio", # Use lighter cheerio to prevent memory issues
-        "proxyConfiguration": {"useApifyProxy": True}
+        "crawlerType": "playwright:firefox", # UPGRADED: Use Playwright Firefox to bypass Cloudflare and render JS SPA
+        "proxyConfiguration": {"useApifyProxy": True},
+        "useBuilder": "latest",
+        "removeElementsCssSelector": "nav, footer, script, style, noscript, svg, img, iframe, iframe, header, aside"
     }
     
     try:
         # Actor: apify/website-content-crawler (The "Ultimate" one for text)
-        print(f"[Apify Bridge] Invoking Actor...", flush=True)
-        run = client.actor("apify/website-content-crawler").call(run_input=run_input, timeout_secs=180, memory_mbytes=1024)
+        print(f"[Apify Bridge] Invoking Actor with Playwright & JS Rendering...", flush=True)
+        run = client.actor("apify/website-content-crawler").call(run_input=run_input, timeout_secs=240, memory_mbytes=4096)
         print(f"[Apify Bridge] Actor Finished. Fetching results...", flush=True)
         
         # Fetch results
@@ -56,7 +58,7 @@ def scrape_website_content(url):
                 "title": item.get("metadata", {}).get("title") or item.get("title"),
                 "url": item.get("url"),
                 "content": item.get("markdown") or item.get("text"),
-                "source": "Apify Ultimate Scraper"
+                "source": "Apify" # Unified source name for Iron Firewall
             })
         return results
         
