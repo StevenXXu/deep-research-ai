@@ -916,6 +916,13 @@ class ResearchEngine:
         if "## References" in report:
             report = report.split("## References")[0].strip()
             
+        # Strip any trailing markdown code block backticks that might cause the references to be rendered inside a code block
+        report = report.strip()
+        while report.endswith("```"):
+            report = report[:-3].strip()
+        if report.endswith("```markdown"):
+            report = report[:-11].strip()
+            
         report += "\n\n## References\n"
         for c in citations:
             report += f"- {c}\n"
