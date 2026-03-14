@@ -606,14 +606,23 @@ class ResearchEngine:
         self.log(f"Total Sources: {len(self.sources)}")
 
     def _iron_firewall(self):
-        """Pre-Phase 3.5: The Iron Firewall. Destroy any source that lacks BOTH the company name and truth keywords."""
-        self.log("Phase 3.5a: Engaging The Iron Firewall (Data Purge)...")
+        """Pre-Phase 3.5: The Multi-Factor Authentication Firewall (Confidence Scoring)."""
+        self.log("Phase 3.5a: Engaging The Iron Firewall (Dynamic Confidence Purge)...")
         clean_sources = []
         target_name_lower = self.company.lower()
         
+        # Determine if we are in Stealth Mode (No official team and no strong keywords found)
+        official_team = getattr(self, "official_team", [])
+        stealth_mode = len(official_team) == 0 and len(self.truth_keywords) == 0
+        if stealth_mode:
+            self.log("WARNING: Target appears to be in STEALTH MODE. Lowering firewall threshold to Name Match only.")
+            self.stealth_mode = True
+        else:
+            self.stealth_mode = False
+            
         for s in self.sources:
             # 1. Exempt Official/Safe Sources
-            if s.get("source") in ["Scrapling (Home Page)", "Scrapling (Subpage)", "Upload"]:
+            if s.get("source") in ["Scrapling (Home Page)", "Scrapling (Subpage)", "Upload", "LinkedIn (Apify)", "OSINT X-Ray"]:
                 clean_sources.append(s)
                 continue
                 
@@ -626,33 +635,50 @@ class ResearchEngine:
                 continue
                 
             # 3. Fiction/Game Noise Filter (Burn on sight)
-            fiction_words = ["novel", "chapter", "anime", "manga", "episode", "tbate"]
+            fiction_words = ["novel", "chapter", "anime", "manga", "episode", "tbate", "wrestling", "monopoly"]
             if any(w in text_blob for w in fiction_words):
                 self.log(f"Firewall Blocked (Fiction/Game): {s.get('title')}")
                 continue
                 
-            # 4. Hard Name Match (If it doesn't even mention the target name, it's garbage)
-            # We relax this slightly if it's a direct URL match, but mostly it must have the name.
-            if target_name_lower not in text_blob:
-                self.log(f"Firewall Blocked (Name Missing): {s.get('title')}")
+            # 4. Strict Name Boundary Match (Gatekeeper)
+            # It must contain the exact word bounded by non-alphanumeric chars to prevent Sevalla passing for Sevren
+            # Relax slightly for URLs
+            name_pattern = r'\b' + re.escape(target_name_lower) + r'\b'
+            url_match = target_name_lower in s.get('url', '').lower()
+            if not url_match and not re.search(name_pattern, text_blob):
+                self.log(f"Firewall Blocked (Exact Name Missing): {s.get('title')}")
                 continue
                 
-            # 5. The Truth Keyword Check
-            # If we extracted truth keywords from the homepage, ANY external news/article MUST contain
-            # at least ONE of these keywords. Otherwise, it's a "same name, wrong company" hallucination.
-            if self.truth_keywords:
-                matched_truth = False
+            # 5. Multi-Factor Confidence Scoring (Only if not in stealth mode)
+            if not stealth_mode:
+                confidence_score = 0
+                
+                # A. URL/Domain Match
+                domain_core = self.domain.replace("www.", "").split(".")[0]
+                if domain_core in s.get('url', '').lower():
+                    confidence_score += 2
+                    
+                # B. Team Match
+                for team_member in official_team:
+                    if team_member.get('name', '').lower() in text_blob:
+                        confidence_score += 2
+                        break
+                        
+                # C. Truth Keyword Match
                 for kw in self.truth_keywords:
                     if kw in text_blob:
-                        matched_truth = True
+                        confidence_score += 1
                         break
-                if not matched_truth:
-                    self.log(f"Firewall Blocked (Identity Mismatch): {s.get('title')} - Contains name but no truth keywords {self.truth_keywords}")
-                    continue
-                    
-            # If it survived all that, it's clean.
-            clean_sources.append(s)
-            
+                        
+                # Verdict
+                if confidence_score >= 1:
+                    clean_sources.append(s)
+                else:
+                    self.log(f"Firewall Blocked (Low Confidence Score 0): {s.get('title')} - Contains name but lacks supporting features.")
+            else:
+                # In Stealth mode, exact name match is enough
+                clean_sources.append(s)
+                
         self.log(f"Iron Firewall complete. Kept {len(clean_sources)} out of {len(self.sources)} sources.")
         self.sources = clean_sources
 
@@ -801,10 +827,18 @@ class ResearchEngine:
         # --- AGENT 3: The Formatter (Build the final Markdown) ---
         self.log("Agent 3 (Formatter): Assembling the final report...")
         # Add questions into the facts payload for the formatter
-        formatting_payload = f"FACTS:\n{facts_json}\n\nINTERROGATION QUESTIONS:\n{json.dumps(questions)}"
+        
+        # Inject Stealth Mode tag if applicable
+        stealth_tag = "[TARGET IS IN STEALTH MODE]\n" if getattr(self, "stealth_mode", False) else ""
+        formatting_payload = f"{stealth_tag}FACTS:\n{facts_json}\n\nINTERROGATION QUESTIONS:\n{json.dumps(questions)}"
         
         prompt_agent3 = f"""
         Task: Write a comprehensive, highly detailed Investment Memo for {self.company}. Ensure the final report is robust, professional, and exceeds 1500 words by expanding on technical implications, market dynamics, and deep strategic analysis of the provided facts.
+        
+        CRITICAL STEALTH MODE INSTRUCTION:
+        If you see the tag [TARGET IS IN STEALTH MODE] in the Input, you MUST add this exact warning paragraph right below the main "# {self.company} Pre-Screen Memo" title:
+        **WARNING: Target appears to be in STEALTH MODE. Due to a lack of official footprint, external data has been aggregated broadly based on exact name matching. Proceed with caution as data confidence may be low.**
+        
         Input:
         {formatting_payload}
         
@@ -836,6 +870,8 @@ class ResearchEngine:
         ## Due Diligence Interrogation
         (List the 5 questions provided in the Input. This must be the very last section before the references.)
         """
+        
+        report = gateway.generate(prompt_agent3, "Output ONLY the Markdown report.")
         
         report = gateway.generate(prompt_agent3, "Output ONLY the Markdown report.")
 
