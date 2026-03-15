@@ -200,9 +200,8 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
             print(f"[DB] Error saving history: {e}", flush=True)
 
     update_status(5, f"Initializing research on {url}...")
-    print("[DEBUG] Reached line 202, about to post to Discord...", flush=True)
-
-    dc.post("cipher", "START", f"Starting Deep Research (Premium) on {url}")
+    
+    # dc.post("cipher", "START", f"Starting Deep Research (Premium) on {url}")  # Disabled: too noisy
 
     timestamp = int(time.time())
 
@@ -217,7 +216,7 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
     memory_context = ""
     if NOTEBOOK_ID and consult_notebooklm:
         update_status(10, "Querying Memory (NotebookLM)...")
-        dc.post("cipher", "PROGRESS", "Querying NotebookLM for historical context...")
+        # dc.post("cipher", "PROGRESS", "Querying NotebookLM for historical context...")  # Disabled
         query = f"What do we know about {site_name} or this sector? Have we looked at similar competitors?"
         memory_context = consult_notebooklm.query_notebooklm(query, notebook_id=NOTEBOOK_ID)
         print(f"[RESEARCH] Memory Context: {memory_context[:200]}...")
@@ -297,10 +296,10 @@ except Exception as e:
                     print(f"[WARN] Fallback failed: {e2}", flush=True)
 
         update_status(25, "Site Scraped. Engaging Research Engine...")
-        dc.post("cipher", "PROGRESS", f"Scraped site. Screenshot saved.")
+        # dc.post("cipher", "PROGRESS", f"Scraped site. Screenshot saved.")  # Disabled
     else:
         update_status(25, "No valid URL provided. Bypassing scrapers, using provided documents...")
-        dc.post("cipher", "PROGRESS", f"Bypassing scrapers for stealth project.")
+        # dc.post("cipher", "PROGRESS", f"Bypassing scrapers for stealth project.")  # Disabled
 
     try:
         # 2. Research Engine (The New Brain)
