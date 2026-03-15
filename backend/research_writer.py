@@ -285,7 +285,6 @@ except Exception as e:
             raw_text = page.css('body::text').getall()
             raw_text = " ".join([t.strip() for t in raw_text if t.strip()])
             print(f"[RESEARCH] Extracted landing page text.", flush=True)
-
         except Exception as e:
             print(f"[WARN] Scrapling failed: {e}. Falling back to basic requests.", flush=True)
             try:
@@ -296,7 +295,7 @@ except Exception as e:
                 raw_text = soup.get_text(separator=" ", strip=True)
             except Exception as e2:
                 print(f"[WARN] Fallback failed: {e2}", flush=True)
-
+        
         update_status(25, "Site Scraped. Engaging Research Engine...")
         # dc.post("cipher", "PROGRESS", f"Scraped site. Screenshot saved.")  # Disabled
     else:
