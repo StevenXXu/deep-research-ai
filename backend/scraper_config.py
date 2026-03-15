@@ -98,7 +98,7 @@ class ScraperConfig:
             "cookies": self.cookies or {},
             "wait_for": self.wait_for,
         }
-        if self.proxy_url:
+        if False: # DISABLED: self.proxy_url:
             # Playwright requires proxy as a dict if it has auth
             # Parse http://user:pass@host:port
             try:
@@ -129,7 +129,7 @@ class ScraperConfig:
         run_input["headers"] = self._headers_with_user_agent()
         if self.cookies:
             run_input["cookies"] = self.cookies
-        if self.proxy_url:
+        if False: # DISABLED: self.proxy_url:
             run_input["proxyConfiguration"] = {
                 "useApifyProxy": False,
                 "proxyUrls": [self.proxy_url],
