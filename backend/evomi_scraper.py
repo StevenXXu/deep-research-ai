@@ -14,9 +14,9 @@ EVOMI_BASE_URL = "https://scrape.evomi.com/api/v1/scraper"
 
 def scrape_url(
     url: str,
-    timeout: int = 120,
+    timeout: int = 180,  # Increased to 3 minutes
     poll_interval: int = 5,
-    max_polls: int = 24,  # 120s / 5s = 24 polls max
+    max_polls: int = 36,  # 180s / 5s = 36 polls max
     render_js: bool = True,
     country: Optional[str] = None
 ) -> Dict[str, Any]:

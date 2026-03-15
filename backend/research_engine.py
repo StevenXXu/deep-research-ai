@@ -294,7 +294,7 @@ class ResearchEngine:
             import evomi_scraper
             self.log("Evomi: Scraping target site...")
             
-            result = evomi_scraper.scrape_url(self.url, timeout=90, render_js=True)
+            result = evomi_scraper.scrape_url(self.url, timeout=180, render_js=True)
             
             if result.get("success") and result.get("content"):
                 clean_text = re.sub(r"\s+", " ", result["content"][:10000])
