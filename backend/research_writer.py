@@ -200,6 +200,8 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
             print(f"[DB] Error saving history: {e}", flush=True)
 
     update_status(5, f"Initializing research on {url}...")
+    print("[DEBUG] Reached line 202, about to post to Discord...", flush=True)
+    
     dc.post("cipher", "START", f"Starting Deep Research (Premium) on {url}")
     
     timestamp = int(time.time())

@@ -115,7 +115,7 @@ def post(agent_name, msg_type, message, file_path=None):
                     # When sending files, payload must be passed as payload_json string
                     res = requests.post(webhook_url, files=files, data={'payload_json': json.dumps(payload)}, timeout=30)
             else:
-                res = requests.post(webhook_url, json=payload, timeout=5)
+                res = requests.post(webhook_url, json=payload, timeout=2)
 
             if res.status_code in [200, 204]:
                 print(f"[DISCORD] Sent to {agent_key} via Webhook.", flush=True)
