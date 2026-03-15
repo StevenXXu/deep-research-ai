@@ -28,7 +28,7 @@ def scrape_url(
         timeout: Total timeout in seconds
         poll_interval: Seconds between status checks
         max_polls: Maximum number of polling attempts
-        render_js: Whether to render JavaScript
+        render_js: Whether to render JavaScript (uses browser mode)
         country: Country code for geotargeting (e.g., "US", "AU")
     
     Returns:
@@ -46,22 +46,25 @@ def scrape_url(
         "Content-Type": "application/json"
     }
     
-    payload = {
-        "url": url,
-        "render": render_js
-    }
-    
-    if country:
-        payload["country"] = country
-    
     try:
-        # Submit scraping task
+        # Submit scraping task - use GET request with query params
         print(f"[EVOMI] Submitting task for {url}...", flush=True)
-        response = requests.post(
+        
+        # Build query parameters
+        params = {
+            "url": url,
+            "mode": "browser",  # Use browser mode for JS rendering
+            "proxy_type": "premium",  # Residential proxies for better success
+            "render": "true" if render_js else "false"
+        }
+        if country:
+            params["proxy_country"] = country
+        
+        response = requests.get(
             f"{EVOMI_BASE_URL}/realtime",
-            json=payload,
+            params=params,
             headers=headers,
-            timeout=60  # Increased from 30 to 60 seconds
+            timeout=90  # Increased timeout for slow responses
         )
         
         print(f"[EVOMI] Response: status={response.status_code}", flush=True)
