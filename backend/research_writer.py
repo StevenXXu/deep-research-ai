@@ -263,19 +263,21 @@ except Exception as e:
         except Exception as se:
             print(f"[WARN] Screenshot subprocess failed: {se}", flush=True)
 
-        # Try Evomi Scraper API first (best for Cloudflare/WAF bypass)
+        # DISABLED: Evomi service is unstable (504 errors)
+        # try:
+        #     import evomi_scraper
+        #     print("[RESEARCH] Browsing site using Evomi Scraper API...", flush=True)
+        #     result = evomi_scraper.scrape_url(url, timeout=180)
+        #     if result.get("success") and result.get("content"):
+        #         raw_text = result["content"][:10000]  # Limit to first 10k chars
+        #         print(f"[RESEARCH] Evomi extracted {len(raw_text)} chars.", flush=True)
+        #     else:
+        #         raise Exception(f"Evomi failed: {result.get('error', 'Unknown')}")
+        # except Exception as e:
+        #     print(f"[WARN] Evomi failed: {e}. Falling back to Scrapling...", flush=True)
+        
+        # Direct to Scrapling
         try:
-            import evomi_scraper
-            print("[RESEARCH] Browsing site using Evomi Scraper API...", flush=True)
-            result = evomi_scraper.scrape_url(url, timeout=180)
-            if result.get("success") and result.get("content"):
-                raw_text = result["content"][:10000]  # Limit to first 10k chars
-                print(f"[RESEARCH] Evomi extracted {len(raw_text)} chars.", flush=True)
-            else:
-                raise Exception(f"Evomi failed: {result.get('error', 'Unknown')}")
-        except Exception as e:
-            print(f"[WARN] Evomi failed: {e}. Falling back to Scrapling...", flush=True)
-            try:
                 from scrapling.fetchers import StealthyFetcher
                 print("[RESEARCH] Browsing site using Scrapling StealthyFetcher...", flush=True)
                 # Using stealthy fetcher to bypass Cloudflare and get content
