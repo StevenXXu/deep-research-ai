@@ -8,11 +8,8 @@ import warnings
 from datetime import datetime
 from dotenv import load_dotenv
 from exa_py import Exa
-from duckduckgo_search import DDGS
 import apify_bridge as apify
 from scraper_config import ScraperConfig
-
-warnings.filterwarnings("ignore", category=RuntimeWarning, module="duckduckgo_search")
 
 # --- SETUP ---
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
@@ -26,6 +23,7 @@ load_dotenv(os.path.join(root_dir, ".env"))
 EXA_KEY = os.getenv("EXA_API_KEY")
 TAVILY_KEY = os.getenv("TAVILY_API_KEY")
 BRAVE_KEY = os.getenv("BRAVE_API_KEY")
+SERPER_KEY = os.getenv("SERPER_API_KEY")
 
 
 class ResearchEngine:
@@ -43,7 +41,6 @@ class ResearchEngine:
             self.domain = target_url
 
         self.language = language
-        self.ddg_retries = 0
 
         if scraper_config is None:
             scraper_config = ScraperConfig.from_env()
@@ -116,10 +113,10 @@ class ResearchEngine:
         """
         prompt = f"""
         Analyze the following investment memo and extract metadata as JSON.
-        
+
         Memo Excerpt:
         {report_text[:4000]}...
-        
+
         Output JSON ONLY:
         {{
             "company_name": "Exact Company Name",
@@ -220,30 +217,40 @@ class ResearchEngine:
             return []
 
     def search_ddg(self, query, num=3):
-        # Global limit to prevent infinite loops / stalling
-        if self.ddg_retries > 3:
-            self.log(f"DDG Search Skipped (Global Limit Reached) for: {query}")
+        # Replaced DDG with Serper as fallback
+        if not SERPER_KEY:
+            self.log("Serper API key not set. Skipping fallback search.")
             return []
 
-        self.ddg_retries += 1
+        self.log(f"Serper Fallback Search: {query}...")
 
-        # Free Fallback
         try:
-            # Sleep to prevent rate limiting
-            time.sleep(2)
-            with DDGS() as ddgs:
-                results = list(ddgs.text(query, max_results=num))
-                return [
-                    {
-                        "title": r["title"],
-                        "url": r["href"],
-                        "content": r["body"][:500],
-                        "source": "DDG",
-                    }
-                    for r in results
-                ]
+            import requests
+            url = "https://google.serper.dev/search"
+            payload = {
+                "q": query,
+                "num": num
+            }
+            headers = {
+                "X-API-Key": SERPER_KEY,
+                "Content-Type": "application/json"
+            }
+            response = requests.post(url, json=payload, headers=headers, timeout=10)
+            data = response.json()
+
+            results = []
+            if "organic" in data:
+                for r in data.get("organic", [])[:num]:
+                    results.append({
+                        "title": r.get("title"),
+                        "url": r.get("link"),
+                        "content": r.get("snippet", "")[:500],
+                        "source": "Serper"
+                    })
+            return results
+
         except Exception as e:
-            self.log(f"DDG Error: {e}")
+            self.log(f"Serper Error: {e}")
             return []
 
     def _find_linkedin_url(self):
@@ -452,15 +459,15 @@ class ResearchEngine:
         You are an elite OSINT (Open Source Intelligence) Director analyzing a target company's official materials.
         Target Company: {self.company}
         Target URL: {self.url}
-        
+
         Official Data (Ground Truth):
         {official_context}
-        
+
         Task:
         1. Extract the names and exact roles of ALL founders, executives, or key team members mentioned.
         2. Extract exactly 3 highly specific, distinctive technical/industry keywords that uniquely define what this company does. (e.g., if they do Brain-Computer Interfaces using light, use "Optrode", "Photonics", "Neural". Do NOT use generic words like "AI", "Software", "Tech").
         3. Identify 3 critical missing pieces of information needed for a VC Investment Memo (e.g., funding history, direct competitors, real user traction).
-        
+
         Output MUST be valid JSON ONLY:
         {{
             "founding_team": [{{"name": "John Doe", "role": "CEO"}}, ...],
@@ -891,13 +898,13 @@ class ResearchEngine:
         You are a QA Lead Auditor.
         Target Company: {self.company}
         Target URL: {self.url}
-        
+
         Task: Review the list of gathered sources. Identify any source that is IRRELEVANT.
         CRITICAL: You MUST aggressively flag sources that refer to fiction novels, video games, fictional characters (e.g., magic schools, anime), or completely unrelated companies with the same name.
-        
+
         Sources:
         {json.dumps(source_list, indent=2)}
-        
+
         Output JSON ONLY:
         {{
             "exclude_ids": [integer indices of bad sources],
@@ -961,12 +968,12 @@ class ResearchEngine:
         Task: Extract factual data about {self.company} into a structured JSON format.
         Input:
         {context_blob}
-        
+
         Constraints:
         - Output ONLY valid JSON. No markdown wrappers.
         - Ignore data about fictional characters (e.g., novels, games).
         - If a section lacks data, return an empty string or empty list. DO NOT hallucinate.
-        
+
         Output Format:
         {{
             "executive_summary": "Company overview and mission",
@@ -997,12 +1004,12 @@ class ResearchEngine:
         Task: Generate 5 aggressive, highly specific due diligence questions to ask the founders of {self.company}.
         Input:
         {facts_json}
-        
+
         Constraints:
         - Output ONLY a JSON list of 5 strings. No markdown wrappers.
         - Base questions strictly on the weaknesses, funding gaps, or missing data in the Input.
         - Do not ask generic questions ("What is your vision?").
-        
+
         Output Format:
         [
             "Question 1...",
@@ -1039,14 +1046,14 @@ class ResearchEngine:
 
         prompt_agent3 = f"""
         Task: Write a comprehensive, highly detailed Investment Memo for {self.company}. Ensure the final report is robust, professional, and exceeds 1500 words by expanding on technical implications, market dynamics, and deep strategic analysis of the provided facts.
-        
+
         CRITICAL STEALTH MODE INSTRUCTION:
         If you see the tag [TARGET IS IN STEALTH MODE] in the Input, you MUST add this exact warning paragraph right below the main "# {self.company} Pre-Screen Memo" title:
         **WARNING: Target appears to be in STEALTH MODE. Due to a lack of official footprint, external data has been aggregated broadly based on exact name matching. Proceed with caution as data confidence may be low.**
-        
+
         Input:
         {formatting_payload}
-        
+
         Constraints:
         - Expand significantly on the provided facts using your analytical capabilities as a senior VC. Do not just repeat the JSON; interpret it deeply to meet the word count requirement (>1500 words).
         - However, DO NOT invent raw facts (like names, numbers, or non-existent competitor companies).
@@ -1054,14 +1061,14 @@ class ResearchEngine:
         - Do NOT write a References section at the end.
         - Do NOT number the headers.
         - For the "Founding Team & Track Record" section, you MUST include any LinkedIn URLs found in the Input facts.
-        
+
         Output Format:
         Must include EXACTLY these sections with these headers in this EXACT order:
         # {self.company} Pre-Screen Memo
-        
+
         ## Executive Summary
         (Include a Markdown table for SWOT Analysis: | Strengths | Weaknesses | Opportunities | Threats |)
-        
+
         ## Product Deep Dive
         ## Market Landscape
         (Markdown table: | Competitor | Features | Pricing |)
@@ -1071,7 +1078,7 @@ class ResearchEngine:
         ## Founding Team & Track Record
         ## Data Consistency Check & Hidden Signals
         ## Exit Strategy & M&A Landscape
-        
+
         ## Due Diligence Interrogation
         (List the 5 questions provided in the Input. This must be the very last section before the references.)
         """
@@ -1088,14 +1095,14 @@ class ResearchEngine:
             translation_prompt = f"""
             You are a professional financial translator and investment analyst.
             Your task is to translate the following deep research report into {self.language}.
-            
+
             CRITICAL RULES:
             1. DO NOT summarize or omit ANY data, numbers, or company names. Keep the exact factual density of the original.
             2. Maintain all Markdown formatting perfectly, especially tables, headers, and citation brackets like [1].
             3. Translate table headers properly.
             4. If a term is a specific product name or proper noun (like 'Cloudflare', 'Series A'), keep the English term or use industry-standard terminology.
             5. Ensure the tone is objective, professional, and native to an investment memo.
-            
+
             Original Report:
             {report}
             """
