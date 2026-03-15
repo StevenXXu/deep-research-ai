@@ -64,6 +64,8 @@ def scrape_url(
             timeout=60  # Increased from 30 to 60 seconds
         )
         
+        print(f"[EVOMI] Response: status={response.status_code}", flush=True)
+        
         if response.status_code == 200:
             # Immediate success (simple sites)
             data = response.json()
