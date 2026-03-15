@@ -97,7 +97,8 @@ def scrape_url(
             
             print(f"[EVOMI] Task queued: {task_id}. Polling...", flush=True)
             
-            # Poll for results
+            # Poll for results with smart error detection
+            consecutive_errors = 0
             for i in range(max_polls):
                 time.sleep(poll_interval)
                 
@@ -109,6 +110,7 @@ def scrape_url(
                 
                 if poll_response.status_code == 200:
                     result = poll_response.json()
+                    consecutive_errors = 0  # Reset error counter
                     
                     # Check if task is complete
                     if result.get("status") == "completed":
@@ -137,7 +139,19 @@ def scrape_url(
                     # Still processing
                     print(f"[EVOMI] Poll {i+1}: {result.get('status', 'unknown')}", flush=True)
                 
+                elif poll_response.status_code == 500:
+                    # Server error - track consecutive 500s
+                    consecutive_errors += 1
+                    print(f"[EVOMI] Poll {i+1}: HTTP 500 (server error, consecutive={consecutive_errors})", flush=True)
+                    if consecutive_errors >= 3:
+                        print(f"[EVOMI] Server error detected 3 times. Abandoning task.", flush=True)
+                        return {
+                            "success": False,
+                            "content": None,
+                            "error": f"Evomi server error (HTTP 500) - abandoning after {consecutive_errors} consecutive errors"
+                        }
                 else:
+                    consecutive_errors = 0  # Reset on non-500 response
                     print(f"[EVOMI] Poll {i+1}: HTTP {poll_response.status_code}", flush=True)
             
             # Timeout reached
