@@ -17,18 +17,16 @@ def scrape_url(
     timeout: int = 180,  # Increased to 3 minutes
     poll_interval: int = 5,
     max_polls: int = 36,  # 180s / 5s = 36 polls max
-    render_js: bool = True,
     country: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Scrape a URL using Evomi's Scraper API with async polling.
     
     Args:
-        url: Target URL to scrape
+        url: Target URL to scrape (will auto-add https:// if missing)
         timeout: Total timeout in seconds
         poll_interval: Seconds between status checks
         max_polls: Maximum number of polling attempts
-        render_js: Whether to render JavaScript (uses browser mode)
         country: Country code for geotargeting (e.g., "US", "AU")
     
     Returns:
@@ -47,15 +45,19 @@ def scrape_url(
     }
     
     try:
+        # Normalize URL - ensure it has https://
+        normalized_url = url
+        if not url.startswith("http://") and not url.startswith("https://"):
+            normalized_url = f"https://{url}"
+        
         # Submit scraping task - use GET request with query params
-        print(f"[EVOMI] Submitting task for {url}...", flush=True)
+        print(f"[EVOMI] Submitting task for {normalized_url}...", flush=True)
         
         # Build query parameters
         params = {
-            "url": url,
+            "url": normalized_url,
             "mode": "browser",  # Use browser mode for JS rendering
-            "proxy_type": "premium",  # Residential proxies for better success
-            "render": "true" if render_js else "false"
+            "proxy_type": "residential",  # Must be 'residential' or 'datacenter'
         }
         if country:
             params["proxy_country"] = country

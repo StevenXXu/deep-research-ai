@@ -268,7 +268,7 @@ except Exception as e:
         try:
             import evomi_scraper
             print("[RESEARCH] Browsing site using Evomi Scraper API...", flush=True)
-            result = evomi_scraper.scrape_url(url, timeout=180, render_js=True)
+            result = evomi_scraper.scrape_url(url, timeout=180)
             if result.get("success") and result.get("content"):
                 raw_text = result["content"][:10000]  # Limit to first 10k chars
                 print(f"[RESEARCH] Evomi extracted {len(raw_text)} chars.", flush=True)
