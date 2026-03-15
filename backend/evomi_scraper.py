@@ -71,6 +71,19 @@ def scrape_url(
         
         print(f"[EVOMI] Response: status={response.status_code}", flush=True)
         
+        # Handle gateway errors with retry
+        if response.status_code in [502, 503, 504]:
+            print(f"[EVOMI] Gateway error {response.status_code}. Retrying in 5s...", flush=True)
+            time.sleep(5)
+            # Retry once
+            response = requests.get(
+                f"{EVOMI_BASE_URL}/realtime",
+                params=params,
+                headers=headers,
+                timeout=90
+            )
+            print(f"[EVOMI] Retry response: status={response.status_code}", flush=True)
+        
         if response.status_code == 200:
             # Immediate success (simple sites)
             data = response.json()
@@ -163,11 +176,20 @@ def scrape_url(
                 "error": f"Timeout after {max_polls * poll_interval}s"
             }
         
-        # Unexpected status code
+        # Handle other unexpected status codes
+        if response.status_code >= 500:
+            # Server-side error - return error with details
+            return {
+                "success": False,
+                "content": None,
+                "error": f"Evomi server error (HTTP {response.status_code}): Gateway timeout or service unavailable"
+            }
+        
+        # Client error (4xx)
         return {
             "success": False,
             "content": None,
-            "error": f"Unexpected status {response.status_code}: {response.text[:200]}"
+            "error": f"Request error (HTTP {response.status_code}): {response.text[:200]}"
         }
     
     except requests.exceptions.Timeout:
