@@ -286,7 +286,38 @@ class ResearchEngine:
     def phase_1_broad_scan(self):
         self.log(f"Phase 1: Broad Scan for '{self.company}'...")
 
-        # A. Official Site Extract (Scrapling Anti-bot + Apify Fallback)
+        # A. Official Site Extract (Evomi Scraper API -> Scrapling Fallback -> Apify Fallback)
+        import re
+        
+        # Try Evomi Scraper API first (best for Cloudflare/WAF bypass)
+        try:
+            import evomi_scraper
+            self.log("Evomi: Scraping target site...")
+            
+            result = evomi_scraper.scrape_url(self.url, timeout=90, render_js=True)
+            
+            if result.get("success") and result.get("content"):
+                clean_text = re.sub(r"\s+", " ", result["content"][:10000])
+                title = self.domain  # Evomi doesn't return title separately
+                
+                self.sources.append({
+                    "title": title,
+                    "url": self.url,
+                    "content": clean_text,
+                    "source": "Evomi Scraper API (Home Page)",
+                })
+                self.log(f"Evomi: Extracted {len(clean_text)} chars from {self.url}")
+                
+                # Mark as successful, skip other scrapers
+                self._site_scraped = True
+                return
+            else:
+                error = result.get("error", "Unknown error")
+                self.log(f"Evomi: Failed - {error}. Falling back to Scrapling...")
+        except Exception as e:
+            self.log(f"Evomi: Exception - {e}. Falling back to Scrapling...")
+
+        # Fallback to Scrapling
         scraper_kwargs = self.scraper_config.to_stealthy_fetcher_kwargs()
 
         try:
@@ -294,7 +325,6 @@ class ResearchEngine:
                 f"Scrapling: Fetching target site with config: proxy={bool(self.scraper_config.proxy_url)}, UA={self.scraper_config.user_agent[:30]}..."
             )
             from scrapling.fetchers import StealthyFetcher
-            import re
 
             # Fetch Home Page with config
             page = StealthyFetcher.fetch(self.url, headless=True, **scraper_kwargs)

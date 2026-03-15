@@ -66,14 +66,14 @@ if SUPABASE_URL and SUPABASE_KEY:
         # Use simple dict for options (Compatible with older and newer SDKs)
         # Or just default init if timeouts aren't critical
         # opts = ClientOptions().replace(postgrest_client_timeout=10) <--- Caused error
-        
+
         # Fallback: Just init simply. The default timeout is usually fine.
         supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-        
+
         # If we really need timeout, we can try accessing postgrest client later
         if hasattr(supabase, "postgrest"):
             supabase.postgrest.timeout = 10
-            
+
         print(f"[INIT] Supabase connected successfully.", flush=True)
     except Exception as e:
         print(f"[WARN] Supabase init failed: {e}", flush=True)
@@ -88,7 +88,7 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
         # SUPABASE REALTIME SYNC (Optional, but great UX)
         if supabase and report_id:
             try:
-                # Update progress using a regular update. 
+                # Update progress using a regular update.
                 # Avoid touching 'meta' column here if it doesn't exist in schema yet.
                 supabase.table('reports').update({
                     "status": f"processing:{progress}"
@@ -102,13 +102,13 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
         if not supabase:
             print("[DB] Supabase client not active. Skipping save.", flush=True)
             return
-        if not user_id: 
+        if not user_id:
             print("[DB] No user_id provided. Skipping save.", flush=True)
             return
-            
+
         try:
             print(f"[DB] Saving/Updating report for user {user_id}...", flush=True)
-            
+
             # REFUND LOGIC: If status is failed, refund 1 credit
             if status == "failed":
                 try:
@@ -130,17 +130,17 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
             }
             if content:
                 data["report_content"] = content
-                
+
             # Add Metadata if available
             if meta:
                 # Map extracted fields directly to their corresponding SQL columns
                 if "company_name" in meta: data["company_name"] = meta.get("company_name")
                 if "sector_tags" in meta: data["sector_tags"] = meta.get("sector_tags")
                 if "cost_usd" in meta: data["cost_usd"] = meta.get("cost_usd")
-                
+
                 # Store the entire raw metadata dict into the JSONB column "usage_meta"
                 data["usage_meta"] = meta
-                
+
             # Perform Update if report_id exists, else Insert
             try:
                 if report_id:
@@ -195,24 +195,24 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
                     print(f"[DB] Saved report on retry.", flush=True)
                 else:
                     raise e
-            
+
         except Exception as e:
             print(f"[DB] Error saving history: {e}", flush=True)
 
     update_status(5, f"Initializing research on {url}...")
     print("[DEBUG] Reached line 202, about to post to Discord...", flush=True)
-    
+
     dc.post("cipher", "START", f"Starting Deep Research (Premium) on {url}")
-    
+
     timestamp = int(time.time())
-    
+
     if url.startswith("http://") or url.startswith("https://"):
         site_name = url.split("//")[-1].replace("/", "_")
     else:
         site_name = url.replace(" ", "_").replace("/", "_")[:50]
-        
+
     screenshot_path = os.path.abspath(f"{OUTPUT_DIR}/{site_name}_{timestamp}.png")
-    
+
     # 0. Check Memory (NotebookLM)
     memory_context = ""
     if NOTEBOOK_ID and consult_notebooklm:
@@ -225,10 +225,10 @@ def run_research(url, target_email=None, document_text=None, progress_callback=N
     # 1. Web Extraction (Using Scrapling instead of Node.js Playwright for stealth)
     update_status(15, "Browsing Target Website (Scrapling)...")
     raw_text = ""
-    
+
     # Check if URL is valid (not just a project name)
     is_valid_url = url.startswith("http://") or url.startswith("https://")
-    
+
     if is_valid_url:
         # Take screenshot in an isolated subprocess to avoid asyncio Event Loop conflicts in Threads
         try:
@@ -248,42 +248,54 @@ except Exception as e:
             py_path = f"{OUTPUT_DIR}/temp_screenshot_{timestamp}.py"
             with open(py_path, "w", encoding="utf-8") as f:
                 f.write(py_script)
-                
+
             import subprocess
             subprocess.run([sys.executable, py_path], capture_output=True, text=True, timeout=60)
             try:
                 os.remove(py_path)
             except:
                 pass
-                
+
             if os.path.exists(screenshot_path):
                 print(f"[RESEARCH] Screenshot saved successfully.", flush=True)
             else:
                 print(f"[WARN] Screenshot file was not created.", flush=True)
-                
+
         except Exception as se:
             print(f"[WARN] Screenshot subprocess failed: {se}", flush=True)
-    
+
+        # Try Evomi Scraper API first (best for Cloudflare/WAF bypass)
         try:
-            from scrapling.fetchers import StealthyFetcher
-            print("[RESEARCH] Browsing site using Scrapling StealthyFetcher...", flush=True)
-            # Using stealthy fetcher to bypass Cloudflare and get content
-            page = StealthyFetcher.fetch(url, headless=True, network_idle=True)
-            raw_text = page.css('body::text').getall()
-            raw_text = " ".join([t.strip() for t in raw_text if t.strip()])
-            print(f"[RESEARCH] Extracted landing page text.", flush=True)
-            
+            import evomi_scraper
+            print("[RESEARCH] Browsing site using Evomi Scraper API...", flush=True)
+            result = evomi_scraper.scrape_url(url, timeout=90, render_js=True)
+            if result.get("success") and result.get("content"):
+                raw_text = result["content"][:10000]  # Limit to first 10k chars
+                print(f"[RESEARCH] Evomi extracted {len(raw_text)} chars.", flush=True)
+            else:
+                raise Exception(f"Evomi failed: {result.get('error', 'Unknown')}")
         except Exception as e:
-            print(f"[WARN] Scrapling failed: {e}. Falling back to basic requests.", flush=True)
+            print(f"[WARN] Evomi failed: {e}. Falling back to Scrapling...", flush=True)
             try:
-                import requests
-                from bs4 import BeautifulSoup
-                res = requests.get(url, timeout=15)
-                soup = BeautifulSoup(res.text, "html.parser")
-                raw_text = soup.get_text(separator=" ", strip=True)
-            except Exception as e2:
-                print(f"[WARN] Fallback failed: {e2}", flush=True)
-                
+                from scrapling.fetchers import StealthyFetcher
+                print("[RESEARCH] Browsing site using Scrapling StealthyFetcher...", flush=True)
+                # Using stealthy fetcher to bypass Cloudflare and get content
+                page = StealthyFetcher.fetch(url, headless=True, network_idle=True)
+                raw_text = page.css('body::text').getall()
+                raw_text = " ".join([t.strip() for t in raw_text if t.strip()])
+                print(f"[RESEARCH] Extracted landing page text.", flush=True)
+
+            except Exception as e:
+                print(f"[WARN] Scrapling failed: {e}. Falling back to basic requests.", flush=True)
+                try:
+                    import requests
+                    from bs4 import BeautifulSoup
+                    res = requests.get(url, timeout=15)
+                    soup = BeautifulSoup(res.text, "html.parser")
+                    raw_text = soup.get_text(separator=" ", strip=True)
+                except Exception as e2:
+                    print(f"[WARN] Fallback failed: {e2}", flush=True)
+
         update_status(25, "Site Scraped. Engaging Research Engine...")
         dc.post("cipher", "PROGRESS", f"Scraped site. Screenshot saved.")
     else:
@@ -294,27 +306,27 @@ except Exception as e:
         # 2. Research Engine (The New Brain)
         update_status(30, "Phase 1: Broad Market Scan...")
         engine = ResearchEngine(url, document_content=document_text, language=language)
-        
+
         # Inject Landing Page + Memory Context
         engine.sources.append({"title": "Landing Page", "url": url, "content": raw_text[:2000], "source": "Landing Page"})
         if memory_context:
             engine.sources.append({"title": "Internal Memory (NotebookLM)", "url": "internal", "content": memory_context, "source": "NotebookLM"})
-        
+
         # Execute Phases 1-4
         engine.phase_1_broad_scan()
-        
+
         update_status(50, "Phase 2: Identifying Knowledge Gaps...")
         engine.phase_2_gap_analysis()
-        
+
         update_status(60, "Phase 3: Deep Dive (Social/Trends)...")
         engine.phase_3_deep_dive()
-        
+
         update_status(80, "Phase 4: Synthesizing Native Investment Memo...")
         analysis = engine.phase_4_synthesis() # Returns Markdown Report
 
         # 3. Generate HTML Report (Premium Style)
         update_status(90, "Generating PDF Report...")
-        
+
         # Clean Site Name for Title (e.g. "www.breaker.com" -> "Breaker")
         display_title = site_name
         if "www." in site_name:
@@ -326,12 +338,12 @@ except Exception as e:
 
         # Convert Markdown to HTML
         import re
-        
+
         # 1. Smart Title Stripping: Remove the first H1 header and anything before it
         # This fixes "Zipline # Zipline Investment Memo" double title issues
         # Pattern: Start of string -> any text (lazy) -> # Header -> Newline
         analysis = re.sub(r'^.*?# [^\n]+\n', '', analysis, flags=re.DOTALL).strip()
-        
+
         # 2. Table Formatting Fix: Aggressively ensure blank line before tables
         # Strategy: Split by lines. If a line starts with | and prev line is not empty and not a table row, insert empty line.
         lines = analysis.split('\n')
@@ -340,7 +352,7 @@ except Exception as e:
             # Header Number Stripping (e.g. "## 1. Exec" -> "## Exec")
             if line.strip().startswith('#'):
                 line = re.sub(r'^(#+)\s*\d+\.\s*', r'\1 ', line)
-                
+
             # Table Fix logic
             if line.strip().startswith('|'):
                 # If it's a table row
@@ -349,22 +361,22 @@ except Exception as e:
                     # If prev line is text (not empty, not table, not header), insert gap
                     if prev_line and not prev_line.startswith('|') and not prev_line.startswith('#'):
                         cleaned_lines.append('')
-            
+
             cleaned_lines.append(line)
-            
+
         analysis = '\n'.join(cleaned_lines)
-        
+
         # 3. Clean Pipe Tables (Standardize spacing)
-        analysis = re.sub(r'\| *:?-+:? *\|', lambda m: m.group(0).strip(), analysis) 
-        
+        analysis = re.sub(r'\| *:?-+:? *\|', lambda m: m.group(0).strip(), analysis)
+
         # 4. Remove ugly HTML <br> tags sometimes generated by LLMs in tables
         analysis = analysis.replace('<br>', '').replace('<br/>', '').replace('<br />', '')
 
         analysis_html = markdown.markdown(
-            analysis, 
+            analysis,
             extensions=['tables', 'fenced_code', 'nl2br']
         )
-        
+
         # CSS for PDF/Email
         # Added page-break rules for PDF + Link Styling
         css_style = """
@@ -376,35 +388,35 @@ except Exception as e:
                 ul { margin-bottom: 16px; padding-left: 20px; }
                 li { margin-bottom: 8px; }
                 a { color: #2563eb; text-decoration: underline; } /* Blue Links */
-                
+
                 /* Table Styling - Robust for PDF */
-                table { 
-                    width: 100%; 
-                    border-collapse: collapse; 
-                    margin: 24px 0; 
-                    font-size: 13px; 
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 24px 0;
+                    font-size: 13px;
                     border: 1px solid #e5e7eb;
                     page-break-inside: avoid; /* Prevent table splitting */
                 }
-                th { 
-                    background-color: #f9fafb; 
-                    color: #111827; 
-                    font-weight: 700; 
-                    text-transform: uppercase; 
-                    font-size: 11px; 
-                    padding: 12px; 
-                    text-align: left; 
-                    border-bottom: 2px solid #e5e7eb; 
+                th {
+                    background-color: #f9fafb;
+                    color: #111827;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    font-size: 11px;
+                    padding: 12px;
+                    text-align: left;
+                    border-bottom: 2px solid #e5e7eb;
                 }
-                td { 
-                    border-bottom: 1px solid #e5e7eb; 
-                    padding: 12px; 
-                    color: #4b5563; 
+                td {
+                    border-bottom: 1px solid #e5e7eb;
+                    padding: 12px;
+                    color: #4b5563;
                     vertical-align: top;
                 }
                 tr:last-child td { border-bottom: none; }
                 tr:nth-child(even) { background-color: #fcfcfc; }
-                
+
                 .meta { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: #9ca3af; text-transform: uppercase; margin-bottom: 16px; display: block; }
                 .hero { width: 100%; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 32px; max-height: 400px; object-fit: cover; }
                 .footer { margin-top: 60px; text-align: center; font-size: 11px; color: #d1d5db; border-top: 1px solid #f3f4f6; padding-top: 20px; }
@@ -432,28 +444,28 @@ except Exception as e:
 
         # 1. Email Version (cid:screenshot)
         email_html = render_html("cid:screenshot" if os.path.exists(screenshot_path) else "")
-        
+
         # 2. PDF Version (Local Path for Playwright)
         # Playwright needs absolute path with file:// protocol or just absolute path depending on OS
         # Using forward slashes is safest for file:// URLs
         abs_screenshot_path = screenshot_path.replace(os.sep, "/")
         pdf_html = render_html(f"file://{abs_screenshot_path}" if os.path.exists(screenshot_path) else "")
-            
+
         # Save Markdown Report (Keep original logic)
         report_path = f"{OUTPUT_DIR}/{site_name}_{timestamp}_Analysis.md"
         with open(report_path, "w", encoding="utf-8") as f:
-            f.write(analysis) 
-            
+            f.write(analysis)
+
         # 4. Generate PDF
         pdf_path = f"{OUTPUT_DIR}/{site_name}_{timestamp}_Memo.pdf"
         try:
             update_status(92, "Generating PDF...")
             print("[RESEARCH] Generating PDF via Playwright...", flush=True)
-            
+
             temp_html_path = os.path.abspath(f"{OUTPUT_DIR}/{site_name}_{timestamp}_temp.html")
             with open(temp_html_path, "w", encoding="utf-8") as f:
                 f.write(pdf_html) # Use the PDF-specific HTML
-                
+
             pdf_script = f"""
             const {{ chromium }} = require('playwright');
             (async () => {{
@@ -461,42 +473,42 @@ except Exception as e:
               const page = await browser.newPage();
               try {{
                   await page.goto('file://{temp_html_path.replace(os.sep, "/")}', {{ waitUntil: 'networkidle' }});
-                  await page.pdf({{ 
-                    path: '{pdf_path.replace(os.sep, "/")}', 
-                    format: 'A4', 
-                    printBackground: true, 
-                    margin: {{ top: '2cm', bottom: '2cm', left: '2cm', right: '2cm' }} 
+                  await page.pdf({{
+                    path: '{pdf_path.replace(os.sep, "/")}',
+                    format: 'A4',
+                    printBackground: true,
+                    margin: {{ top: '2cm', bottom: '2cm', left: '2cm', right: '2cm' }}
                   }});
               }} finally {{
                   await browser.close();
               }}
             }})();
             """
-            
+
             pdf_js_path = f"{OUTPUT_DIR}/temp_pdf_gen_{timestamp}.js"
             with open(pdf_js_path, "w", encoding="utf-8") as f:
                 f.write(pdf_script)
-            
+
             # Resolve Node
             node_exec = "node"
             if shutil.which("node"):
                 node_exec = shutil.which("node")
 
             result = subprocess.run([node_exec, pdf_js_path], capture_output=True, text=True, encoding="utf-8")
-            
+
             if result.returncode != 0:
                 print(f"[WARN] PDF Gen failed: {result.stderr}", flush=True)
                 pdf_path = None
             else:
                 print(f"[SUCCESS] PDF Generated: {pdf_path}", flush=True)
-            
+
             # Clean up temp files
             try:
                 os.remove(temp_html_path)
                 os.remove(pdf_js_path)
             except:
                 pass
-                
+
         except Exception as pdf_e:
             print(f"[WARN] PDF Gen Exception: {pdf_e}", flush=True)
             pdf_path = None
@@ -506,31 +518,31 @@ except Exception as e:
         meta = engine.extract_metadata(analysis)
         meta["cost_usd"] = engine.calculate_cost()
         meta["language"] = language # Save the language choice for admin stats
-        
+
         print(f"[SUCCESS] Reports saved: {report_path}", flush=True)
         dc.post("cipher", "DONE", f"Research Complete. Cost: ${meta['cost_usd']}. Company: {meta.get('company_name')}")
-        
+
         # Save to Supabase (With new Meta fields)
         # We save "completed" here, but we MUST make sure update_status doesn't overwrite it!
         save_history("completed", analysis, meta=meta)
-        
+
         # Email Logic
         if target_email:
-            # DO NOT call update_status() here with progress updates, because update_status 
+            # DO NOT call update_status() here with progress updates, because update_status
             # blindly sets status back to 'processing:95', wiping out 'completed'.
             print(f"[EMAIL] Sending Email to {target_email}...", flush=True)
-            
+
             # Debug: Verify Resend Key loaded
             resend_key = os.getenv("RESEND_API_KEY", "")
             masked_key = resend_key[:3] + "***" if resend_key else "NONE"
             print(f"[EMAIL] Auth Provider: Resend (Key: {masked_key})", flush=True)
 
             print(f"[EMAIL] Sending Premium Report to {target_email}...", flush=True)
-            
+
             inline_images = []
             if os.path.exists(screenshot_path):
                 inline_images.append((screenshot_path, "screenshot"))
-            
+
             attachments = []
             if os.path.exists(report_path):
                 attachments.append(report_path)
@@ -545,7 +557,7 @@ except Exception as e:
                 attachments=attachments,
                 inline_images=inline_images
             )
-            
+
             if success:
                 print(f"[EMAIL] Sent successfully.", flush=True)
             else:
@@ -553,13 +565,13 @@ except Exception as e:
                 # Force status to completed even if email fails, so frontend doesn't hang
                 # Fallback: Upload File to Discord
                 dc.post("cipher", "ERROR", f"Email failed (Network/Auth). Uploading report directly:", file_path=report_path)
-        
+
         # WE MUST NOTIFY THE LOCAL IN-MEMORY STORE THAT IT IS 100% DONE
         # The frontend New Research page polls `/status/{job_id}` which reads from `jobs` memory.
         # THIS WILL NOW RUN WHETHER EMAIL FAILS OR SUCCEEDS.
         if progress_callback:
             progress_callback(100, "Done! Check your history.")
-            
+
         print("[RESEARCH] Done! Check your history.", flush=True)
         return report_path
 
