@@ -61,7 +61,7 @@ def scrape_url(
             f"{EVOMI_BASE_URL}/realtime",
             json=payload,
             headers=headers,
-            timeout=30
+            timeout=60  # Increased from 30 to 60 seconds
         )
         
         if response.status_code == 200:
