@@ -99,7 +99,22 @@ class ScraperConfig:
             "wait_for": self.wait_for,
         }
         if self.proxy_url:
-            kwargs["proxy"] = self.proxy_url
+            # Playwright requires proxy as a dict if it has auth
+            # Parse http://user:pass@host:port
+            try:
+                from urllib.parse import urlparse
+                parsed = urlparse(self.proxy_url)
+                if parsed.username and parsed.password:
+                    kwargs["proxy"] = {
+                        "server": f"{parsed.scheme}://{parsed.hostname}:{parsed.port}",
+                        "username": parsed.username,
+                        "password": parsed.password
+                    }
+                else:
+                    kwargs["proxy"] = {"server": self.proxy_url}
+            except Exception:
+                kwargs["proxy"] = {"server": self.proxy_url}
+                
         if self.scroll_wait:
             kwargs["scroll_wait"] = self.scroll_wait
         if self.wait_for_selector:
