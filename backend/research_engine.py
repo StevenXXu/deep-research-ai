@@ -441,6 +441,41 @@ class ResearchEngine:
 
         self.log(f"Found {len(self.sources)} initial sources.")
 
+    def phase_1_5_rerank_sources(self):
+        """Rerank sources to improve quality and reduce noise"""
+        if len(self.sources) <= 10:
+            self.log(f"Skipping reranking: only {len(self.sources)} sources")
+            return
+        
+        try:
+            from reranking_layer import RerankingService
+            
+            self.log(f"Reranking {len(self.sources)} sources...")
+            reranker = RerankingService()
+            
+            # Build query from company name and domain
+            query = f"{self.company} {self.domain} startup company analysis"
+            
+            # Rerank sources
+            reranked = reranker.rerank(
+                query=query,
+                sources=self.sources,
+                top_k=15  # Keep top 15 after reranking
+            )
+            
+            # Log improvement
+            original_count = len(self.sources)
+            self.sources = reranked
+            self.log(f"Reranking: Reduced from {original_count} to {len(self.sources)} high-quality sources")
+            
+            # Log top sources for debugging
+            top_sources = [s.get('source', 'Unknown') for s in self.sources[:5]]
+            self.log(f"Top sources: {', '.join(top_sources)}")
+            
+        except Exception as e:
+            self.log(f"Reranking failed (non-critical): {e}")
+            # Continue with original sources if reranking fails
+
     def phase_2_gap_analysis(self):
         self.log("Phase 2: Extracting Ground Truth & Knowledge Gaps...")
 
@@ -1196,6 +1231,7 @@ class ResearchEngine:
 
     def run(self):
         self.phase_1_broad_scan()
+        self.phase_1_5_rerank_sources()  # NEW: Rerank sources for better quality
         self.phase_2_gap_analysis()
         self.phase_3_deep_dive()
         self.phase_audit_consistency()  # New Audit Step
