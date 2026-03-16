@@ -948,6 +948,52 @@ class ResearchEngine:
                 unique_sources.append(s)
                 seen_urls.add(s["url"])
 
+        # --- RERANKING INTEGRATION (OPE-4) ---
+        # Apply two-stage reranking to improve source relevance
+        if len(unique_sources) > 10:
+            self.log(f"Applying two-stage reranking to {len(unique_sources)} sources...")
+            try:
+                # Convert sources to SearchResult format for reranking
+                rerank_candidates = []
+                for i, s in enumerate(unique_sources):
+                    rerank_candidates.append({
+                        'doc_id': str(i),
+                        'title': s.get("title", ""),
+                        'content': s.get("content", ""),
+                        'score': 0.5  # Default score
+                    })
+                
+                # Simple reranking based on title/content relevance to company name
+                query = f"{self.company} investment research startup funding"
+                query_tokens = set(re.findall(r'\b[a-zA-Z]+\b', query.lower()))
+                
+                scored_sources = []
+                for candidate in rerank_candidates:
+                    title_tokens = set(re.findall(r'\b[a-zA-Z]+\b', candidate['title'].lower()))
+                    content_tokens = set(re.findall(r'\b[a-zA-Z]+\b', candidate['content'].lower()))
+                    
+                    # Calculate relevance score
+                    title_overlap = len(query_tokens & title_tokens) / max(len(query_tokens), 1)
+                    content_overlap = len(query_tokens & content_tokens) / max(len(query_tokens), 1)
+                    exact_match = 1.0 if self.company.lower() in candidate['title'].lower() else 0.0
+                    
+                    score = (title_overlap * 0.4 + content_overlap * 0.3 + exact_match * 0.3)
+                    scored_sources.append((score, int(candidate['doc_id'])))
+                
+                # Sort by score descending
+                scored_sources.sort(key=lambda x: x[0], reverse=True)
+                
+                # Reorder unique_sources
+                reranked = []
+                for score, idx in scored_sources:
+                    reranked.append(unique_sources[idx])
+                
+                unique_sources = reranked
+                self.log(f"Reranking complete. Top source: {unique_sources[0].get('title', 'N/A')[:50]}...")
+            except Exception as e:
+                self.log(f"Reranking warning: {e}. Continuing with original order.")
+        # --- END RERANKING INTEGRATION ---
+
         # Create Citation Map (Markdown Links)
         citations = []
         context_blob = ""
