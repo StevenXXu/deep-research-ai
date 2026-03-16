@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { UploadCloud, Search, CheckCircle, Loader2 } from "lucide-react";
+import { normalizeUrl } from "@/lib/normalizeUrl";
 
 export default function Dashboard() {
   const { user } = useUser();
@@ -58,7 +59,9 @@ export default function Dashboard() {
 
     const userEmail = user.primaryEmailAddress?.emailAddress || "";
 
-    const targetIdentifier = url.trim() || file?.name || "Stealth Project";
+    // Normalize URL before sending to backend
+    const normalizedUrl = url.trim() ? normalizeUrl(url.trim()) : "";
+    const targetIdentifier = normalizedUrl || file?.name || "Stealth Project";
 
     try {
       const formData = new FormData();

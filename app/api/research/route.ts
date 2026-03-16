@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { supabaseAdmin as supabase } from "@/lib/supabase"; // Use Admin Client
 import { NextResponse } from "next/server";
+import { normalizeUrl } from "@/lib/normalizeUrl";
 
 export async function POST(req: Request) {
   let { userId } = auth();
@@ -25,6 +26,20 @@ export async function POST(req: Request) {
             debug_key_present: hasSecretKey 
         }, { status: 401 });
     }
+  }
+
+  // URL Normalization & Validation
+  const rawUrl = body.url || "";
+  const normalizedUrl = normalizeUrl(rawUrl);
+  
+  // If it looks like a URL but normalization failed or it's invalid, return error
+  if (rawUrl && rawUrl !== "Stealth Project" && !normalizedUrl.startsWith("http")) {
+      console.warn(`[API] Invalid URL provided: ${rawUrl}`);
+      return NextResponse.json({
+          error: "Invalid URL",
+          details: "Please provide a valid URL starting with http:// or https://",
+          received: rawUrl
+      }, { status: 400 });
   }
 
   // 1. Check Credits
@@ -74,7 +89,7 @@ export async function POST(req: Request) {
     .from('reports')
     .insert({
         user_id: userId,
-        target_url: body.url,
+        target_url: normalizedUrl, // Store normalized URL
         status: 'processing'
     })
     .select('id'); // Removed single() to prevent error if it returns array of 1
@@ -92,6 +107,7 @@ export async function POST(req: Request) {
   try {
       const payload = {
           ...body,
+          url: normalizedUrl, // Send normalized URL to backend
           report_id: reportId
       };
       
