@@ -66,7 +66,8 @@ def scrape_url(
             f"{EVOMI_BASE_URL}/realtime",
             params=params,
             headers=headers,
-            timeout=85  # Slightly less than Evomi's 90s limit to avoid 408
+            timeout=35  # Slightly more than Evomi's 30s to receive 408 properly
+        )
         )
         
         print(f"[EVOMI] Response: status={response.status_code}", flush=True)
@@ -80,25 +81,31 @@ def scrape_url(
                 f"{EVOMI_BASE_URL}/realtime",
                 params=params,
                 headers=headers,
-                timeout=85
+                timeout=35
             )
             print(f"[EVOMI] Retry response: status={response.status_code}", flush=True)
         
         # Handle 408 Request Timeout - Evomi continues processing in background
-        # We need to handle this before the main status checks
+        # Note: Evomi realtime endpoint has 30s timeout regardless of mode
         is_async_task = False
         async_data = None
         
         if response.status_code == 408:
-            print(f"[EVOMI] Request timeout (408), but processing continues in background. Treating as async...", flush=True)
+            print(f"[EVOMI] Request timeout (408) after 30s - realtime endpoint limit. Checking if processing continues...", flush=True)
             # Try to parse as async response (task queued)
             try:
+                response_text = response.text
+                print(f"[EVOMI] 408 Response body: {response_text[:500]}", flush=True)
                 async_data = response.json()
+                print(f"[EVOMI] 408 Parsed data: {async_data}", flush=True)
                 if async_data.get("check_url"):
                     is_async_task = True
                     print(f"[EVOMI] Task queued after timeout: {async_data.get('task_id')}. Polling...", flush=True)
+                else:
+                    print(f"[EVOMI] 408 response has no check_url. Keys: {async_data.keys()}", flush=True)
             except Exception as e:
                 print(f"[EVOMI] Could not parse 408 response: {e}", flush=True)
+                print(f"[EVOMI] Raw response: {response.text[:500]}", flush=True)
         
         if response.status_code == 200:
             # Immediate success (simple sites)
