@@ -76,29 +76,35 @@ class FeatureExtractor:
         """Extract feature vector for a source"""
         features = []
         
+        # Handle None values gracefully
+        title = source.title or ""
+        content = source.content or ""
+        query = query or ""
+        url = source.url or ""
+        
         # 1. Content Quality Features
-        content_len = len(source.content)
+        content_len = len(content)
         features.append(min(content_len / 5000, 1.0))  # Normalized content length
         features.append(1.0 if content_len > 500 else 0.0)  # Has substantial content
         features.append(1.0 if content_len > 2000 else 0.0)  # Has detailed content
         
         # 2. Source Authority Features
-        domain = self._extract_domain(source.url)
+        domain = self._extract_domain(url)
         authority_score = self.HIGH_AUTHORITY_DOMAINS.get(domain, 0.3)
         features.append(authority_score)
         features.append(1.0 if authority_score > 0.7 else 0.0)  # High authority flag
         
         # 3. Query Relevance Features
         query_terms = set(query.lower().split())
-        title_match = len(set(source.title.lower().split()) & query_terms) / max(len(query_terms), 1)
-        content_match = self._count_query_matches(source.content.lower(), query_terms)
+        title_match = len(set(title.lower().split()) & query_terms) / max(len(query_terms), 1)
+        content_match = self._count_query_matches(content.lower(), query_terms)
         features.append(title_match)
         features.append(min(content_match / 10, 1.0))  # Normalized content matches
         
         # 4. Quality Signals
-        features.append(0.0 if self.low_quality_regex.search(source.title) else 1.0)
-        features.append(0.0 if self.low_quality_regex.search(source.content[:500]) else 1.0)
-        features.append(1.0 if source.title and len(source.title) > 10 else 0.0)
+        features.append(0.0 if self.low_quality_regex.search(title) else 1.0)
+        features.append(0.0 if self.low_quality_regex.search(content[:500]) else 1.0)
+        features.append(1.0 if title and len(title) > 10 else 0.0)
         
         # 5. Source Type Features
         source_scores = {
@@ -111,13 +117,14 @@ class FeatureExtractor:
         features.append(source_scores.get(source.source, 0.5))
         
         # 6. URL Features
-        features.append(1.0 if '/about' in source.url.lower() else 0.0)
-        features.append(1.0 if '/team' in source.url.lower() else 0.0)
-        features.append(1.0 if '/product' in source.url.lower() else 0.0)
-        features.append(1.0 if re.search(r'/20\d\d/', source.url) else 0.0)  # Has year (news)
+        url_lower = url.lower()
+        features.append(1.0 if '/about' in url_lower else 0.0)
+        features.append(1.0 if '/team' in url_lower else 0.0)
+        features.append(1.0 if '/product' in url_lower else 0.0)
+        features.append(1.0 if re.search(r'/20\d\d/', url) else 0.0)  # Has year (news)
         
         # 7. Content Freshness (if detectable)
-        freshness_score = self._estimate_freshness(source.content)
+        freshness_score = self._estimate_freshness(content)
         features.append(freshness_score)
         
         return np.array(features, dtype=np.float32)
