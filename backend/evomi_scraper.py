@@ -56,7 +56,7 @@ def scrape_url(
         # Build query parameters
         params = {
             "url": normalized_url,
-            "mode": "browser",  # Use browser mode for JS rendering
+            "mode": "auto",  # Let Evomi smart-select: http for simple, browser for JS-heavy
             "proxy_type": "residential",  # Must be 'residential' or 'datacenter'
         }
         if country:
@@ -66,7 +66,7 @@ def scrape_url(
             f"{EVOMI_BASE_URL}/realtime",
             params=params,
             headers=headers,
-            timeout=90  # Increased timeout for slow responses
+            timeout=85  # Slightly less than Evomi's 90s limit to avoid 408
         )
         
         print(f"[EVOMI] Response: status={response.status_code}", flush=True)
@@ -80,9 +80,25 @@ def scrape_url(
                 f"{EVOMI_BASE_URL}/realtime",
                 params=params,
                 headers=headers,
-                timeout=90
+                timeout=85
             )
             print(f"[EVOMI] Retry response: status={response.status_code}", flush=True)
+        
+        # Handle 408 Request Timeout - Evomi continues processing in background
+        # We need to handle this before the main status checks
+        is_async_task = False
+        async_data = None
+        
+        if response.status_code == 408:
+            print(f"[EVOMI] Request timeout (408), but processing continues in background. Treating as async...", flush=True)
+            # Try to parse as async response (task queued)
+            try:
+                async_data = response.json()
+                if async_data.get("check_url"):
+                    is_async_task = True
+                    print(f"[EVOMI] Task queued after timeout: {async_data.get('task_id')}. Polling...", flush=True)
+            except Exception as e:
+                print(f"[EVOMI] Could not parse 408 response: {e}", flush=True)
         
         if response.status_code == 200:
             # Immediate success (simple sites)
@@ -97,9 +113,9 @@ def scrape_url(
                 }
             # Fall through to polling if no content
         
-        if response.status_code == 202:
+        if response.status_code == 202 or is_async_task:
             # Async task - need to poll
-            data = response.json()
+            data = async_data if is_async_task else response.json()
             task_id = data.get("task_id")
             check_url = data.get("check_url")
             
