@@ -825,9 +825,7 @@ class ResearchEngine:
         official_team = getattr(self, "official_team", [])
         stealth_mode = len(official_team) == 0 and len(self.truth_keywords) == 0
         if stealth_mode:
-            self.log(
-                "WARNING: Target appears to be in STEALTH MODE. Lowering firewall threshold to Name Match only."
-            )
+            self.log("Target in stealth mode - using relaxed filtering")
             self.stealth_mode = True
         else:
             self.stealth_mode = False
@@ -1117,21 +1115,10 @@ class ResearchEngine:
         # --- AGENT 3: The Formatter (Build the final Markdown) ---
         self.log("Agent 3 (Formatter): Assembling the final report...")
         # Add questions into the facts payload for the formatter
-
-        # Inject Stealth Mode tag if applicable
-        stealth_tag = (
-            "[TARGET IS IN STEALTH MODE]\n"
-            if getattr(self, "stealth_mode", False)
-            else ""
-        )
-        formatting_payload = f"{stealth_tag}FACTS:\n{facts_json}\n\nINTERROGATION QUESTIONS:\n{json.dumps(questions)}"
+        formatting_payload = f"FACTS:\n{facts_json}\n\nINTERROGATION QUESTIONS:\n{json.dumps(questions)}"
 
         prompt_agent3 = f"""
         Task: Write a comprehensive, highly detailed Investment Memo for {self.company}. Ensure the final report is robust, professional, and exceeds 1500 words by expanding on technical implications, market dynamics, and deep strategic analysis of the provided facts.
-
-        CRITICAL STEALTH MODE INSTRUCTION:
-        If you see the tag [TARGET IS IN STEALTH MODE] in the Input, you MUST add this exact warning paragraph right below the main "# {self.company} Pre-Screen Memo" title:
-        **WARNING: Target appears to be in STEALTH MODE. Due to a lack of official footprint, external data has been aggregated broadly based on exact name matching. Proceed with caution as data confidence may be low.**
 
         Input:
         {formatting_payload}
