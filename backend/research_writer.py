@@ -263,36 +263,26 @@ except Exception as e:
         except Exception as se:
             print(f"[WARN] Screenshot subprocess failed: {se}", flush=True)
 
-        # Try Evomi Scraper API first (best for Cloudflare/WAF bypass)
+        # DISABLED: Evomi removed due to 30s timeout limitation
+        # Direct to Scrapling
         try:
-            import evomi_scraper
-            print("[RESEARCH] Browsing site using Evomi Scraper API...", flush=True)
-            result = evomi_scraper.scrape_url(url, timeout=180)
-            if result.get("success") and result.get("content"):
-                raw_text = result["content"][:10000]  # Limit to first 10k chars
-                print(f"[RESEARCH] Evomi extracted {len(raw_text)} chars.", flush=True)
-            else:
-                raise Exception(f"Evomi failed: {result.get('error', 'Unknown')}")
+            from scrapling.fetchers import StealthyFetcher
+            print("[RESEARCH] Browsing site using Scrapling StealthyFetcher...", flush=True)
+            # Using stealthy fetcher to bypass Cloudflare and get content
+            page = StealthyFetcher.fetch(url, headless=True, network_idle=True)
+            raw_text = page.css('body::text').getall()
+            raw_text = " ".join([t.strip() for t in raw_text if t.strip()])
+            print(f"[RESEARCH] Extracted landing page text.", flush=True)
         except Exception as e:
-            print(f"[WARN] Evomi failed: {e}. Falling back to Scrapling...", flush=True)
+            print(f"[WARN] Scrapling failed: {e}. Falling back to basic requests.", flush=True)
             try:
-                from scrapling.fetchers import StealthyFetcher
-                print("[RESEARCH] Browsing site using Scrapling StealthyFetcher...", flush=True)
-                # Using stealthy fetcher to bypass Cloudflare and get content
-                page = StealthyFetcher.fetch(url, headless=True, network_idle=True)
-                raw_text = page.css('body::text').getall()
-                raw_text = " ".join([t.strip() for t in raw_text if t.strip()])
-                print(f"[RESEARCH] Extracted landing page text.", flush=True)
+                import requests
+                from bs4 import BeautifulSoup
+                res = requests.get(url, timeout=15)
+                soup = BeautifulSoup(res.text, "html.parser")
+                raw_text = soup.get_text(separator=" ", strip=True)
             except Exception as e2:
-                print(f"[WARN] Scrapling failed: {e2}. Falling back to basic requests.", flush=True)
-                try:
-                    import requests
-                    from bs4 import BeautifulSoup
-                    res = requests.get(url, timeout=15)
-                    soup = BeautifulSoup(res.text, "html.parser")
-                    raw_text = soup.get_text(separator=" ", strip=True)
-                except Exception as e3:
-                    print(f"[WARN] Fallback failed: {e3}", flush=True)
+                print(f"[WARN] Fallback failed: {e2}", flush=True)
         
         update_status(25, "Site Scraped. Engaging Research Engine...")
         # dc.post("cipher", "PROGRESS", f"Scraped site. Screenshot saved.")  # Disabled
