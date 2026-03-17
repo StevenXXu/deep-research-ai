@@ -14,7 +14,7 @@ sys.path.append(root_dir)
 
 from llm_gateway import gateway
 from email_sender import send_email # Local module
-import discord_connector as dc
+# import discord_connector as dc  # Disabled: using Railway logs only
 from exa_py import Exa
 import markdown
 from research_engine import ResearchEngine # NEW
@@ -508,7 +508,7 @@ except Exception as e:
         meta["language"] = language # Save the language choice for admin stats
 
         print(f"[SUCCESS] Reports saved: {report_path}", flush=True)
-        dc.post("cipher", "DONE", f"Research Complete. Cost: ${meta['cost_usd']}. Company: {meta.get('company_name')}")
+        # dc.post("cipher", "DONE", f"Research Complete. Cost: ${meta['cost_usd']}. Company: {meta.get('company_name')}")  # Disabled: using Railway logs only
 
         # Save to Supabase (With new Meta fields)
         # We save "completed" here, but we MUST make sure update_status doesn't overwrite it!
@@ -549,10 +549,9 @@ except Exception as e:
             if success:
                 print(f"[EMAIL] Sent successfully.", flush=True)
             else:
-                print("[EMAIL] Email failed. Uploading report to Discord backup.", flush=True)
+                print("[EMAIL] Email failed. Report saved locally.", flush=True)
                 # Force status to completed even if email fails, so frontend doesn't hang
-                # Fallback: Upload File to Discord
-                dc.post("cipher", "ERROR", f"Email failed (Network/Auth). Uploading report directly:", file_path=report_path)
+                # Discord fallback disabled - using Railway logs only
 
         # WE MUST NOTIFY THE LOCAL IN-MEMORY STORE THAT IT IS 100% DONE
         # The frontend New Research page polls `/status/{job_id}` which reads from `jobs` memory.
@@ -566,7 +565,7 @@ except Exception as e:
     except Exception as e:
         update_status(0, f"Error: {str(e)}")
         print(f"[ERROR] Research failed: {e}")
-        dc.post("cipher", "ERROR", f"Research failed: {e}")
+        # dc.post("cipher", "ERROR", f"Research failed: {e}")  # Disabled: using Railway logs only
         save_history("failed")
 
 if __name__ == "__main__":

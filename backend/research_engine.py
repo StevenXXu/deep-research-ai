@@ -16,7 +16,7 @@ root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
 sys.path.append(root_dir)
 
 from llm_gateway import gateway
-import discord_connector as dc
+# import discord_connector as dc  # Disabled: using Railway logs only
 
 load_dotenv(os.path.join(root_dir, ".env"))
 
@@ -72,7 +72,7 @@ class ResearchEngine:
 
     def log(self, msg):
         print(f"[RESEARCH] {msg}")
-        dc.post("cipher", "PROGRESS", msg)
+        # Discord logging disabled - using Railway logs only
 
     def calculate_cost(self):
         # Precise Pricing Model (USD)
