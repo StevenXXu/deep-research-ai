@@ -1138,6 +1138,24 @@ class ResearchEngine:
         ## Executive Summary
         (Include a Markdown table for SWOT Analysis: | Strengths | Weaknesses | Opportunities | Threats |)
 
+        ## The Problem
+        ### Current/Traditional Solutions
+        (Analyze the industry status quo. What are the existing solutions or traditional approaches to the problem this company addresses? Describe 2-3 current methods, tools, or workflows that customers currently use.)
+
+        ### Pain Points
+        (Identify and analyze 3-5 specific pain points with the current solutions. For each pain point, explain:
+        - What is the specific problem?
+        - What is the quantifiable impact? (time lost, cost incurred, efficiency drop)
+        - Why do existing solutions fail to address this?
+        Use bullet points with clear headers.)
+
+        ## Company Overview & Solution
+        ### What They Do
+        (Clear description of the company's product/service)
+
+        ### How They Solve The Pain Points
+        (Create a mapping table: | Pain Point | Their Solution | Impact |)
+
         ## Product Deep Dive
         ## Market Landscape
         (Markdown table: | Competitor | Features | Pricing |)
