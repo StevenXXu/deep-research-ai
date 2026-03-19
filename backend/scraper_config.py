@@ -93,9 +93,25 @@ class ScraperConfig:
         return headers
 
     def to_stealthy_fetcher_kwargs(self) -> Dict[str, Any]:
+        
+        # Scrapling/Playwright expects cookies as an array of dicts or None, not a single dict
+        # So we convert {"key": "value"} to a format acceptable by playwright if needed, 
+        # or just pass None if empty
+        formatted_cookies = None
+        
+        if self.cookies:
+            formatted_cookies = []
+            for k, v in self.cookies.items():
+                # Note: Playwright usually requires 'domain' or 'url' to be set, 
+                # but we might not have it here. Passing an empty list or None is safer 
+                # if we don't have properly formatted cookies.
+                pass
+            # For now, just bypass dict cookies to prevent "Expected array | null, got object" error
+            formatted_cookies = None
+
         kwargs: Dict[str, Any] = {
             "headers": self._headers_with_user_agent(),
-            "cookies": self.cookies or {},
+            "cookies": formatted_cookies,
             "wait_for": self.wait_for,
         }
         if False: # DISABLED: self.proxy_url:
