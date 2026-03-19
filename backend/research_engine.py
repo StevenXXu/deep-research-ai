@@ -609,9 +609,14 @@ class ResearchEngine:
                     f"{self.company} competitors",
                 ],
             )
-            self.official_team = data.get(
-                "founding_team", []
-            )  # NEW: Store official team to bypass hallucinated names later
+            
+            # Only update official_team if Coresignal didn't already find them
+            llm_team = data.get("founding_team", [])
+            if not getattr(self, "official_team", None):
+                self.official_team = llm_team
+            elif llm_team:
+                # Merge logic could go here, but Coresignal data is usually higher quality and contains LinkedIn URLs
+                pass
 
             self.log(f"Ground Truth Team: {self.official_team}")
             self.log(f"Ground Truth Keywords Locked: {self.truth_keywords}")
@@ -855,18 +860,27 @@ class ResearchEngine:
 
         # 2. Targeted Search per Founder (Enhanced & Anchored)
         for f in founders[:3]:  # Limit to top 3 to save time/cost
-            name = f["name"]
+            name = f.get("name", "Unknown")
 
             # Direct LinkedIn URL Sniffing using Dorking
-            q_li = f'"{name}" "{self.company}" site:linkedin.com/in'
-            li_res = self.search_tavily(q_li, 1)
-            if not li_res:
-                li_res = self.search_brave(q_li, 1)
-            for r in li_res:
-                r["content"] = (
-                    f"[FOUNDER LINKEDIN: {name}] {r.get('url')} - " + r["content"]
-                )
-            self.sources.extend(li_res)
+            linkedin_url = f.get("linkedin_url", "")
+            if not linkedin_url:
+                q_li = f'"{name}" "{self.company}" site:linkedin.com/in'
+                li_res = self.search_tavily(q_li, 1)
+                if not li_res:
+                    li_res = self.search_brave(q_li, 1)
+                for r in li_res:
+                    r["content"] = (
+                        f"[FOUNDER LINKEDIN: {name}] {r.get('url')} - " + r["content"]
+                    )
+                self.sources.extend(li_res)
+            else:
+                self.sources.append({
+                    "title": f"LinkedIn Profile: {name}",
+                    "url": linkedin_url,
+                    "content": f"[FOUNDER LINKEDIN: {name}] {linkedin_url} - {f.get('summary', '')}",
+                    "source": "Coresignal Data"
+                })
 
             # Background Search
             q1 = f'"{name}" "{self.company}" previous startups exits failures history university research publications background'
