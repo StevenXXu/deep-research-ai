@@ -1167,36 +1167,34 @@ class ResearchEngine:
         formatting_payload = f"FACTS:\n{facts_json}\n\nINTERROGATION QUESTIONS:\n{json.dumps(questions)}"
 
         prompt_agent3 = f"""
-        Task: Write a comprehensive, highly detailed Investment Memo for {self.company}. Ensure the final report is robust, professional, and exceeds 1500 words by expanding on technical implications, market dynamics, and deep strategic analysis of the provided facts.
+        Task: Write a comprehensive, highly analytical Investment Memo for {self.company}. Ensure the final report provides deep strategic value.
 
         Input:
         {formatting_payload}
 
-        Constraints:
-        - Expand significantly on the provided facts using your analytical capabilities as a senior VC. Do not just repeat the JSON; interpret it deeply to meet the word count requirement (>1500 words).
-        - However, DO NOT invent raw facts (like names, numbers, or non-existent competitor companies).
-        - If the Input lacks data for a section, acknowledge it but provide strategic commentary on why that missing data is critical.
-        - Do NOT write a References section at the end.
-        - Do NOT number the headers.
-        - For the "Founding Team & Track Record" section, you MUST include any LinkedIn URLs found in the Input facts.
+        CRITICAL VC ANALYSIS CONSTRAINTS (ANTI-FLUFF):
+        1. NO HALLUCINATIONS: Do NOT invent raw facts, names, numbers, or fictional competitors. 
+        2. HONEST SCARCITY: If specific factual data (e.g., funding, traction, pricing) is missing from the Input, you MUST explicitly state "Data Undisclosed" or "Not publicly available". Do NOT try to hide the lack of data with generic industry boilerplate.
+        3. DEDUCTIVE DEPTH (How to expand without fluff): While you cannot invent facts, you MUST provide deep strategic commentary on the implications of the information you *do* have. For example:
+           - If they are a stealth startup, analyze what challenges a stealth startup in this specific niche will inevitably face.
+           - If their tech stack is known but revenue isn't, analyze the commercial viability and typical go-to-market motion for that tech stack.
+        4. Do NOT write a References section at the end.
+        5. Do NOT number the headers.
+        6. For the "Founding Team & Track Record" section, you MUST include any LinkedIn URLs found in the Input facts. If the team is hidden, state "Founding Team Undisclosed".
 
         Output Format:
         Must include EXACTLY these sections with these headers in this EXACT order:
         # {self.company} Pre-Screen Memo
 
         ## Executive Summary
-        (Include a Markdown table for SWOT Analysis: | Strengths | Weaknesses | Opportunities | Threats |)
+        (Provide a sharp, 2-3 paragraph summary. Include a Markdown table for SWOT Analysis: | Strengths | Weaknesses | Opportunities | Threats |)
 
         ## The Problem
         ### Current/Traditional Solutions
-        (Analyze the industry status quo. What are the existing solutions or traditional approaches to the problem this company addresses? Describe 2-3 current methods, tools, or workflows that customers currently use.)
+        (Analyze the macro industry status quo. What existing solutions or traditional approaches does {self.company} aim to replace?)
 
         ### Pain Points
-        (Identify and analyze 3-5 specific pain points with the current solutions. For each pain point, explain:
-        - What is the specific problem?
-        - What is the quantifiable impact? (time lost, cost incurred, efficiency drop)
-        - Why do existing solutions fail to address this?
-        Use bullet points with clear headers.)
+        (Analyze 2-4 specific pain points in this market. If {self.company} has not published their exact metrics, analyze the *typical* quantifiable impacts in this sector. Explain why existing solutions fail.)
 
         ## Company Overview & Solution
         ### What They Do
@@ -1218,8 +1216,6 @@ class ResearchEngine:
         ## Due Diligence Interrogation
         (List the 5 questions provided in the Input. This must be the very last section before the references.)
         """
-
-        report = gateway.generate(prompt_agent3, "Output ONLY the Markdown report.")
 
         report = gateway.generate(prompt_agent3, "Output ONLY the Markdown report.")
 
