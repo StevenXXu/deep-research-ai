@@ -49,25 +49,39 @@ def search_company_by_domain(domain: str) -> dict:
         
         if response.status_code == 200:
             data = response.json()
+            print(f"[CORESIGNAL] Debug Response Type: {type(data)}")
+            
+            result = None
             # If we got hits, return the first one
             if isinstance(data, list) and len(data) > 0:
                 # Some coresignal endpoints return list directly for es_dsl depending on version
-                return data[0]
+                result = data[0]
             elif isinstance(data, dict):
                 # Standard elasticsearch format
-                hits = data.get("hits", {}).get("hits", [])
-                if hits:
-                    return hits[0].get("_source", hits[0])
-                # Direct items format
-                items = data.get("items", [])
-                if items:
-                    return items[0]
-                # Sometimes it just returns a list directly under data
-                if data and "name" in data:
-                    return data
+                hits = data.get("hits", {})
+                if isinstance(hits, dict):
+                    inner_hits = hits.get("hits", [])
+                    if isinstance(inner_hits, list) and inner_hits:
+                        result = inner_hits[0].get("_source", inner_hits[0])
+                elif isinstance(hits, list) and hits:
+                     result = hits[0]
+                
+                if not result:
+                    # Direct items format
+                    items = data.get("items", [])
+                    if isinstance(items, list) and items:
+                        result = items[0]
+                
+                if not result:
+                    # Sometimes it just returns a list directly under data
+                    if "name" in data:
+                        result = data
             
-            print(f"[CORESIGNAL] No matching company found for {clean_domain}.")
-            return {}
+            if isinstance(result, dict):
+                return result
+            else:
+                print(f"[CORESIGNAL] Invalid data format or no match found: {str(data)[:200]}")
+                return {}
         else:
             print(f"[CORESIGNAL] API Error: {response.status_code} - {response.text}")
             return {}
@@ -82,7 +96,7 @@ def extract_company_facts(domain: str) -> dict:
     """
     raw_data = search_company_by_domain(domain)
     
-    if not raw_data:
+    if not isinstance(raw_data, dict) or not raw_data:
         return {}
 
     # Extract meaningful fields
