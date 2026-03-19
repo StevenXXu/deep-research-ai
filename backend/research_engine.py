@@ -1149,6 +1149,7 @@ class ResearchEngine:
         1. YOU MUST IGNORE any sources or paragraphs that are clearly about a different company with a similar name. 
         2. For example, if {self.company} is "Wavemotion AI" (domain: wavemotionai.com), and a source talks about "WaveForms AI" raising $40M, YOU MUST IGNORE IT. Do not attribute data from similarly named companies to {self.company}.
         3. If you only find data about wrong companies, leave the JSON fields empty. DO NOT HALLUCINATE.
+        4. For the 'founding_team' array, MUST extract the 'linkedin_url' if provided in the text (look for "[FOUNDER LINKEDIN]" or "LinkedIn: ").
         
         Constraints:
         - Output ONLY valid JSON. No markdown wrappers.
@@ -1164,7 +1165,7 @@ class ResearchEngine:
             "social_sentiment": "Summary of real user sentiment",
             "business_model": "Revenue and pricing strategy",
             "traction_and_risks": "Funding, traffic, and legal risks",
-            "founding_team": [{{"name": "", "background": ""}}],
+            "founding_team": [{{"name": "", "background": "", "linkedin_url": ""}}],
             "data_consistency": "Conflicts between PR and reality based on [TRAFFIC DATA] or [HIRING SIGNAL]",
             "exit_strategy": "Potential acquirers or IPO landscape"
         }}
