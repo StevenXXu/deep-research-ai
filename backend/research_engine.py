@@ -9,6 +9,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from exa_py import Exa
 import apify_bridge as apify
+import coresignal_bridge as cs_bridge
 from scraper_config import ScraperConfig
 
 # --- SETUP ---
@@ -286,6 +287,29 @@ class ResearchEngine:
     def phase_1_broad_scan(self):
         self.log(f"Phase 1: Broad Scan for '{self.company}'...")
 
+        # --- PRE-FLIGHT: Coresignal Domain Anchoring ---
+        self.log("Pre-flight: Querying Coresignal for exact entity match...")
+        cs_facts = cs_bridge.extract_company_facts(self.domain)
+        
+        if cs_facts and "true_name" in cs_facts:
+            self.company = cs_facts["true_name"]
+            self.log(f"Coresignal Confirmed Entity: {self.company}")
+            
+            # Format the data into a high-density "Ground Truth" block
+            cs_source_content = f"Official Company Record (via Coresignal Data Intelligence):\n"
+            for k, v in cs_facts.items():
+                cs_source_content += f"- {str(k).replace('_', ' ').capitalize()}: {v}\n"
+                
+            self.sources.append({
+                "title": f"{self.company} (Corporate Record)",
+                "url": cs_facts.get("linkedin_url", f"https://{self.domain}"),
+                "content": cs_source_content,
+                "source": "Coresignal Data"
+            })
+            self.log("Injected Coresignal data as Ground Truth Source.")
+        else:
+            self.log("Coresignal found no exact match. Proceeding with standard web scraping.")
+
         # A. Official Site Extract (Scrapling -> Apify Fallback)
         # DISABLED: Evomi removed due to 30s timeout limitation
         import re
@@ -533,7 +557,7 @@ class ResearchEngine:
             s
             for s in self.sources
             if s["source"]
-            in ["Scrapling (Home Page)", "Scrapling (Subpage)", "Apify", "Upload"]
+            in ["Coresignal Data", "Scrapling (Home Page)", "Scrapling (Subpage)", "Apify", "Upload"]
         ]
         # Increased context limit to 3000 chars per page to ensure team names and deep tech aren't truncated
         official_context = "\n".join(
@@ -882,6 +906,7 @@ class ResearchEngine:
         for s in self.sources:
             # 1. Exempt Official/Safe Sources
             if s.get("source") in [
+                "Coresignal Data",
                 "Scrapling (Home Page)",
                 "Scrapling (Subpage)",
                 "Upload",
