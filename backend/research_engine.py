@@ -300,6 +300,14 @@ class ResearchEngine:
             for k, v in cs_facts.items():
                 cs_source_content += f"- {str(k).replace('_', ' ').capitalize()}: {v}\n"
                 
+            # Attempt to fetch executives
+            executives = cs_bridge.extract_key_executives(self.company, self.domain)
+            if executives:
+                self.official_team = executives  # Save it so we can bypass team search or stealth limits
+                cs_source_content += "\nKey Executives Identified:\n"
+                for exe in executives:
+                    cs_source_content += f"- {exe['name']} | Title: {exe['title']} | LinkedIn: {exe['linkedin_url']}\n  Bio: {exe['summary']}\n"
+            
             self.sources.append({
                 "title": f"{self.company} (Corporate Record)",
                 "url": cs_facts.get("linkedin_url", f"https://{self.domain}"),
