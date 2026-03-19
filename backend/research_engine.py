@@ -1094,14 +1094,19 @@ class ResearchEngine:
         # --- AGENT 1: The Purifier (Extract Facts into JSON) ---
         self.log("Agent 1 (Purifier): Extracting core facts...")
         prompt_agent1 = f"""
-        Task: Extract factual data about {self.company} into a structured JSON format.
+        Task: Extract factual data strictly about {self.company} (Domain: {self.domain}) into a structured JSON format.
         Input:
         {context_blob}
 
+        CRITICAL ENTITY FILTERING (ANTI-HALLUCINATION):
+        1. YOU MUST IGNORE any sources or paragraphs that are clearly about a different company with a similar name. 
+        2. For example, if {self.company} is "Wavemotion AI" (domain: wavemotionai.com), and a source talks about "WaveForms AI" raising $40M, YOU MUST IGNORE IT. Do not attribute data from similarly named companies to {self.company}.
+        3. If you only find data about wrong companies, leave the JSON fields empty. DO NOT HALLUCINATE.
+        
         Constraints:
         - Output ONLY valid JSON. No markdown wrappers.
         - Ignore data about fictional characters (e.g., novels, games).
-        - If a section lacks data, return an empty string or empty list. DO NOT hallucinate.
+        - If a section lacks data for the specific target company, return an empty string or empty list.
 
         Output Format:
         {{
