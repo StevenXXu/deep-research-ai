@@ -420,8 +420,57 @@ class ResearchEngine:
                 }
             )
 
+        # --- ENTITY ANCHORING (Identify True Company Name) ---
+        # Instead of trusting the domain name, we ask the LLM to read the official site data.
+        official_texts = [
+            s["content"][:2000]
+            for s in self.sources
+            if s["source"] in ["Scrapling (Home Page)", "Scrapling (Subpage)", "Apify", "Upload"]
+        ]
+        
+        if official_texts:
+            self.log("Entity Anchoring: Extracting true company identity from official sources...")
+            combined_text = "\n".join(official_texts)[:6000]
+            entity_prompt = f"""
+            Analyze the following text extracted from the official website/document of the domain '{self.domain}'.
+            
+            Task:
+            1. Identify the TRUE, exact name of the company or product. (Sometimes the domain 'wavemotionai.com' belongs to 'WaveForms AI' or 'Vibemotion' belongs to a specific product).
+            2. Write a one-sentence description of what they actually do (One-liner).
+            
+            Output MUST be valid JSON ONLY:
+            {{
+                "true_company_name": "Exact Name",
+                "one_liner": "They build X for Y using Z."
+            }}
+            
+            Text:
+            {combined_text}
+            """
+            try:
+                import json
+                entity_resp = gateway.generate(entity_prompt, "Return valid JSON only.")
+                entity_resp = entity_resp.replace("```json", "").replace("```", "").strip()
+                entity_data = json.loads(entity_resp)
+                
+                true_name = entity_data.get("true_company_name", self.company)
+                one_liner = entity_data.get("one_liner", "")
+                
+                if true_name and len(true_name) > 1 and true_name.lower() != "unknown":
+                    self.log(f"Entity Anchored: Domain '{self.domain}' resolved to True Name: '{true_name}'")
+                    self.company = true_name  # Update to the real name
+                    self.company_one_liner = one_liner
+                else:
+                    self.company_one_liner = ""
+            except Exception as e:
+                self.log(f"Entity Anchoring failed: {e}")
+                self.company_one_liner = ""
+        else:
+            self.company_one_liner = ""
+
         # 1. Company General
-        q1 = f"{self.company} {self.domain} startup funding news"
+        search_target = f"{self.company} ({self.company_one_liner})" if getattr(self, "company_one_liner", "") else f"{self.company} {self.domain}"
+        q1 = f"{search_target} startup funding news"
         # Try Exa first
         res = self.search_exa(q1, 4)
         if not res:
@@ -429,7 +478,7 @@ class ResearchEngine:
         self.sources.extend(res)
 
         # 2. Competitors
-        q2 = f"{self.company} competitors alternatives market share"
+        q2 = f"{search_target} competitors alternatives market share"
         self.sources.extend(self.search_exa(q2, 4))
 
         # 3. Reviews / Issues
