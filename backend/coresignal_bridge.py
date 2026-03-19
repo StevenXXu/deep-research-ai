@@ -40,8 +40,7 @@ def search_company_by_domain(domain: str) -> dict:
                 ],
                 "minimum_should_match": 1
             }
-        },
-        "size": 1  # We only need the top match
+        }
     }
 
     try:
