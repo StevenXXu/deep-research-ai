@@ -869,7 +869,7 @@ class ResearchEngine:
                 "No founders found in Official Ground Truth. Attempting precise external extraction..."
             )
             # We ONLY search if we didn't find them on the official site.
-            q_init = f'"{self.company}" CEO OR Founder OR CTO'
+            q_init = f'{self.company} CEO OR Founder OR CTO'
             init_res = self.search_tavily(q_init, 2)
             self.sources.extend(init_res)
 
@@ -1160,7 +1160,6 @@ class ResearchEngine:
         Output Format:
         {{
             "executive_summary": "Company overview and mission",
-            "swot": {{"strengths": [], "weaknesses": [], "opportunities": [], "threats": []}},
             "product_features": [],
             "competitors": [{{"name": "", "features": "", "pricing": ""}}],
             "social_sentiment": "Summary of real user sentiment",
@@ -1245,7 +1244,7 @@ class ResearchEngine:
         # {self.company} Pre-Screen Memo
 
         ## Executive Summary
-        (Provide a sharp, 2-3 paragraph summary. Include a Markdown table for SWOT Analysis: | Strengths | Weaknesses | Opportunities | Threats |)
+        (Provide a sharp, 2-3 paragraph summary. Deduce a SWOT Analysis based on your expert evaluation of the facts, ensuring you highlight strategic implications even if not explicitly stated. Include a Markdown table: | Strengths | Weaknesses | Opportunities | Threats |)
 
         ## The Problem
         ### Current/Traditional Solutions
