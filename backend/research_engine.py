@@ -865,7 +865,7 @@ class ResearchEngine:
             # Direct LinkedIn URL Sniffing using Dorking
             linkedin_url = f.get("linkedin_url", "")
             if not linkedin_url:
-                q_li = f'"{name}" "{self.company}" site:linkedin.com/in'
+                q_li = f'"{name}" {self.company} site:linkedin.com/in'
                 li_res = self.search_tavily(q_li, 1)
                 if not li_res:
                     li_res = self.search_brave(q_li, 1)
@@ -883,7 +883,7 @@ class ResearchEngine:
                 })
 
             # Background Search
-            q1 = f'"{name}" "{self.company}" previous startups exits failures history university research publications background'
+            q1 = f'"{name}" {self.company} previous startups exits failures history university research publications background'
             res1 = self.search_tavily(q1, 2)
             for r in res1:
                 r["content"] = f"[FOUNDER TRACK RECORD: {name}] " + r["content"]
