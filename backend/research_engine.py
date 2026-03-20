@@ -452,28 +452,32 @@ class ResearchEngine:
                 }
             )
 
-        # --- ENTITY ANCHORING (Identify True Company Name) ---
-        # Instead of trusting the domain name, we ask the LLM to read the official site data.
+        # --- ENTITY ANCHORING (Identify True Company Name and Niche) ---
         official_texts = [
             s["content"][:2000]
             for s in self.sources
-            if s["source"] in ["Scrapling (Home Page)", "Scrapling (Subpage)", "Apify", "Upload"]
+            if s["source"] in ["Scrapling (Home Page)", "Scrapling (Subpage)", "Apify", "Upload", "Coresignal Data"]
         ]
         
+        self.exact_niche_phrase = ""
+        self.company_one_liner = ""
+        
         if official_texts:
-            self.log("Entity Anchoring: Extracting true company identity from official sources...")
+            self.log("Entity Anchoring: Extracting true company identity and niche from official sources...")
             combined_text = "\n".join(official_texts)[:6000]
             entity_prompt = f"""
             Analyze the following text extracted from the official website/document of the domain '{self.domain}'.
             
             Task:
-            1. Identify the TRUE, exact name of the company or product. (Sometimes the domain 'wavemotionai.com' belongs to 'WaveForms AI' or 'Vibemotion' belongs to a specific product).
-            2. Write a one-sentence description of what they actually do (One-liner).
+            1. Identify the TRUE, exact name of the company or product.
+            2. Write a precise one-sentence description of what they actually do (One-liner).
+            3. Extract ONE highly specific, multi-word phrase (3-5 words) that uniquely defines their core business (e.g., "architectural code compliance"). DO NOT use single words or generic phrases.
             
             Output MUST be valid JSON ONLY:
             {{
                 "true_company_name": "Exact Name",
-                "one_liner": "They build X for Y using Z."
+                "one_liner": "They build X for Y using Z.",
+                "exact_niche_phrase": "specific multi word phrase"
             }}
             
             Text:
@@ -486,23 +490,20 @@ class ResearchEngine:
                 entity_data = json.loads(entity_resp)
                 
                 true_name = entity_data.get("true_company_name", self.company)
-                one_liner = entity_data.get("one_liner", "")
-                
                 if true_name and len(true_name) > 1 and true_name.lower() != "unknown":
-                    self.log(f"Entity Anchored: Domain '{self.domain}' resolved to True Name: '{true_name}'")
-                    self.company = true_name  # Update to the real name
-                    self.company_one_liner = one_liner
-                else:
-                    self.company_one_liner = ""
+                    self.company = true_name
+                    
+                self.company_one_liner = entity_data.get("one_liner", "")
+                self.exact_niche_phrase = entity_data.get("exact_niche_phrase", "").lower()
+                self.log(f"Entity Anchored: '{self.company}' | Strict Niche: '{self.exact_niche_phrase}'")
             except Exception as e:
                 self.log(f"Entity Anchoring failed: {e}")
-                self.company_one_liner = ""
         else:
             self.company_one_liner = ""
 
         # 1. Company General
-        search_target = f"{self.company} ({self.company_one_liner})" if getattr(self, "company_one_liner", "") else f"{self.company} {self.domain}"
-        q1 = f"{search_target} startup funding news"
+        keyword_str = self.exact_niche_phrase if hasattr(self, 'exact_niche_phrase') and self.exact_niche_phrase else self.domain
+        q1 = f"{self.company} {keyword_str} startup funding news"
         # Try Exa first
         res = self.search_exa(q1, 4)
         if not res:
@@ -510,17 +511,57 @@ class ResearchEngine:
         self.sources.extend(res)
 
         # 2. Competitors
-        q2 = f"{search_target} competitors alternatives market share"
+        q2 = f"{self.company} {keyword_str} competitors alternatives market share"
         self.sources.extend(self.search_exa(q2, 4))
 
         # 3. Reviews / Issues
-        q3 = f"{self.company} reviews complaints pricing scam"
+        q3 = f"{self.company} {keyword_str} reviews complaints pricing scam"
         res = self.search_tavily(q3, 3)
         if not res:
             res = self.search_ddg(q3, 3)
         self.sources.extend(res)
 
         self.log(f"Found {len(self.sources)} initial sources.")
+        self._strict_source_filter()
+
+    def _strict_source_filter(self):
+        """Filter out search results that are clearly about a different company"""
+        if not getattr(self, 'exact_niche_phrase', ''):
+            return
+
+        self.log("Applying Strict Source Filter (Anti-Hallucination)...")
+        
+        filtered_sources = []
+        domain_core = self.domain.replace("www.", "").split(".")[0].lower()
+        company_words = [w.lower() for w in self.company.split() if len(w) > 2]
+        
+        for s in self.sources:
+            # Always keep official sources
+            if s.get("source") in ["Scrapling (Home Page)", "Scrapling (Subpage)", "Apify", "Upload", "Coresignal Data"]:
+                filtered_sources.append(s)
+                continue
+                
+            content = (s.get("title", "") + " " + s.get("content", "")).lower()
+            url = s.get("url", "").lower()
+            
+            # Rule 1: If URL contains the exact domain, keep it
+            if domain_core and domain_core in url:
+                filtered_sources.append(s)
+                continue
+                
+            # Rule 2: Must contain at least one word of the company name
+            name_match = any(w in content for w in company_words) if company_words else True
+            
+            # Rule 3: Must contain the exact niche phrase
+            niche_match = self.exact_niche_phrase in content
+            
+            if name_match and niche_match:
+                filtered_sources.append(s)
+            else:
+                pass
+                
+        self.log(f"Strict Filter: Kept {len(filtered_sources)} out of {len(self.sources)} sources.")
+        self.sources = filtered_sources
 
     def phase_1_5_rerank_sources(self):
         """Rerank sources to improve quality and reduce noise"""
@@ -1077,52 +1118,6 @@ class ResearchEngine:
                 unique_sources.append(s)
                 seen_urls.add(s["url"])
 
-        # --- RERANKING INTEGRATION (OPE-4) ---
-        # Apply two-stage reranking to improve source relevance
-        if len(unique_sources) > 10:
-            self.log(f"Applying two-stage reranking to {len(unique_sources)} sources...")
-            try:
-                # Convert sources to SearchResult format for reranking
-                rerank_candidates = []
-                for i, s in enumerate(unique_sources):
-                    rerank_candidates.append({
-                        'doc_id': str(i),
-                        'title': s.get("title", ""),
-                        'content': s.get("content", ""),
-                        'score': 0.5  # Default score
-                    })
-                
-                # Simple reranking based on title/content relevance to company name
-                query = f"{self.company} investment research startup funding"
-                query_tokens = set(re.findall(r'\b[a-zA-Z]+\b', query.lower()))
-                
-                scored_sources = []
-                for candidate in rerank_candidates:
-                    title_tokens = set(re.findall(r'\b[a-zA-Z]+\b', candidate['title'].lower()))
-                    content_tokens = set(re.findall(r'\b[a-zA-Z]+\b', candidate['content'].lower()))
-                    
-                    # Calculate relevance score
-                    title_overlap = len(query_tokens & title_tokens) / max(len(query_tokens), 1)
-                    content_overlap = len(query_tokens & content_tokens) / max(len(query_tokens), 1)
-                    exact_match = 1.0 if self.company.lower() in candidate['title'].lower() else 0.0
-                    
-                    score = (title_overlap * 0.4 + content_overlap * 0.3 + exact_match * 0.3)
-                    scored_sources.append((score, int(candidate['doc_id'])))
-                
-                # Sort by score descending
-                scored_sources.sort(key=lambda x: x[0], reverse=True)
-                
-                # Reorder unique_sources
-                reranked = []
-                for score, idx in scored_sources:
-                    reranked.append(unique_sources[idx])
-                
-                unique_sources = reranked
-                self.log(f"Reranking complete. Top source: {unique_sources[0].get('title', 'N/A')[:50]}...")
-            except Exception as e:
-                self.log(f"Reranking warning: {e}. Continuing with original order.")
-        # --- END RERANKING INTEGRATION ---
-
         # Create Citation Map (Markdown Links)
         citations = []
         context_blob = ""
@@ -1140,16 +1135,22 @@ class ResearchEngine:
 
         # --- AGENT 1: The Purifier (Extract Facts into JSON) ---
         self.log("Agent 1 (Purifier): Extracting core facts...")
+        
+        identity_anchor = f"Official Business Description: {getattr(self, 'company_one_liner', 'Unknown')}" if getattr(self, 'company_one_liner', '') else ""
+
         prompt_agent1 = f"""
         Task: Extract factual data strictly about {self.company} (Domain: {self.domain}) into a structured JSON format.
+        {identity_anchor}
+
         Input:
         {context_blob}
 
         CRITICAL ENTITY FILTERING (ANTI-HALLUCINATION):
         1. YOU MUST IGNORE any sources or paragraphs that are clearly about a different company with a similar name. 
-        2. For example, if {self.company} is "Wavemotion AI" (domain: wavemotionai.com), and a source talks about "WaveForms AI" raising $40M, YOU MUST IGNORE IT. Do not attribute data from similarly named companies to {self.company}.
-        3. If you only find data about wrong companies, leave the JSON fields empty. DO NOT HALLUCINATE.
-        4. For the 'founding_team' array, MUST extract the 'linkedin_url' if provided in the text (look for "[FOUNDER LINKEDIN]" or "LinkedIn: ").
+        2. Specifically, look at the Official Business Description provided above. If a source describes a company doing something completely different (e.g., if official is "Architectural Code Compliance" and source talks about "Kubernetes Security" or "Work Prioritization"), YOU MUST REJECT THE SOURCE ENTIRELY, even if the name matches exactly.
+        3. For example, if {self.company} is "Wavemotion AI" (domain: wavemotionai.com), and a source talks about "WaveForms AI" raising $40M, YOU MUST IGNORE IT. Do not attribute data from similarly named companies to {self.company}.
+        4. If you only find data about wrong companies, leave the JSON fields empty. DO NOT HALLUCINATE.
+        5. For the 'founding_team' array, MUST extract the 'linkedin_url' if provided in the text (look for "[FOUNDER LINKEDIN]" or "LinkedIn: ").
         
         Constraints:
         - Output ONLY valid JSON. No markdown wrappers.
@@ -1219,21 +1220,25 @@ class ResearchEngine:
         # Add questions into the facts payload for the formatter
         formatting_payload = f"FACTS:\n{facts_json}\n\nINTERROGATION QUESTIONS:\n{json.dumps(questions)}"
 
+        identity_anchor = f"Official Business Description: {getattr(self, 'company_one_liner', 'Unknown')}" if getattr(self, 'company_one_liner', '') else ""
+
         prompt_agent3 = f"""
-        Task: Write a comprehensive, highly analytical Investment Memo for {self.company}. Ensure the final report provides deep strategic value.
+        Task: Write a comprehensive, highly analytical Investment Memo for {self.company} (Domain: {self.domain}). Ensure the final report provides deep strategic value.
+        {identity_anchor}
 
         Input:
         {formatting_payload}
 
         CRITICAL VC ANALYSIS CONSTRAINTS (ANTI-FLUFF):
-        1. NO HALLUCINATIONS: Do NOT invent raw facts, names, numbers, or fictional competitors. 
-        2. HONEST SCARCITY: If specific factual data (e.g., funding, traction, pricing) is missing from the Input, you MUST explicitly state "Data Undisclosed" or "Not publicly available". Do NOT try to hide the lack of data with generic industry boilerplate.
-        3. DEDUCTIVE DEPTH (How to expand without fluff): While you cannot invent facts, you MUST provide deep strategic commentary on the implications of the information you *do* have. For example:
+        1. NO HALLUCINATIONS: Do NOT invent raw facts, names, numbers, or fictional competitors.
+        2. STRICT ENTITY ALIGNMENT: Ensure the narrative strictly aligns with the "Official Business Description" provided. Do not mix narratives of similar-sounding companies. If a source claims {self.company} does something radically different from its official description, IGNORE IT.
+        3. HONEST SCARCITY: If specific factual data (e.g., funding, traction, pricing) is missing from the Input for the correct company, you MUST explicitly state "Data Undisclosed" or "Not publicly available". Do NOT try to hide the lack of data with generic industry boilerplate.
+        4. DEDUCTIVE DEPTH (How to expand without fluff): While you cannot invent facts, you MUST provide deep strategic commentary on the implications of the information you *do* have. For example:
            - If they are a stealth startup, analyze what challenges a stealth startup in this specific niche will inevitably face.
            - If their tech stack is known but revenue isn't, analyze the commercial viability and typical go-to-market motion for that tech stack.
-        4. Do NOT write a References section at the end.
-        5. Do NOT number the headers.
-        6. For the "Founding Team & Track Record" section, you MUST include any LinkedIn URLs found in the Input facts. If the team is hidden, state "Founding Team Undisclosed".
+        5. Do NOT write a References section at the end.
+        6. Do NOT number the headers.
+        7. For the "Founding Team & Track Record" section, you MUST include any LinkedIn URLs found in the Input facts. If the team is hidden, state "Founding Team Undisclosed".
 
         Output Format:
         Must include EXACTLY these sections with these headers in this EXACT order:
