@@ -919,8 +919,8 @@ class ResearchEngine:
                     title_lower = r.get('title', '').lower()
                     
                     # Prevent tagging random employees as the founder
-                    # The URL or Title MUST contain at least one part of the founder's name
-                    if any(part in url_lower for part in name_parts) or any(part in title_lower for part in name_parts):
+                    # The URL or Title MUST contain ALL parts of the founder's name
+                    if all(part in url_lower for part in name_parts) or all(part in title_lower for part in name_parts):
                         r["content"] = f"[FOUNDER LINKEDIN: {name}] {r.get('url')} - " + r["content"]
                         valid_li_res.append(r)
                     else:
