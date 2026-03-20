@@ -1180,7 +1180,7 @@ class ResearchEngine:
             "founding_team": [{{"name": "", "background": "", "linkedin_url": ""}}],
             "data_consistency": "Conflicts between PR and reality based on [TRAFFIC DATA] or [HIRING SIGNAL]",
             "exit_strategy": "Potential acquirers or IPO landscape",
-            "used_source_urls": ["url1", "url2"]
+            "used_source_indices": [1, 3, 5]
         }}
         """
 
@@ -1343,26 +1343,32 @@ class ResearchEngine:
         if report.endswith("```markdown"):
             report = report[:-11].strip()
 
-        # Extract which URLs Agent 1 ACTUALLY used from facts_json
-        used_urls = []
+        # Extract which sources Agent 1 ACTUALLY used from facts_json
+        used_indices = []
         try:
             facts_dict = json.loads(facts_json)
-            used_urls = facts_dict.get("used_source_urls", [])
+            used_indices = facts_dict.get("used_source_indices", [])
+            if not isinstance(used_indices, list):
+                used_indices = []
         except Exception:
             pass
 
         report += "\n\n## References\n"
         printed_count = 0
         
+        # Calculate domain core dynamically if missing
+        domain_core = getattr(self, 'domain_core', self.domain.replace("www.", "").split(".")[0].lower())
+        
         # Only print references that Agent 1 verified as useful (or official domain links)
         for i, s in enumerate(unique_sources):
-            url = s.get("url", "#")
-            is_official = hasattr(self, 'domain_core') and self.domain_core in url.lower()
-            if url in used_urls or is_official:
-                ref_num = i + 1
+            ref_num = i + 1
+            url = s.get("url", "#").lower()
+            is_official = domain_core in url
+            
+            if ref_num in used_indices or is_official:
                 raw_title = s.get("title") or "Unknown Source"
                 title = str(raw_title).replace("[", "(").replace("]", ")")
-                report += f"- [{ref_num}] [{title}]({url})\n"
+                report += f"- [{ref_num}] [{title}]({s.get('url', '#')})\n"
                 printed_count += 1
                 
         # Fallback if the array was empty for some reason
