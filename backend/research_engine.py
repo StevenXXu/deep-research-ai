@@ -910,11 +910,23 @@ class ResearchEngine:
                 li_res = self.search_tavily(q_li, 1)
                 if not li_res:
                     li_res = self.search_brave(q_li, 1)
+                    
+                valid_li_res = []
+                name_parts = [p.lower() for p in name.split() if len(p) > 2]
+                
                 for r in li_res:
-                    r["content"] = (
-                        f"[FOUNDER LINKEDIN: {name}] {r.get('url')} - " + r["content"]
-                    )
-                self.sources.extend(li_res)
+                    url_lower = r.get('url', '').lower()
+                    title_lower = r.get('title', '').lower()
+                    
+                    # Prevent tagging random employees as the founder
+                    # The URL or Title MUST contain at least one part of the founder's name
+                    if any(part in url_lower for part in name_parts) or any(part in title_lower for part in name_parts):
+                        r["content"] = f"[FOUNDER LINKEDIN: {name}] {r.get('url')} - " + r["content"]
+                        valid_li_res.append(r)
+                    else:
+                        self.log(f"Rejected mismatched LinkedIn profile for {name}: {url_lower}")
+                        
+                self.sources.extend(valid_li_res)
             else:
                 self.sources.append({
                     "title": f"LinkedIn Profile: {name}",
