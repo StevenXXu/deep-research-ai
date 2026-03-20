@@ -877,8 +877,8 @@ class ResearchEngine:
                 [f"- {s['title']}: {s['content'][:200]}..." for s in init_res]
             )
             prompt = f"""
-            Extract the names and roles of the key founders/executives of {self.company}.
-            CRITICAL: Only extract them if they are explicitly stated to be founders/executives of {self.company}. Do not hallucinate.
+            Task: Extract the names and roles of the key founders, current CEO, or top executives of {self.company}.
+            CRITICAL INSTRUCTION: If they are widely known or clearly mentioned in reputable news snippets (e.g., "Sam Altman, CEO of OpenAI"), you MUST extract them! Do not be overly strict if the text implies they lead the company.
             Return JSON list: [{{"name": "Name", "role": "CEO"}}]
             If none found, return [].
             Context:
