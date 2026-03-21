@@ -598,19 +598,27 @@ class ResearchEngine:
             
             # For extremely broad domains or single-word common names
             if len(self.company.split()) == 1:
-                # If we have a niche phrase, we strictly require it
-                if has_niche and niche_match:
-                    filtered_sources.append(s)
-                # If niche phrase failed/empty but we have keywords, require at least one keyword
-                elif not has_niche and has_kw and kw_match:
-                    filtered_sources.append(s)
-                # Otherwise, it fails the strict single-word check and is dropped
+                # We want to be strict.
+                # If we have a niche phrase, require it.
+                # BUT if it's a super famous namesake (like Zipline), the name check alone is DANGEROUS.
+                # So we mandate BOTH name_match AND either niche or keyword.
+                if name_match:
+                    if has_niche and niche_match:
+                        filtered_sources.append(s)
+                    elif has_kw and kw_match:
+                        filtered_sources.append(s)
+                    else:
+                        pass # Fails because neither niche nor kw matched
                 else:
-                    pass
+                    pass # Fails name match
             else:
                 # Multi-word company names are less likely to collide, but we still require name match
+                # Plus at least ONE context keyword/niche to be safe
                 if name_match:
-                    filtered_sources.append(s)
+                    if (has_niche and niche_match) or (has_kw and kw_match):
+                        filtered_sources.append(s)
+                    else:
+                        pass
                 else:
                     pass
                 
