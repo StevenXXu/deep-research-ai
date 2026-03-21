@@ -492,12 +492,14 @@ class ResearchEngine:
             1. Identify the TRUE, exact name of the company or product.
             2. Write a precise one-sentence description of what they actually do (One-liner).
             3. Extract ONE highly specific, multi-word phrase (3-5 words) that uniquely defines their core business (e.g., "architectural code compliance"). DO NOT use single words or generic phrases.
+            4. Extract exactly THREE individual, non-generic core business keywords that define their domain (e.g., ["visitor", "contractor", "compliance"]).
             
             Output MUST be valid JSON ONLY:
             {{
                 "true_company_name": "Exact Name",
                 "one_liner": "They build X for Y using Z.",
-                "exact_niche_phrase": "specific multi word phrase"
+                "exact_niche_phrase": "specific multi word phrase",
+                "core_business_keywords": ["keyword1", "keyword2", "keyword3"]
             }}
             
             Text:
@@ -515,14 +517,23 @@ class ResearchEngine:
                     
                 self.company_one_liner = entity_data.get("one_liner", "")
                 self.exact_niche_phrase = entity_data.get("exact_niche_phrase", "").lower()
-                self.log(f"Entity Anchored: '{self.company}' | Strict Niche: '{self.exact_niche_phrase}'")
+                self.core_business_keywords = [k.lower() for k in entity_data.get("core_business_keywords", []) if isinstance(k, str) and len(k) > 2]
+                self.log(f"Entity Anchored: '{self.company}' | Strict Niche: '{self.exact_niche_phrase}' | Core Keywords: {self.core_business_keywords}")
             except Exception as e:
                 self.log(f"Entity Anchoring failed: {e}")
+                self.core_business_keywords = []
         else:
             self.company_one_liner = ""
+            self.core_business_keywords = []
 
         # 1. Company General
-        keyword_str = self.exact_niche_phrase if hasattr(self, 'exact_niche_phrase') and self.exact_niche_phrase else self.domain
+        if hasattr(self, 'exact_niche_phrase') and self.exact_niche_phrase:
+            keyword_str = self.exact_niche_phrase
+        elif hasattr(self, 'core_business_keywords') and self.core_business_keywords:
+            keyword_str = " ".join(self.core_business_keywords[:2])
+        else:
+            keyword_str = self.domain
+            
         q1 = f"{self.company} {keyword_str} startup funding news"
         # Try Exa first
         res = self.search_exa(q1, 4)
@@ -546,7 +557,11 @@ class ResearchEngine:
 
     def _strict_source_filter(self):
         """Filter out search results that are clearly about a different company"""
-        if not getattr(self, 'exact_niche_phrase', ''):
+        # We now run this even if exact_niche_phrase is missing, provided we have core_business_keywords
+        has_niche = bool(getattr(self, 'exact_niche_phrase', ''))
+        has_kw = bool(getattr(self, 'core_business_keywords', []))
+        
+        if not has_niche and not has_kw:
             return
 
         self.log("Applying Strict Source Filter (Anti-Hallucination)...")
@@ -572,15 +587,24 @@ class ResearchEngine:
             name_match = any(w in content for w in company_words) if company_words else True
             
             # Rule 3: Must contain the exact niche phrase (if it's a 1-word broad name)
-            niche_match = self.exact_niche_phrase in content
+            niche_match = self.exact_niche_phrase in content if has_niche else False
             
-            # For extremely broad domains or single-word common names, require the niche phrase
-            if len(self.company.split()) == 1 and self.exact_niche_phrase:
-                if niche_match:
+            # Rule 4: Must contain at least ONE core business keyword
+            kw_match = any(kw in content for kw in self.core_business_keywords) if has_kw else False
+            
+            # For extremely broad domains or single-word common names
+            if len(self.company.split()) == 1:
+                # If we have a niche phrase, we strictly require it
+                if has_niche and niche_match:
                     filtered_sources.append(s)
+                # If niche phrase failed/empty but we have keywords, require at least one keyword
+                elif not has_niche and has_kw and kw_match:
+                    filtered_sources.append(s)
+                # Otherwise, it fails the strict single-word check and is dropped
                 else:
                     pass
             else:
+                # Multi-word company names are less likely to collide, but we still require name match
                 if name_match:
                     filtered_sources.append(s)
                 else:
