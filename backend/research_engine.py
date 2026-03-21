@@ -1047,7 +1047,7 @@ class ResearchEngine:
         if getattr(self, 'exact_niche_phrase', ''):
             niche_kw = [w for w in self.exact_niche_phrase.split() if len(w) > 3]
             
-        combined_keywords = set([k.lower() for k in self.truth_keywords] + niche_kw)
+        combined_keywords = set([k.lower() for k in self.truth_keywords] + niche_kw + [k.lower() for k in getattr(self, 'core_business_keywords', [])])
         stealth_mode = len(official_team) == 0 and len(combined_keywords) == 0
         
         if stealth_mode:
