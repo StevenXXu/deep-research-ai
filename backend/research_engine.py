@@ -488,10 +488,14 @@ class ResearchEngine:
             entity_prompt = f"""
             Analyze the following text extracted from the official website/document of the domain '{self.domain}'.
             
+            CRITICAL WARNING - PRE-TRAINING BIAS: 
+            You MUST extract information ONLY from the provided text below. DO NOT use your pre-existing knowledge. 
+            If the company shares a name with a famous unicorn/startup (e.g. "Zipline" the drone delivery company), but the text below talks about something completely different (e.g. "visitor compliance software"), YOU MUST STRICTLY DESCRIBE THE COMPLIANCE SOFTWARE. Any hallucination of pre-trained knowledge will result in immediate failure!
+            
             Task:
             1. Identify the TRUE, exact name of the company or product.
-            2. Write a precise one-sentence description of what they actually do (One-liner).
-            3. Extract ONE highly specific, multi-word phrase (3-5 words) that uniquely defines their core business (e.g., "architectural code compliance"). DO NOT use single words or generic phrases.
+            2. Write a precise one-sentence description of what they actually do (One-liner) strictly based on the text.
+            3. Extract ONE highly specific, multi-word phrase (3-5 words) that uniquely defines their core business (e.g., "architectural code compliance" or "visitor and contractor management"). DO NOT use single words or generic phrases.
             4. Extract exactly THREE individual, non-generic core business keywords that define their domain (e.g., ["visitor", "contractor", "compliance"]).
             
             Output MUST be valid JSON ONLY:
