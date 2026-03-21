@@ -353,8 +353,8 @@ class ResearchEngine:
             page = StealthyFetcher.fetch(self.url, headless=True, **scraper_kwargs)
             title = page.css("title::text").get() or self.domain
 
-            # Extract readable text
-            texts = [t.strip() for t in page.css("body *::text").getall() if t.strip()]
+            # Extract readable text (safely excluding script and style tags)
+            texts = [t.strip() for t in page.xpath("//body//text()[not(ancestor::script) and not(ancestor::style)]").getall() if t.strip()]
             clean_text = re.sub(r"\s+", " ", " ".join(texts))
 
             # CF / Anti-bot detection
@@ -428,7 +428,7 @@ class ResearchEngine:
                     sub_title = sub_page.css("title::text").get() or l
                     sub_texts = [
                         t.strip()
-                        for t in sub_page.css("body *::text").getall()
+                        for t in sub_page.xpath("//body//text()[not(ancestor::script) and not(ancestor::style)]").getall()
                         if t.strip()
                     ]
                     sub_clean_text = re.sub(r"\s+", " ", " ".join(sub_texts))
@@ -474,7 +474,7 @@ class ResearchEngine:
 
         # --- ENTITY ANCHORING (Identify True Company Name and Niche) ---
         official_texts = [
-            s["content"][:2000]
+            s["content"][:10000]
             for s in self.sources
             if s["source"] in ["Scrapling (Home Page)", "Scrapling (Subpage)", "Apify", "Upload", "Coresignal Data"]
         ]
@@ -484,7 +484,7 @@ class ResearchEngine:
         
         if official_texts:
             self.log("Entity Anchoring: Extracting true company identity and niche from official sources...")
-            combined_text = "\n".join(official_texts)[:6000]
+            combined_text = "\n".join(official_texts)[:25000]
             entity_prompt = f"""
             Analyze the following text extracted from the official website/document of the domain '{self.domain}'.
             
@@ -599,10 +599,6 @@ class ResearchEngine:
             
             # For extremely broad domains or single-word common names
             if len(self.company.split()) == 1:
-                # We want to be strict.
-                # If we have a niche phrase, require it.
-                # BUT if it's a super famous namesake (like Zipline), the name check alone is DANGEROUS.
-                # So we mandate BOTH name_match AND either niche or keyword.
                 if name_match:
                     # Specific exception for cases where exact_niche_phrase is extracted as empty/unable/unknown due to edge cases
                     if has_niche and ("unable" in self.exact_niche_phrase or "unknown" in self.exact_niche_phrase):
