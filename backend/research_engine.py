@@ -960,6 +960,17 @@ class ResearchEngine:
                     founders = json.loads(
                         resp.replace("```json", "").replace("```", "").strip()
                     )
+                    # Defense against LLMs returning {"founders": [...]} instead of [...]
+                    if isinstance(founders, dict):
+                        for k, v in founders.items():
+                            if isinstance(v, list):
+                                founders = v
+                                break
+                        if isinstance(founders, dict):
+                            founders = [] # Still a dict, abort
+                            
+                    if not isinstance(founders, list):
+                        founders = []
             except Exception as e:
                 self.log(f"Founder Extraction Failed: {e}")
 
