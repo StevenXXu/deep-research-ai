@@ -1041,7 +1041,15 @@ class ResearchEngine:
 
         # Determine if we are in Stealth Mode (No official team and no strong keywords found)
         official_team = getattr(self, "official_team", [])
-        stealth_mode = len(official_team) == 0 and len(self.truth_keywords) == 0
+        
+        # Merge exact niche phrase into truth keywords if available, to bolster stealth mode check
+        niche_kw = []
+        if getattr(self, 'exact_niche_phrase', ''):
+            niche_kw = [w for w in self.exact_niche_phrase.split() if len(w) > 3]
+            
+        combined_keywords = set([k.lower() for k in self.truth_keywords] + niche_kw)
+        stealth_mode = len(official_team) == 0 and len(combined_keywords) == 0
+        
         if stealth_mode:
             self.log("Target in stealth mode - using relaxed filtering")
             self.stealth_mode = True
@@ -1111,7 +1119,7 @@ class ResearchEngine:
                         break
 
                 # C. Truth Keyword Match
-                for kw in self.truth_keywords:
+                for kw in combined_keywords:
                     if kw in text_blob:
                         confidence_score += 1
                         break
