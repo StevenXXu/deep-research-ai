@@ -488,9 +488,10 @@ class ResearchEngine:
             entity_prompt = f"""
             Analyze the following text extracted from the official website/document of the domain '{self.domain}'.
             
-            CRITICAL WARNING - PRE-TRAINING BIAS: 
-            You MUST extract information ONLY from the provided text below. DO NOT use your pre-existing knowledge. 
-            If the company shares a name with a famous unicorn/startup (e.g. "Zipline" the drone delivery company), but the text below talks about something completely different (e.g. "visitor compliance software"), YOU MUST STRICTLY DESCRIBE THE COMPLIANCE SOFTWARE. Any hallucination of pre-trained knowledge will result in immediate failure!
+            CRITICAL WARNING - SCRAPER NOISE & PRE-TRAINING BIAS: 
+            1. The text below was extracted by a raw web scraper. It may contain massive amounts of irrelevant frontend code, website builder boilerplate (e.g., Webflow, Framer), CSS styling instructions (e.g., "click and hover interaction", "scrollbar", "navigation"), cookie banners, or menu links. YOU MUST COMPLETELY IGNORE ALL WEBSITE UI/UX DESCRIPTIONS and find the actual human business proposition.
+            2. You MUST extract information ONLY from the provided text below. DO NOT use your pre-existing knowledge. 
+            3. If the company shares a name with a famous unicorn/startup (e.g. "Zipline" the drone delivery company), but the text below talks about something completely different (e.g. "visitor compliance software"), YOU MUST STRICTLY DESCRIBE THE COMPLIANCE SOFTWARE. Any hallucination of pre-trained knowledge will result in immediate failure!
             
             Task:
             1. Identify the TRUE, exact name of the company or product.
