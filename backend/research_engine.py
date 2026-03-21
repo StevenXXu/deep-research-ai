@@ -5,6 +5,7 @@ import time
 import requests
 import re
 import warnings
+from urllib.parse import urlparse
 from datetime import datetime
 from dotenv import load_dotenv
 from exa_py import Exa
@@ -41,6 +42,13 @@ class ResearchEngine:
         else:
             self.domain = target_url
 
+        # Ensure we have a strict target root domain for URL comparisons
+        temp_url = self.url.lower().strip()
+        if not temp_url.startswith("http"):
+            temp_url = "http://" + temp_url
+        parsed_target = urlparse(temp_url)
+        self.target_root_domain = parsed_target.netloc.replace("www.", "")
+
         self.language = language
 
         if scraper_config is None:
@@ -74,6 +82,18 @@ class ResearchEngine:
     def log(self, msg):
         print(f"[RESEARCH] {msg}")
         # Discord logging disabled - using Railway logs only
+
+    def is_official_url(self, url):
+        """Strict TLD matching to prevent domain hallucination (vibemotion.co vs vibemotion.video)"""
+        if not url: return False
+        try:
+            url_lower = url.lower().strip()
+            if not url_lower.startswith("http"):
+                url_lower = "http://" + url_lower
+            netloc = urlparse(url_lower).netloc.replace("www.", "")
+            return netloc == self.target_root_domain or netloc.endswith("." + self.target_root_domain)
+        except Exception:
+            return False
 
     def calculate_cost(self):
         # Precise Pricing Model (USD)
@@ -532,7 +552,6 @@ class ResearchEngine:
         self.log("Applying Strict Source Filter (Anti-Hallucination)...")
         
         filtered_sources = []
-        domain_core = self.domain.replace("www.", "").split(".")[0].lower()
         company_words = [w.lower() for w in self.company.split() if len(w) > 2]
         
         for s in self.sources:
@@ -544,8 +563,8 @@ class ResearchEngine:
             content = (s.get("title", "") + " " + s.get("content", "")).lower()
             url = s.get("url", "").lower()
             
-            # Rule 1: If URL contains the exact domain, keep it
-            if domain_core and domain_core in url:
+            # Rule 1: Official Root Domain Check (Strict TLD matching)
+            if self.is_official_url(url):
                 filtered_sources.append(s)
                 continue
                 
@@ -1031,8 +1050,7 @@ class ResearchEngine:
                 confidence_score = 0
 
                 # A. URL/Domain Match
-                domain_core = self.domain.replace("www.", "").split(".")[0]
-                if domain_core in s.get("url", "").lower():
+                if self.is_official_url(s.get("url", "")):
                     confidence_score += 2
 
                 # B. Team Match
@@ -1356,14 +1374,11 @@ class ResearchEngine:
         report += "\n\n## References\n"
         printed_count = 0
         
-        # Calculate domain core dynamically if missing
-        domain_core = getattr(self, 'domain_core', self.domain.replace("www.", "").split(".")[0].lower())
-        
         # Only print references that Agent 1 verified as useful (or official domain links)
         for i, s in enumerate(unique_sources):
             ref_num = i + 1
             url = s.get("url", "#").lower()
-            is_official = domain_core in url
+            is_official = self.is_official_url(url)
             
             if ref_num in used_indices or is_official:
                 raw_title = s.get("title") or "Unknown Source"
