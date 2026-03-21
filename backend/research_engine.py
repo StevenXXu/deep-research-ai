@@ -604,7 +604,13 @@ class ResearchEngine:
                 # BUT if it's a super famous namesake (like Zipline), the name check alone is DANGEROUS.
                 # So we mandate BOTH name_match AND either niche or keyword.
                 if name_match:
-                    if has_niche and niche_match:
+                    # Specific exception for cases where exact_niche_phrase is extracted as empty/unable/unknown due to edge cases
+                    if has_niche and ("unable" in self.exact_niche_phrase or "unknown" in self.exact_niche_phrase):
+                        if has_kw and kw_match:
+                            filtered_sources.append(s)
+                        else:
+                            pass
+                    elif has_niche and niche_match:
                         filtered_sources.append(s)
                     elif has_kw and kw_match:
                         filtered_sources.append(s)
@@ -616,7 +622,12 @@ class ResearchEngine:
                 # Multi-word company names are less likely to collide, but we still require name match
                 # Plus at least ONE context keyword/niche to be safe
                 if name_match:
-                    if (has_niche and niche_match) or (has_kw and kw_match):
+                    if has_niche and ("unable" in self.exact_niche_phrase or "unknown" in self.exact_niche_phrase):
+                        if has_kw and kw_match:
+                            filtered_sources.append(s)
+                        else:
+                            pass
+                    elif (has_niche and niche_match) or (has_kw and kw_match):
                         filtered_sources.append(s)
                     else:
                         pass
