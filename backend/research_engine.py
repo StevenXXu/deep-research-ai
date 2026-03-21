@@ -571,13 +571,20 @@ class ResearchEngine:
             # Rule 2: Must contain at least one word of the company name
             name_match = any(w in content for w in company_words) if company_words else True
             
-            # Rule 3: Must contain the exact niche phrase
+            # Rule 3: Must contain the exact niche phrase (if it's a 1-word broad name)
             niche_match = self.exact_niche_phrase in content
             
-            if name_match and niche_match:
-                filtered_sources.append(s)
+            # For extremely broad domains or single-word common names, require the niche phrase
+            if len(self.company.split()) == 1 and self.exact_niche_phrase:
+                if niche_match:
+                    filtered_sources.append(s)
+                else:
+                    pass
             else:
-                pass
+                if name_match:
+                    filtered_sources.append(s)
+                else:
+                    pass
                 
         self.log(f"Strict Filter: Kept {len(filtered_sources)} out of {len(self.sources)} sources.")
         self.sources = filtered_sources
