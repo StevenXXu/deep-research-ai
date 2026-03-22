@@ -577,34 +577,34 @@ class ResearchEngine:
             
             # Rule 4: Must contain at least ONE core business keyword
             kw_match = any(kw in content for kw in self.core_business_keywords) if has_kw else False
+            matched_kws_count = sum(1 for kw in self.core_business_keywords if kw in content) if has_kw else 0
+            
+            is_niche_invalid = not has_niche or "unable" in self.exact_niche_phrase or "unknown" in self.exact_niche_phrase
             
             # For extremely broad domains or single-word common names
             if len(self.company.split()) == 1:
                 if name_match:
-                    # Specific exception for cases where exact_niche_phrase is extracted as empty/unable/unknown due to edge cases
-                    if has_niche and ("unable" in self.exact_niche_phrase or "unknown" in self.exact_niche_phrase):
-                        if has_kw and kw_match:
+                    if is_niche_invalid:
+                        # No valid niche. Must rely on keywords. Require AT LEAST TWO keywords to prevent loose matches, OR one if we only have one
+                        required_kws = min(2, len(self.core_business_keywords))
+                        if has_kw and matched_kws_count >= required_kws:
                             filtered_sources.append(s)
-                        else:
-                            pass
-                    elif has_niche and niche_match:
-                        filtered_sources.append(s)
-                    elif has_kw and kw_match:
-                        filtered_sources.append(s)
                     else:
-                        pass # Fails because neither niche nor kw matched
+                        # We have a valid niche.
+                        if niche_match:
+                            filtered_sources.append(s)
+                        # If niche phrase is too strict, fallback to requiring AT LEAST TWO keywords
+                        elif has_kw and matched_kws_count >= 2:
+                            filtered_sources.append(s)
                 else:
                     pass # Fails name match
             else:
                 # Multi-word company names are less likely to collide, but we still require name match
-                # Plus at least ONE context keyword/niche to be safe
                 if name_match:
-                    if has_niche and ("unable" in self.exact_niche_phrase or "unknown" in self.exact_niche_phrase):
+                    if is_niche_invalid:
                         if has_kw and kw_match:
                             filtered_sources.append(s)
-                        else:
-                            pass
-                    elif (has_niche and niche_match) or (has_kw and kw_match):
+                    elif niche_match or kw_match:
                         filtered_sources.append(s)
                     else:
                         pass
@@ -1132,7 +1132,11 @@ class ResearchEngine:
 
     def phase_audit_consistency(self):
         """Phase 3.5: Audit sources for identity mismatch (e.g. wrong company with same name)"""
-        self._iron_firewall()  # Run hard physical filter FIRST
+        # 1. First run the Strict Source Filter globally over ALL sources gathered in Phase 3
+        self._strict_source_filter()
+        
+        # 2. Then run the specific Iron Firewall (SEO Spam, Fiction noise, etc)
+        self._iron_firewall()
 
         self.log("Phase 3.5b: LLM Auditing Sources for Consistency...")
 
