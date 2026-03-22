@@ -188,29 +188,46 @@ class ResearchEngine:
             self.log(f"Exa Error: {e}")
             return []
 
-    def search_tavily(self, query, num=3):
+    def search_tavily(self, query, num=3, depth="basic"):
         if not TAVILY_KEY:
             return []
         try:
             self.usage["tavily_queries"] += 1  # Track Cost
             url = "https://api.tavily.com/search"
+            
+            # 1. Dynamic Topic Routing for News/Finance
+            q_lower = query.lower()
+            topic = "general"
+            if any(k in q_lower for k in ["funding", "investor", "m&a", "acquisition", "raised", "round", "news", "series a", "series b", "seed", "ipo"]):
+                topic = "news"
+                
             payload = {
                 "api_key": TAVILY_KEY,
                 "query": query,
-                "search_depth": "advanced",
+                "search_depth": depth,
+                "topic": topic,
                 "max_results": num,
+                "include_raw_content": True  # 2. Extract raw markdown immediately
             }
-            res = requests.post(url, json=payload, timeout=10)
+            res = requests.post(url, json=payload, timeout=15)
             data = res.json()
-            return [
-                {
-                    "title": r["title"],
-                    "url": r["url"],
-                    "content": r["content"][:1000],
-                    "source": "Tavily",
-                }
-                for r in data.get("results", [])
-            ]
+            
+            results = []
+            for r in data.get("results", []):
+                raw = r.get("raw_content", "")
+                snippet = r.get("content", "")
+                
+                # 3. Prefer native Markdown extraction over basic snippets
+                # Truncate to 3000 chars to avoid LLM context blowout while retaining core facts
+                best_content = raw[:3000] if raw and len(raw) > 50 else snippet[:1000]
+                
+                results.append({
+                    "title": r.get("title", ""),
+                    "url": r.get("url", ""),
+                    "content": best_content,
+                    "source": f"Tavily ({topic.capitalize()})"
+                })
+            return results
         except Exception as e:
             self.log(f"Tavily Error: {e}")
             return []
