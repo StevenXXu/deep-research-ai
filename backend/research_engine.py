@@ -956,6 +956,10 @@ class ResearchEngine:
                             
                     if not isinstance(founders, list):
                         founders = []
+            except Exception as e:
+                self.log(f"Founder Extraction Failed: {e}")
+                founders = []
+
             if not founders:
                 self.log("No founders identified. Skipping targeted search.")
                 return
