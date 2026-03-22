@@ -924,6 +924,8 @@ class ResearchEngine:
             init_res = self.search_tavily(q_init, 4)
             if not init_res:
                 init_res = self.search_ddg(q_init, 4)
+            if not init_res:
+                init_res = self.search_brave(q_init, 4)
             self.sources.extend(init_res)
 
             context = "\n".join(
@@ -978,9 +980,11 @@ class ResearchEngine:
                     
                 # Check 2: Verify the exact person's role against the web
                 q_verify = f'"{name}" "{self.company}" ("founder" OR "ceo" OR "cto" OR "chief executive")'
-                verify_res = self.search_tavily(q_verify, 2)
+                verify_res = self.search_tavily(q_verify, 3)
                 if not verify_res:
-                    verify_res = self.search_ddg(q_verify, 2)
+                    verify_res = self.search_ddg(q_verify, 3)
+                if not verify_res:
+                    verify_res = self.search_brave(q_verify, 3)
                 
                 if verify_res:
                     # Simple deterministic check: Is the company name AND a founder keyword in the snippet?
