@@ -166,24 +166,34 @@ class ResearchEngine:
             self.log(f"Metadata Extraction Warning: {e}")
             return {"company_name": self.company, "sector_tags": []}
 
-    def search_exa(self, query, num=3):
+    def search_exa(self, query, num=3, category="company"):
         if not EXA_KEY:
             return []
         try:
             self.usage["exa_queries"] += 1  # Track Cost
             exa = Exa(EXA_KEY)
+            
+            # Use highlights to save tokens and get the most relevant semantic chunks
             res = exa.search_and_contents(
-                query, type="neural", num_results=num, text=True
+                query, 
+                type="neural", 
+                use_autoprompt=False,  # Recommended by Exa docs to avoid LLM hallucination in prompt
+                category=category,     # Focus search domain (company, news, tweet, etc.)
+                num_results=num, 
+                highlights={"num_sentences": 5, "highlights_per_url": 2}
             )
-            return [
-                {
+            
+            formatted_results = []
+            for r in res.results:
+                # Combine highlights instead of passing raw HTML/text
+                content = " ... ".join(r.highlights) if hasattr(r, 'highlights') and r.highlights else (r.text[:1000] if hasattr(r, 'text') and r.text else "")
+                formatted_results.append({
                     "title": r.title,
                     "url": r.url,
-                    "content": r.text[:1000],
-                    "source": "Exa",
-                }
-                for r in res.results
-            ]
+                    "content": content,
+                    "source": f"Exa ({category.capitalize()})",
+                })
+            return formatted_results
         except Exception as e:
             self.log(f"Exa Error: {e}")
             return []
@@ -578,14 +588,14 @@ class ResearchEngine:
             
         q1 = f"{self.company} {keyword_str} startup funding news"
         # Try Exa first
-        res = self.search_exa(q1, 4)
+        res = self.search_exa(q1, 4, category="news")
         if not res:
             res = self.search_tavily(q1, 3)
         self.sources.extend(res)
 
         # 2. Competitors
         q2 = f"{self.company} {keyword_str} competitors alternatives market share"
-        self.sources.extend(self.search_exa(q2, 4))
+        self.sources.extend(self.search_exa(q2, 4, category="company"))
 
         # 3. Reviews / Issues
         q3 = f"{self.company} {keyword_str} reviews complaints pricing scam"
