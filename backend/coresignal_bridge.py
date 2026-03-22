@@ -127,7 +127,7 @@ def extract_key_executives(company_name: str, domain: str) -> list:
     if not CORESIGNAL_API_KEY or not company_name:
         return []
 
-    url = f"{BASE_URL}/member_base/search/es_dsl"
+    url = f"{BASE_URL}/employee_base/search/es_dsl"
     
     headers = {
         "accept": "application/json",
@@ -192,8 +192,8 @@ def extract_key_executives(company_name: str, domain: str) -> list:
             processed_hits = []
             for hit in hits[:5]:
                 if isinstance(hit, int):
-                    print(f"[CORESIGNAL] Resolving member ID: {hit}")
-                    m_url = f"{BASE_URL}/member_base/collect/{hit}"
+                    print(f"[CORESIGNAL] Resolving employee ID: {hit}")
+                    m_url = f"{BASE_URL}/employee_base/collect/{hit}"
                     m_res = requests.get(m_url, headers={"accept": "application/json", "apikey": CORESIGNAL_API_KEY}, timeout=15)
                     if m_res.status_code == 200:
                         processed_hits.append(m_res.json())
