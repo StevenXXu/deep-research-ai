@@ -102,7 +102,7 @@ def scrape_reddit_search(query):
         print(f"[Apify Bridge] Starting Reddit Actor (timeout=45s)...", flush=True)
         
         # Start asynchronously
-        run = client.actor("trudax/reddit-scraper-lite").start(run_input=run_input, timeout_secs=45, memory_mbytes=1024)
+        run = client.actor("trudax/reddit-scraper-lite").start(run_input=run_input, timeout_secs=90, memory_mbytes=1024)
         run_id = run["id"]
         default_dataset_id = run["defaultDatasetId"]
         print(f"[Apify Bridge] Reddit Run Started: {run_id}. Waiting for finish...", flush=True)
@@ -152,8 +152,8 @@ def scrape_google_trends(query):
     
     try:
         print(f"[Apify Bridge] Invoking Google Trends Actor...", flush=True)
-        # Increased timeout to 90s to handle heavy initial page load
-        run = client.actor("apify/google-trends-scraper").call(run_input=run_input, timeout_secs=90, memory_mbytes=1024)
+        # Increased timeout to 180s to handle heavy initial page load and Cloudflare challenges
+        run = client.actor("apify/google-trends-scraper").call(run_input=run_input, timeout_secs=180, memory_mbytes=1024)
         print(f"[Apify Bridge] Trends Actor Finished.", flush=True)
         dataset_items = client.dataset(run["defaultDatasetId"]).list_items(limit=10).items
         print(f"[Apify Bridge] Fetched Trends Data.", flush=True)
