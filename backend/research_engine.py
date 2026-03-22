@@ -856,15 +856,6 @@ class ResearchEngine:
         # 3F. Time Machine
         self.phase_time_machine()
 
-        # 3E. Market Momentum (Google Trends)
-        try:
-            self.log(f"Phase 3E: Checking Market Momentum...")
-            self.usage["apify_runs"] += 1  # Track Cost
-            trends_data = apify.scrape_google_trends(self.company)
-            self.sources.extend(trends_data)
-        except Exception as e:
-            self.log(f"Trends Warning: {e}")
-
         # 3F. Tech & Market Gaps
         for q in self.questions:
             self.sources.extend(self.search_exa(q, 3))
