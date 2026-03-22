@@ -12,6 +12,7 @@ from exa_py import Exa
 import apify_bridge as apify
 import coresignal_bridge as cs_bridge
 from scraper_config import ScraperConfig
+from core.scrapers.site_mapper import SiteMapper
 
 # --- SETUP ---
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
@@ -381,48 +382,28 @@ class ResearchEngine:
             self.log(f"Scrapling: Extracted {len(clean_text)} chars from {self.url}")
 
             # Attempt to fetch deeper core pages (About, Product, Team, etc.)
-            links = page.css("a::attr(href)").getall()
-            target_links = []
-
-            core_page_keywords = [
-                "about",
-                "product",
-                "service",
-                "solution",
-                "business",
-                "case",
-                "tech",
-                "contact",
-                "team",
-                "pricing",
-            ]
-
-            for l in set(links):
-                if not l:
-                    continue
-                l_lower = str(l).lower()
-
-                if any(keyword in l_lower for keyword in core_page_keywords):
-                    if l.startswith("http") and self.domain in l:
-                        target_links.append(l)
-                    elif l.startswith("/"):
-                        base = self.url.rstrip("/")
-                        target_links.append(f"{base}{l}")
-
+            raw_links = page.css("a::attr(href)").getall()
+            
+            # Use SiteMapper to determine the optimal pages to scrape
+            mapper = SiteMapper(self.url)
+            site_map_data = mapper.map_site(raw_links)
+            
+            if site_map_data.get("is_single_page_site"):
+                self.log("SiteMapper: Single Page Site detected. Adding Vaporware risk flag.")
+                self.sources.append({
+                    "title": "System Alert - Single Page App",
+                    "url": self.url,
+                    "content": "[SYSTEM ALERT] Network topology analysis indicates this target has an extremely shallow site structure (1 or 0 internal sub-pages). It lacks dedicated pages for Team, Pricing, or Product Docs. In your report, aggressively note this as a potential 'Vaporware' or 'Early-stage' risk indicator.",
+                    "source": "Upload"
+                })
+            
+            golden_urls = site_map_data.get("golden_urls_selected", [])
             fetched_count = 1
 
-            def score_link(url_str):
-                url_str = url_str.lower()
-                if "about" in url_str or "team" in url_str:
-                    return 3
-                if "product" in url_str or "tech" in url_str:
-                    return 2
-                return 1
-
-            target_links.sort(key=score_link, reverse=True)
-
-            for l in target_links[:4]:
-                self.log(f"Scrapling: Following internal link {l}...")
+            # Scrape top 3-4 golden URLs
+            for g in golden_urls[:4]:
+                l = g["url"]
+                self.log(f"Scrapling: Following golden link [{g['category']}] {l}...")
                 try:
                     sub_page = StealthyFetcher.fetch(l, headless=True, **scraper_kwargs)
                     sub_title = sub_page.css("title::text").get() or l
