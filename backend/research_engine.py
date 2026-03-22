@@ -929,9 +929,11 @@ class ResearchEngine:
             )
             prompt = f"""
             Task: Extract the names and roles of the key founders, current CEO, or top executives of {self.company}.
-            CRITICAL INSTRUCTION: If they are widely known or clearly mentioned in reputable news snippets (e.g., "Sam Altman, CEO of OpenAI"), you MUST extract them! Do not be overly strict if the text implies they lead the company.
+            CRITICAL INSTRUCTION: You MUST ONLY extract actual Founders, Co-Founders, CEOs, or CTOs. 
+            Do NOT extract regular employees, advisors, sales heads, PR managers, or generic team members.
+            If the person's title is not explicitly Founder, Co-Founder, CEO, or CTO (or explicitly equivalent head of the company), ignore them.
             Return JSON list: [{{"name": "Name", "role": "CEO"}}]
-            If none found, return [].
+            If no actual founders/CEOs are found, return [].
             Context:
             {context}
             """
