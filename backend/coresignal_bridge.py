@@ -57,7 +57,7 @@ def search_company_by_domain(domain: str) -> dict:
                 # Some coresignal endpoints return list directly for es_dsl depending on version
                 if isinstance(data[0], int):
                     print(f"[CORESIGNAL] Resolving company ID: {data[0]}")
-                    c_url = f"{BASE_URL}/company/collect/{data[0]}"
+                    c_url = f"{BASE_URL}/company_base/collect/{data[0]}"
                     c_res = requests.get(c_url, headers={"accept": "application/json", "apikey": CORESIGNAL_API_KEY}, timeout=15)
                     if c_res.status_code == 200:
                         result = c_res.json()
@@ -193,7 +193,7 @@ def extract_key_executives(company_name: str, domain: str) -> list:
             for hit in hits[:5]:
                 if isinstance(hit, int):
                     print(f"[CORESIGNAL] Resolving member ID: {hit}")
-                    m_url = f"{BASE_URL}/member/collect/{hit}"
+                    m_url = f"{BASE_URL}/member_base/collect/{hit}"
                     m_res = requests.get(m_url, headers={"accept": "application/json", "apikey": CORESIGNAL_API_KEY}, timeout=15)
                     if m_res.status_code == 200:
                         processed_hits.append(m_res.json())
