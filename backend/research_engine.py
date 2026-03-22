@@ -1055,9 +1055,7 @@ class ResearchEngine:
                 "Scrapling (Home Page)",
                 "Scrapling (Subpage)",
                 "Upload",
-                "LinkedIn (Apify)",
                 "OSINT X-Ray",
-                "Apify",
             ]:
                 clean_sources.append(s)
                 continue
