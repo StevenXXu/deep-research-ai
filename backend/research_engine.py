@@ -916,51 +916,96 @@ class ResearchEngine:
         founders = getattr(self, "official_team", [])
 
         if not founders:
-            self.log(
-                "No founders found in Official Ground Truth. Attempting precise external extraction..."
-            )
-            # We ONLY search if we didn't find them on the official site.
-            q_init = f'{self.company} CEO OR Founder OR CTO'
-            init_res = self.search_tavily(q_init, 4)
-            if not init_res:
-                init_res = self.search_ddg(q_init, 4)
-            if not init_res:
-                init_res = self.search_brave(q_init, 4)
-            self.sources.extend(init_res)
+            self.log("No founders found in Official Ground Truth. Attempting precise external extraction...")
+            
+            # --- START FOUNDER TRIANGULATION PROTOCOL ---
+            # Step 1: Attempt to extract from SiteMapper's Team/About pages if available
+            team_text = ""
+            for s in self.sources:
+                if s.get("source") in ["Scrapling (Home Page)", "Scrapling (Subpage)"]:
+                    url_lower = s.get("url", "").lower()
+                    if any(x in url_lower for x in ["about", "team", "leadership", "founder", "company"]):
+                        team_text += s.get("content", "") + "\n\n"
+            
+            # If no dedicated team page, use the homepage text
+            if len(team_text) < 100:
+                for s in self.sources:
+                    if s.get("source") == "Scrapling (Home Page)":
+                        team_text += s.get("content", "") + "\n"
+                        
+            if len(team_text) > 100:
+                self.log("Triangulation Step 1: Scanning official site text for founders...")
+                prompt_site = f"""
+                Analyze the text scraped from the official website of {self.company}. 
+                Identify the Founders, Co-Founders, CEO, or CTO. 
+                CRITICAL RULE: YOU MUST NOT HALLUCINATE. Only extract names if the text explicitly states they hold one of those titles.
+                Return JSON array: [{{"name": "Name", "role": "CEO"}}]
+                Text:
+                {team_text[:4000]}
+                """
+                try:
+                    resp = gateway.generate(prompt_site, "Return valid JSON array only.")
+                    if resp:
+                        site_data = json.loads(resp.replace("```json", "").replace("```", "").strip())
+                        if isinstance(site_data, dict):
+                            for k, v in site_data.items():
+                                if isinstance(v, list): site_data = v; break
+                        if isinstance(site_data, list):
+                            for item in site_data:
+                                if isinstance(item, dict) and "name" in item and "role" in item:
+                                    role_lower = str(item["role"]).lower()
+                                    if any(x in role_lower for x in ["founder", "ceo", "cto", "chief executive"]):
+                                        founders.append(item)
+                                        self.log(f"Triangulation Found: {item['name']} via Official Site")
+                except Exception as e:
+                    self.log(f"Site Triangulation Error: {e}")
 
-            context = "\n".join(
-                [f"- {s['title']}: {s['content'][:200]}..." for s in init_res]
-            )
-            prompt = f"""
-            Task: Extract the names and roles of the key founders, current CEO, or top executives of {self.company}.
-            CRITICAL INSTRUCTION: You MUST ONLY extract actual Founders, Co-Founders, CEOs, or CTOs. 
-            Do NOT extract regular employees, advisors, sales heads, PR managers, or generic team members.
-            If the person's title is not explicitly Founder, Co-Founder, CEO, or CTO (or explicitly equivalent head of the company), ignore them.
-            Return JSON list: [{{"name": "Name", "role": "CEO"}}]
-            If no actual founders/CEOs are found, return [].
-            Context:
-            {context}
-            """
-            try:
-                resp = gateway.generate(prompt, "Return valid JSON only.")
-                if resp:
-                    founders = json.loads(
-                        resp.replace("```json", "").replace("```", "").strip()
-                    )
-                    # Defense against LLMs returning {"founders": [...]} instead of [...]
-                    if isinstance(founders, dict):
-                        for k, v in founders.items():
-                            if isinstance(v, list):
-                                founders = v
-                                break
-                        if isinstance(founders, dict):
-                            founders = [] # Still a dict, abort
-                            
-                    if not isinstance(founders, list):
-                        founders = []
-            except Exception as e:
-                self.log(f"Founder Extraction Failed: {e}")
-                founders = []
+            # Step 2: If site yields nothing, fall back to Search Triangulation
+            if not founders:
+                self.log("Triangulation Step 2: No founders on official site. Engaging Web Search...")
+                q_init = f'{self.company} CEO OR Founder OR CTO'
+                init_res = self.search_tavily(q_init, 4)
+                if not init_res:
+                    init_res = self.search_ddg(q_init, 4)
+                if not init_res:
+                    init_res = self.search_brave(q_init, 4)
+                self.sources.extend(init_res)
+    
+                context = "\n".join(
+                    [f"- {s['title']}: {s['content'][:200]}..." for s in init_res]
+                )
+                prompt = f"""
+                Task: Extract the names and roles of the key founders, current CEO, or top executives of {self.company}.
+                CRITICAL INSTRUCTION: You MUST ONLY extract actual Founders, Co-Founders, CEOs, or CTOs. 
+                Do NOT extract regular employees, advisors, sales heads, PR managers, or generic team members.
+                If the person's title is not explicitly Founder, Co-Founder, CEO, or CTO (or explicitly equivalent head of the company), ignore them.
+                Return JSON list: [{{"name": "Name", "role": "CEO"}}]
+                If no actual founders/CEOs are found, return [].
+                Context:
+                {context}
+                """
+                try:
+                    resp = gateway.generate(prompt, "Return valid JSON only.")
+                    if resp:
+                        extracted = json.loads(
+                            resp.replace("```json", "").replace("```", "").strip()
+                        )
+                        if isinstance(extracted, dict):
+                            for k, v in extracted.items():
+                                if isinstance(v, list):
+                                    extracted = v
+                                    break
+                            if isinstance(extracted, dict):
+                                extracted = [] 
+                                
+                        if not isinstance(extracted, list):
+                            extracted = []
+                        founders = extracted
+                except Exception as e:
+                    self.log(f"Founder Extraction Failed: {e}")
+                    founders = []
+
+            # --- END FOUNDER TRIANGULATION PROTOCOL ---
 
             if not founders:
                 self.log("No founders identified. Skipping targeted search.")
