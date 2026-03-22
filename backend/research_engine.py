@@ -956,11 +956,45 @@ class ResearchEngine:
                             
                     if not isinstance(founders, list):
                         founders = []
-            except Exception as e:
-                self.log(f"Founder Extraction Failed: {e}")
+            if not founders:
+                self.log("No founders identified. Skipping targeted search.")
+                return
+
+            # CROSS-EXAMINATION VERIFIER (Red Team Mode)
+            # We never trust the extraction LLM. We must independently verify the role.
+            verified_founders = []
+            for f in founders[:3]:
+                name = f.get("name", "")
+                role = str(f.get("role", "")).lower()
+                
+                # Check 1: Did the LLM extract a non-founder?
+                if not any(x in role for x in ["founder", "ceo", "chief executive", "cto", "chief tech"]):
+                    self.log(f"Verification Failed: {name} extracted as {role} (Not a core executive). Dropping.")
+                    continue
+                    
+                # Check 2: Verify the exact person's role against the web
+                q_verify = f'"{name}" "{self.company}" ("founder" OR "ceo" OR "cto" OR "chief executive")'
+                verify_res = self.search_tavily(q_verify, 2)
+                if not verify_res:
+                    verify_res = self.search_ddg(q_verify, 2)
+                
+                if verify_res:
+                    # Simple deterministic check: Is the company name AND a founder keyword in the snippet?
+                    snippet_text = " ".join([str(r.get("content", "")).lower() for r in verify_res])
+                    comp_lower = self.company.lower()
+                    if comp_lower in snippet_text and any(x in snippet_text for x in ["founder", "ceo", "cto", "executive"]):
+                        f["linkedin_url"] = "" # Reset, we will find it later
+                        verified_founders.append(f)
+                        self.sources.extend(verify_res)
+                    else:
+                        self.log(f"Verification Failed: {name} lacks explicit founder confirmation in web snippets. Dropping.")
+                else:
+                    self.log(f"Verification Failed: No corroborating search results for {name} as founder. Dropping.")
+
+            founders = verified_founders
 
         if not founders:
-            self.log("No founders identified. Skipping targeted search.")
+            self.log("No founders survived the Cross-Examination Verification. Skipping targeted search.")
             return
 
         self.log(f"Investigating Verified Founders: {[f['name'] for f in founders]}")
@@ -996,14 +1030,8 @@ class ResearchEngine:
                 if valid_li_res:
                     self.sources.extend(valid_li_res)
                 else:
-                    # Even if no LinkedIn profile is found, inject a mandatory Founder anchor 
-                    # so the LLM does not drop the founder during Synthesis.
-                    self.sources.append({
-                        "title": f"Verified Founder: {name}",
-                        "url": "",
-                        "content": f"[FOUNDER CONFIRMED] {name} is explicitly verified as a key founder/executive of {self.company}.",
-                        "source": "Research Engine Verification"
-                    })
+                    self.log(f"Verification Failed: LinkedIn profile mismatch or not found for {name}. Dropping from synthesis.")
+                    # Do not inject fake anchors. If they don't have a verified presence, we drop them.
             else:
                 self.sources.append({
                     "title": f"LinkedIn Profile: {name}",
