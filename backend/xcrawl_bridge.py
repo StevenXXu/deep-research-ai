@@ -18,6 +18,11 @@ def scrape_url(url: str) -> dict:
     payload = {
         "url": url,
         "mode": "sync",
+        "request": {
+            "device": "desktop",
+            "block_ads": True,
+            "only_main_content": True
+        },
         "js_render": {"enabled": True, "wait_until": "networkidle"},
         "output": {"formats": ["markdown"]}
     }
