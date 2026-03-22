@@ -177,7 +177,6 @@ class ResearchEngine:
             res = exa.search_and_contents(
                 query, 
                 type="neural", 
-                use_autoprompt=False,  # Recommended by Exa docs to avoid LLM hallucination in prompt
                 category=category,     # Focus search domain (company, news, tweet, etc.)
                 num_results=num, 
                 highlights={"num_sentences": 5, "highlights_per_url": 2}
