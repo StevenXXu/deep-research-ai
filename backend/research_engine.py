@@ -1327,7 +1327,7 @@ class ResearchEngine:
             # It must contain the exact word bounded by non-alphanumeric chars to prevent Sevalla passing for Sevren
             # Relax slightly for URLs
             name_pattern = r"\b" + re.escape(target_name_lower) + r"\b"
-            url_match = target_name_lower in s.get("url", "").lower()
+            url_match = target_name_lower in str(s.get("url", "")).lower()
             if not url_match and not re.search(name_pattern, text_blob):
                 self.log(f"Firewall Blocked (Exact Name Missing): {s.get('title')}")
                 continue
