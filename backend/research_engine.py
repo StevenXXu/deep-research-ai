@@ -740,11 +740,13 @@ class ResearchEngine:
         Task:
         1. Extract the names and exact roles of ALL founders, executives, or key team members mentioned.
         2. Extract exactly 3 highly specific, distinctive technical/industry keywords that uniquely define what this company does. (e.g., if they do Brain-Computer Interfaces using light, use "Optrode", "Photonics", "Neural". Do NOT use generic words like "AI", "Software", "Tech").
-        3. Identify 3 critical missing pieces of information needed for a VC Investment Memo (e.g., funding history, direct competitors, real user traction).
+        3. Extract the names of up to 3 direct competitors mentioned in the official site or early press (if any).
+        4. Identify 3 critical missing pieces of information needed for a VC Investment Memo (e.g., funding history, direct competitors, real user traction).
 
         Output MUST be valid JSON ONLY:
         {{
             "founding_team": [{{"name": "John Doe", "role": "CEO"}}, ...],
+            "competitor_names": ["Competitor A", "Competitor B"],
             "truth_keywords": ["keyword1", "keyword2", "keyword3"],
             "search_queries": ["query 1", "query 2", "query 3"]
         }}
@@ -757,6 +759,7 @@ class ResearchEngine:
             resp = resp.replace("```json", "").replace("```", "").strip()
             data = json.loads(resp)
 
+            self.competitor_names = data.get("competitor_names", [])
             self.truth_keywords = [k.lower() for k in data.get("truth_keywords", [])]
             self.questions = data.get(
                 "search_queries",
@@ -860,6 +863,88 @@ class ResearchEngine:
         for q in self.questions:
             self.sources.extend(self.search_exa(q, 3))
             self.sources.extend(self.search_tavily(q, 3) or self.search_ddg(q, 2))
+
+    def phase_3g_recursive_comps(self):
+        """Phase 3G: Recursive Comps Engine (Triangulation)"""
+        self.log("Phase 3G: Recursive Comps Engine (Deploying Micro-Agents)...")
+        
+        comps = getattr(self, "competitor_names", [])
+        
+        if not comps:
+            context_blocks = []
+            for s in self.sources:
+                content = str(s.get('content', ''))
+                if 'competitor' in content.lower() or 'alternative' in content.lower():
+                    context_blocks.append(f"- {s.get('title', '')}: {content[:500]}...")
+            
+            context = "\n".join(context_blocks[:10])
+            if not context:
+                self.log("No competitor data found in sources to triangulate.")
+                return
+
+            prompt = f"""
+            Identify the top 3 direct competitors of {self.company} from the provided text.
+            Return ONLY a JSON array of strings (e.g. ["Comp A", "Comp B", "Comp C"]). 
+            Do NOT hallucinate. If no competitors are explicitly mentioned, return [].
+            Text:
+            {context}
+            """
+            try:
+                from llm_gateway import gateway
+                resp = gateway.generate(prompt, "Return valid JSON array only.")
+                if resp:
+                    import json
+                    comps = json.loads(resp.replace("```json", "").replace("```", "").strip())
+            except Exception as e:
+                self.log(f"Comps extraction error: {e}")
+                comps = []
+        
+        if not comps or not isinstance(comps, list):
+            self.log("No competitors identified for recursive search.")
+            return
+            
+        comps = [str(c).strip() for c in comps if isinstance(c, str) and len(str(c).strip()) > 2][:3]
+        if not comps:
+            self.log("No valid competitor names found.")
+            return
+
+        self.log(f"Recursive Comps Triggered for: {comps}")
+        
+        import concurrent.futures
+        
+        def hunt_competitor(comp_name):
+            comp_sources = []
+            # 1. Valuation & Funding
+            q_fund = f'"{comp_name}" startup funding valuation total raised series'
+            res_fund = self.search_tavily(q_fund, 2, depth="basic") 
+            if res_fund: comp_sources.extend(res_fund)
+            
+            # 2. Target Audience / Moat
+            q_moat = f'"{comp_name}" target audience enterprise vs SMB'
+            res_moat = self.search_exa(q_moat, 2, category="company")
+            if res_moat: comp_sources.extend(res_moat)
+            
+            # 3. Pricing Leaks
+            q_price = f'"{comp_name}" pricing cost seat license site:reddit.com OR site:ycombinator.com'
+            res_price = self.search_brave(q_price, 2)
+            if res_price: comp_sources.extend(res_price)
+            
+            for s in comp_sources:
+                s["content"] = f"[COMPETITOR DEEP DIVE: {comp_name}] " + str(s.get("content", ""))
+                s["source"] = "Recursive Comps Engine" # To pass iron firewall
+            return comp_sources
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            future_to_comp = {executor.submit(hunt_competitor, c): c for c in comps}
+            for future in concurrent.futures.as_completed(future_to_comp):
+                c_name = future_to_comp[future]
+                try:
+                    res = future.result()
+                    if res:
+                        self.sources.extend(res)
+                        self.log(f"Micro-Agent fetched {len(res)} deep dive points for {c_name}.")
+                except Exception as exc:
+                    self.log(f"Micro-Agent for {c_name} generated an exception: {exc}")
 
     def phase_hiring_detective(self):
         """Phase 3E: The Hiring Signal (Job Board Scraper)"""
@@ -1208,6 +1293,7 @@ class ResearchEngine:
                 "Scrapling (Subpage)",
                 "Upload",
                 "OSINT X-Ray",
+                "Recursive Comps Engine",
             ]:
                 clean_sources.append(s)
                 continue
@@ -1396,7 +1482,7 @@ class ResearchEngine:
         {{
             "executive_summary": "Company overview and mission",
             "product_features": [],
-            "competitors": [{{"name": "", "features": "State Data Undisclosed if unknown", "pricing": "State Data Undisclosed if unknown"}}],
+            "competitors": [{{"name": "", "capitalization": "State Data Undisclosed if unknown", "target_segment": "State Data Undisclosed if unknown", "core_moat": "State Data Undisclosed if unknown", "pricing_signal": "State Data Undisclosed if unknown"}}],
             "social_sentiment": "Summary of real user sentiment",
             "business_model": "Revenue and pricing strategy",
             "traction_and_risks": "Funding, traffic, and legal risks",
@@ -1468,7 +1554,7 @@ class ResearchEngine:
         CRITICAL VC ANALYSIS CONSTRAINTS (ANTI-FLUFF):
         1. NO HALLUCINATIONS: Do NOT invent raw facts, names, numbers, or fictional competitors.
         2. STRICT ENTITY ALIGNMENT: Ensure the narrative strictly aligns with the "Official Business Description" provided. Do not mix narratives of similar-sounding companies. If a source claims {self.company} does something radically different from its official description, IGNORE IT.
-        3. HONEST SCARCITY: If specific factual data (e.g., funding, traction, pricing, or competitor features) is missing from the Input for the correct company, you MUST explicitly state "Data Undisclosed" or "Not publicly available". Do NOT leave empty spaces in tables or try to hide the lack of data with generic industry boilerplate.
+        3. HONEST SCARCITY: If specific factual data (e.g., funding, traction, pricing, or competitor capitalization/moats) is missing from the Input for the correct company, you MUST explicitly state "Data Undisclosed" or "Not publicly available". Do NOT leave empty spaces in tables or try to hide the lack of data with generic industry boilerplate.
         4. DEDUCTIVE DEPTH (How to expand without fluff): While you cannot invent facts, you MUST provide deep strategic commentary on the implications of the information you *do* have. For example:
            - If they are a stealth startup, analyze what challenges a stealth startup in this specific niche will inevitably face.
            - If their tech stack is known but revenue isn't, analyze the commercial viability and typical go-to-market motion for that tech stack.
@@ -1499,7 +1585,11 @@ class ResearchEngine:
 
         ## Product Deep Dive
         ## Market Landscape
-        (Markdown table: | Competitor | Features | Pricing |)
+        (Markdown table: | Competitor | Capitalization (Funding/Valuation) | Target Segment | Core Moat / Wedge | Pricing Signal |)
+        
+        ### Strategic White-Space
+        (Write a 200-word strategic deduction analyzing the gap {self.company} can exploit based on the competitors' positioning.)
+        
         ## Social Sentiment & Risk
         ## Business Model
         ## Traction & Risks
@@ -1604,6 +1694,7 @@ class ResearchEngine:
         self.phase_1_5_rerank_sources()  # NEW: Rerank sources for better quality
         self.phase_2_gap_analysis()
         self.phase_3_deep_dive()
+        self.phase_3g_recursive_comps()
         self.phase_audit_consistency()  # New Audit Step
         return self.phase_4_synthesis()
 
