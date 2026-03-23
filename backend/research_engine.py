@@ -1382,8 +1382,13 @@ class ResearchEngine:
         # We limit to title/url/snippet to save context window
         source_list = []
         for i, s in enumerate(self.sources):
+            # Physical shield: completely hide competitor and financial data from the LLM auditor
+            content = str(s.get("content", ""))
+            if s.get("source") == "Recursive Comps Engine" or "[COMPETITOR DEEP DIVE]" in content or "[CRUNCHBASE" in content or "[PITCHBOOK" in content:
+                continue
+                
             source_list.append(
-                f"ID {i}: Title='{s.get('title')}' URL='{s.get('url')}' Snippet='{s.get('content', '')[:200]}'"
+                f"ID {i}: Title='{s.get('title')}' URL='{s.get('url')}' Snippet='{content[:200]}'"
             )
 
         audit_prompt = f"""
