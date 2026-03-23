@@ -188,93 +188,112 @@ def scrape_google_trends(query):
         return []
 
 def scrape_crunchbase(query):
-    """
-    Attempt to use Apify Actor PPUtGNTB6xB9dJ2di (Crunchbase Companies Scraper)
-    It does not require cookies, only a direct Crunchbase URL.
-    """
-    print(f"[Apify Bridge] Starting Crunchbase Actor (pratikdani) for '{query}'...", flush=True)
+    "\""
+    Dual-Core Financial Engine:
+    1. Crunchbase Base Scraper (Ead6X7BGkdvPusscD)
+    2. PitchBook Alternative (md4frsemOca5cTWZE)
+    "\""
+    print(f"[Apify Bridge] Starting Dual-Core Financial Engine for '{query}'...", flush=True)
+    import os, json, requests
     from apify_client import ApifyClient
     client = ApifyClient(APIFY_TOKEN)
     
-    # 1. We must first find the Crunchbase URL for this company using Search
-    import requests
-    target_url = None
+    cb_url = None
+    pb_url = None
     serper_key = os.getenv("SERPER_API_KEY")
     if serper_key:
         try:
             url = "https://google.serper.dev/search"
-            payload = {"q": f"site:crunchbase.com/organization {query}", "num": 3}
             headers = {"X-API-Key": serper_key, "Content-Type": "application/json"}
-            resp = requests.post(url, json=payload, headers=headers, timeout=10)
-            for r in resp.json().get("organic", []):
+            
+            # Find CB
+            resp_cb = requests.post(url, json={"q": f"site:crunchbase.com/organization {query}", "num": 3}, headers=headers, timeout=10)
+            for r in resp_cb.json().get("organic", []):
                 link = r.get("link", "")
                 if "crunchbase.com/organization" in link:
-                    target_url = link
+                    cb_url = link
+                    break
+                    
+            # Find PB
+            resp_pb = requests.post(url, json={"q": f"site:pitchbook.com/profiles/company {query}", "num": 3}, headers=headers, timeout=10)
+            for r in resp_pb.json().get("organic", []):
+                link = r.get("link", "")
+                if "pitchbook.com/profiles/company" in link:
+                    pb_url = link
                     break
         except Exception as e:
             print(f"[Apify Bridge] Serper URL discovery failed: {e}", flush=True)
-            
-    if not target_url:
-        print(f"[Apify Bridge] Could not locate a Crunchbase URL for {query}. Falling back...", flush=True)
-        return _scrape_crunchbase_fallback(query)
-        
-    print(f"[Apify Bridge] Located Crunchbase URL: {target_url}. Launching Scraper...", flush=True)
-    run_input = { "url": target_url }
-    
-    try:
-        # We use actor PPUtGNTB6xB9dJ2di (Crunchbase Companies Scraper)
-        run = client.actor("PPUtGNTB6xB9dJ2di").call(run_input=run_input, timeout_secs=120, memory_mbytes=1024)
-        print(f"[Apify Bridge] Crunchbase Actor Finished.", flush=True)
-        
-        dataset_items = client.dataset(run["defaultDatasetId"]).list_items().items
-        if not dataset_items:
-            print("[Apify Bridge] No Crunchbase data returned from actor. Falling back...", flush=True)
-            return _scrape_crunchbase_fallback(query)
-            
-        company_data = dataset_items[0]
-        
-        # Format the highly nested JSON into a dense string for the LLM
-        cb_summary = f"[CRUNCHBASE OFFICIAL RECORD: {query}]\n"
-        
-        # We recursively extract all string/number leaf nodes that contain "fund", "money", "investor", "round", "valuation", "name"
-        # to ensure we don't miss anything regardless of the actor's unknown JSON schema.
-        import json
-        important_keys = ["name", "description", "founded", "funding", "investor", "money", "valuation", "round", "amount", "currency", "total", "status", "stage", "employee"]
-        
-        def extract_important_data(data, prefix=""):
-            extracted = ""
-            if isinstance(data, dict):
-                for k, v in data.items():
-                    k_str = str(k).lower()
-                    if isinstance(v, (dict, list)):
-                        extracted += extract_important_data(v, prefix + str(k) + " -> ")
-                    elif isinstance(v, (str, int, float)) and v:
-                        # Only keep if the key looks like business info
-                        if any(ik in k_str for ik in important_keys) or len(str(v)) > 20:
-                            extracted += f"- {prefix}{k}: {v}\n"
-            elif isinstance(data, list):
-                for i, item in enumerate(data):
-                    extracted += extract_important_data(item, prefix + f"[{i}] -> ")
-            return extracted
-            
-        extracted_text = extract_important_data(company_data)
-        
-        # If extraction is too thin, dump standard JSON (truncated)
-        if len(extracted_text) < 100:
-            extracted_text = json.dumps(company_data, indent=2)[:3000]
-            
-        cb_summary += extracted_text[:4000] # Limit to 4k chars to avoid token blowout
-        
+
+    financial_data = ""
+
+    def extract_important_data(data, prefix=""):
+        important_keys = ["name", "description", "founded", "funding", "investor", "money", "valuation", "round", "amount", "currency", "total", "status", "stage", "employee", "raised", "date", "type", "post_money", "pre_money"]
+        extracted = ""
+        if isinstance(data, dict):
+            for k, v in data.items():
+                k_str = str(k).lower()
+                if isinstance(v, (dict, list)):
+                    extracted += extract_important_data(v, prefix + str(k) + " -> ")
+                elif isinstance(v, (str, int, float)) and v:
+                    if any(ik in k_str for ik in important_keys) or len(str(v)) > 20:
+                        extracted += f"- {prefix}{k}: {v}
+"
+        elif isinstance(data, list):
+            for i, item in enumerate(data):
+                extracted += extract_important_data(item, prefix + f"[{i}] -> ")
+        return extracted
+
+    # Try Crunchbase
+    if cb_url:
+        print(f"[Apify Bridge] Engaging Crunchbase Core: {cb_url}", flush=True)
+        try:
+            run = client.actor("Ead6X7BGkdvPusscD").call(
+                run_input={"startUrls": [{"url": cb_url}], "maxItems": 1}, 
+                timeout_secs=120, memory_mbytes=1024
+            )
+            items = client.dataset(run["defaultDatasetId"]).list_items().items
+            if items:
+                financial_data += f"
+[CRUNCHBASE OFFICIAL RECORD: {query}]
+"
+                ext_text = extract_important_data(items[0])
+                if len(ext_text) < 100:
+                    ext_text = json.dumps(items[0], indent=2)[:3000]
+                financial_data += ext_text[:4000]
+        except Exception as e:
+            print(f"[Apify Bridge] Crunchbase Actor Failed: {e}", flush=True)
+
+    # Try PitchBook
+    if pb_url:
+        print(f"[Apify Bridge] Engaging PitchBook Core: {pb_url}", flush=True)
+        try:
+            run = client.actor("md4frsemOca5cTWZE").call(
+                run_input={"url": pb_url}, 
+                timeout_secs=120, memory_mbytes=1024
+            )
+            items = client.dataset(run["defaultDatasetId"]).list_items().items
+            if items:
+                financial_data += f"
+[PITCHBOOK OFFICIAL RECORD: {query}]
+"
+                ext_text = extract_important_data(items[0])
+                if len(ext_text) < 100:
+                    ext_text = json.dumps(items[0], indent=2)[:3000]
+                financial_data += ext_text[:4000]
+        except Exception as e:
+            print(f"[Apify Bridge] PitchBook Actor Failed: {e}", flush=True)
+
+    if financial_data.strip():
         return [{
-            "title": f"Crunchbase Profile: {company_data.get('name', query)}",
-            "url": target_url,
-            "content": cb_summary,
-            "source": "Crunchbase Data"
+            "title": f"Financial Intelligence: {query}",
+            "url": cb_url or pb_url or "https://www.crunchbase.com",
+            "content": financial_data[:8000],
+            "source": "Dual-Core Financial Engine"
         }]
-        
-    except Exception as e:
-        print(f"[Apify Bridge] Crunchbase Actor Failed: {e}. Attempting fallback...", flush=True)
-        return _scrape_crunchbase_fallback(query)
+
+    print(f"[Apify Bridge] Both actors failed or returned empty. Attempting web search fallback...", flush=True)
+    return _scrape_crunchbase_fallback(query)
+
 
 def _scrape_crunchbase_fallback(query):
     import requests
