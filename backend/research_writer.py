@@ -303,12 +303,19 @@ except Exception as e:
 
         # Execute Phases 1-4
         engine.phase_1_broad_scan()
+        engine.phase_1_5_rerank_sources()
 
         update_status(50, "Phase 2: Identifying Knowledge Gaps...")
         engine.phase_2_gap_analysis()
 
         update_status(60, "Phase 3: Deep Dive (Social/Trends)...")
         engine.phase_3_deep_dive()
+        
+        update_status(70, "Phase 3G: Recursive Comps Triangulation...")
+        engine.phase_3g_recursive_comps()
+        
+        update_status(75, "Phase 3.5: Auditing Source Consistency...")
+        engine.phase_audit_consistency()
 
         update_status(80, "Phase 4: Synthesizing Native Investment Memo...")
         analysis = engine.phase_4_synthesis() # Returns Markdown Report
