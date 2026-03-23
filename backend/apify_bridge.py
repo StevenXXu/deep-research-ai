@@ -188,11 +188,11 @@ def scrape_google_trends(query):
         return []
 
 def scrape_crunchbase(query):
-    "\""
+    """
     Dual-Core Financial Engine:
     1. Crunchbase Base Scraper (Ead6X7BGkdvPusscD)
     2. PitchBook Alternative (md4frsemOca5cTWZE)
-    "\""
+    """
     print(f"[Apify Bridge] Starting Dual-Core Financial Engine for '{query}'...", flush=True)
     import os, json, requests
     from apify_client import ApifyClient
@@ -236,8 +236,7 @@ def scrape_crunchbase(query):
                     extracted += extract_important_data(v, prefix + str(k) + " -> ")
                 elif isinstance(v, (str, int, float)) and v:
                     if any(ik in k_str for ik in important_keys) or len(str(v)) > 20:
-                        extracted += f"- {prefix}{k}: {v}
-"
+                        extracted += f"- {prefix}{k}: {v}\n"
         elif isinstance(data, list):
             for i, item in enumerate(data):
                 extracted += extract_important_data(item, prefix + f"[{i}] -> ")
@@ -253,9 +252,7 @@ def scrape_crunchbase(query):
             )
             items = client.dataset(run["defaultDatasetId"]).list_items().items
             if items:
-                financial_data += f"
-[CRUNCHBASE OFFICIAL RECORD: {query}]
-"
+                financial_data += f"\n[CRUNCHBASE OFFICIAL RECORD: {query}]\n"
                 ext_text = extract_important_data(items[0])
                 if len(ext_text) < 100:
                     ext_text = json.dumps(items[0], indent=2)[:3000]
@@ -273,9 +270,7 @@ def scrape_crunchbase(query):
             )
             items = client.dataset(run["defaultDatasetId"]).list_items().items
             if items:
-                financial_data += f"
-[PITCHBOOK OFFICIAL RECORD: {query}]
-"
+                financial_data += f"\n[PITCHBOOK OFFICIAL RECORD: {query}]\n"
                 ext_text = extract_important_data(items[0])
                 if len(ext_text) < 100:
                     ext_text = json.dumps(items[0], indent=2)[:3000]
