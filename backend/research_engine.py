@@ -1393,6 +1393,7 @@ class ResearchEngine:
 
         Task: Review the list of gathered sources. Identify any source that is IRRELEVANT.
         CRITICAL: You MUST aggressively flag sources that refer to fiction novels, video games, fictional characters (e.g., magic schools, anime), or completely unrelated companies with the same name.
+        EXCEPTION: Do NOT exclude sources that explicitly mention "[COMPETITOR DEEP DIVE]" or "[CRUNCHBASE OFFICIAL RECORD]" or "[PITCHBOOK OFFICIAL RECORD]". These are deliberately gathered intelligence items.
 
         Sources:
         {json.dumps(source_list, indent=2)}
