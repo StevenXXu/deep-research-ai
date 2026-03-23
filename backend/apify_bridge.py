@@ -188,11 +188,75 @@ def scrape_google_trends(query):
         return []
 
 def scrape_crunchbase(query):
-    """Fallback: Use Serper/DDG to find funding data since Apify Actor requires paid subscription"""
-    print(f"[Apify Bridge] Crunchbase Actor requires paid subscription. Using web search fallback for '{query}'...", flush=True)
+    """
+    Directly query Crunchbase using Apify Actor BBfgvSNWcySEk1jQO
+    Fetches official funding, investors, and company info without a paid CB subscription.
+    """
+    print(f"[Apify Bridge] Starting Crunchbase Actor for '{query}'...", flush=True)
+    from apify_client import ApifyClient
+    client = ApifyClient(APIFY_TOKEN)
     
+    run_input = {
+        "queries": f"{query} company",
+        "maxResults": 1,
+        "scrapeCompanyDetails": True,
+        "scrapeFounders": True,
+        "scrapeFundingRounds": True,
+        "scrapeInvestors": True
+    }
+    
+    try:
+        # We use actor BBfgvSNWcySEk1jQO (Crunchbase Scraper)
+        run = client.actor("BBfgvSNWcySEk1jQO").call(run_input=run_input, timeout_secs=120, memory_mbytes=1024)
+        print(f"[Apify Bridge] Crunchbase Actor Finished.", flush=True)
+        
+        dataset_items = client.dataset(run["defaultDatasetId"]).list_items().items
+        if not dataset_items:
+            print("[Apify Bridge] No Crunchbase data returned.", flush=True)
+            return []
+            
+        company_data = dataset_items[0]
+        
+        # Format the high-density JSON into a readable markdown block for the LLM
+        cb_summary = f"[CRUNCHBASE OFFICIAL RECORD: {query}]\n"
+        
+        # Basic Info
+        cb_summary += f"- Name: {company_data.get('name', 'Unknown')}\n"
+        cb_summary += f"- Description: {company_data.get('shortDescription', '')}\n"
+        
+        # Funding
+        total_funding = company_data.get('totalFundingAmount', {}).get('value', 'Undisclosed')
+        currency = company_data.get('totalFundingAmount', {}).get('currency', 'USD')
+        cb_summary += f"- Total Funding: {total_funding} {currency}\n"
+        
+        rounds = company_data.get('fundingRounds', [])
+        if rounds:
+            cb_summary += "- Recent Funding Rounds:\n"
+            for r in rounds[:3]: # Top 3 recent rounds
+                r_type = r.get('fundingType', 'Unknown Round')
+                r_money = r.get('moneyRaised', {}).get('value', 'Undisclosed')
+                r_date = r.get('announcedDate', 'Unknown Date')
+                cb_summary += f"  * {r_type}: {r_money} {currency} on {r_date}\n"
+                
+        # Investors
+        investors = company_data.get('investors', [])
+        if investors:
+            inv_names = [inv.get('name', '') for inv in investors[:5] if inv.get('name')]
+            cb_summary += f"- Top Investors: {', '.join(inv_names)}\n"
+            
+        return [{
+            "title": f"Crunchbase Profile: {query}",
+            "url": company_data.get('url', 'https://www.crunchbase.com'),
+            "content": cb_summary,
+            "source": "Crunchbase Data"
+        }]
+        
+    except Exception as e:
+        print(f"[Apify Bridge] Crunchbase Actor Failed: {e}. Attempting fallback...", flush=True)
+        return _scrape_crunchbase_fallback(query)
+
+def _scrape_crunchbase_fallback(query):
     import requests
-    
     # Try Serper first
     serper_key = os.getenv("SERPER_API_KEY")
     if serper_key:
