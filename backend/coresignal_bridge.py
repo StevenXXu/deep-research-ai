@@ -52,37 +52,65 @@ def search_company_by_domain(domain: str) -> dict:
             print(f"[CORESIGNAL] Debug Response Type: {type(data)}")
             
             result = None
-            # If we got hits, return the first one
+            candidates = []
+            
+            # Extract list of raw items or IDs from the response
             if isinstance(data, list) and len(data) > 0:
-                # Some coresignal endpoints return list directly for es_dsl depending on version
-                if isinstance(data[0], int):
-                    print(f"[CORESIGNAL] Resolving company ID: {data[0]}")
-                    c_url = f"{BASE_URL}/company_base/collect/{data[0]}"
-                    c_res = requests.get(c_url, headers={"accept": "application/json", "apikey": CORESIGNAL_API_KEY}, timeout=15)
-                    if c_res.status_code == 200:
-                        result = c_res.json()
-                else:
-                    result = data[0]
+                candidates = data[:5]
             elif isinstance(data, dict):
-                # Standard elasticsearch format
                 hits = data.get("hits", {})
                 if isinstance(hits, dict):
                     inner_hits = hits.get("hits", [])
-                    if isinstance(inner_hits, list) and inner_hits:
-                        result = inner_hits[0].get("_source", inner_hits[0])
-                elif isinstance(hits, list) and hits:
-                     result = hits[0]
+                    if isinstance(inner_hits, list):
+                        candidates = [h.get("_source", h) for h in inner_hits[:5]]
+                elif isinstance(hits, list):
+                    candidates = hits[:5]
                 
-                if not result:
-                    # Direct items format
+                if not candidates:
                     items = data.get("items", [])
-                    if isinstance(items, list) and items:
-                        result = items[0]
+                    if isinstance(items, list):
+                        candidates = items[:5]
                 
-                if not result:
-                    # Sometimes it just returns a list directly under data
-                    if "name" in data:
-                        result = data
+                if not candidates and "name" in data:
+                    candidates = [data]
+                    
+            # Resolve integer IDs to full objects if necessary
+            resolved_candidates = []
+            for c in candidates:
+                if isinstance(c, int):
+                    print(f"[CORESIGNAL] Resolving company ID: {c}")
+                    c_url = f"{BASE_URL}/company_base/collect/{c}"
+                    c_res = requests.get(c_url, headers={"accept": "application/json", "apikey": CORESIGNAL_API_KEY}, timeout=15)
+                    if c_res.status_code == 200:
+                        resolved_candidates.append(c_res.json())
+                elif isinstance(c, dict):
+                    resolved_candidates.append(c)
+                    
+            # Score and select the best matching company
+            if resolved_candidates:
+                best_score = -1
+                for rc in resolved_candidates:
+                    score = 0
+                    rc_name = str(rc.get("name", "")).lower()
+                    rc_url = str(rc.get("url", "")).lower()
+                    
+                    # 1. Exact domain match
+                    if clean_domain in rc_url or rc_url.replace("www.", "").replace("https://", "").replace("http://", "").strip("/") == clean_domain:
+                        score += 10
+                        
+                    # 2. Name matches domain prefix
+                    domain_prefix = clean_domain.split(".")[0]
+                    if domain_prefix in rc_name:
+                        score += 5
+                    if domain_prefix == rc_name.replace(" ", ""):
+                        score += 10
+                        
+                    # 3. Penalize overly long names (subsidiaries/divisions usually have longer names)
+                    score -= len(rc_name) * 0.1
+                    
+                    if score > best_score:
+                        best_score = score
+                        result = rc
             
             if isinstance(result, dict):
                 return result
