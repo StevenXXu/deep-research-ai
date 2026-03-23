@@ -1453,7 +1453,8 @@ class ResearchEngine:
         # --- AGENT 3: The Formatter (Build the final Markdown) ---
         self.log("Agent 3 (Formatter): Assembling the final report...")
         # Add questions into the facts payload for the formatter
-        formatting_payload = f"FACTS:\n{facts_json}\n\nINTERROGATION QUESTIONS:\n{json.dumps(questions)}"
+        formatted_questions = "\n".join([f"{i+1}. {q}" for i, q in enumerate(questions)])
+        formatting_payload = f"FACTS:\n{facts_json}\n\nINTERROGATION QUESTIONS:\n{formatted_questions}"
 
         identity_anchor = f"Official Business Description: {getattr(self, 'company_one_liner', 'Unknown')}" if getattr(self, 'company_one_liner', '') else ""
 
@@ -1507,7 +1508,7 @@ class ResearchEngine:
         ## Exit Strategy & M&A Landscape
 
         ## Due Diligence Interrogation
-        (List the 5 questions provided in the Input. This must be the very last section before the references.)
+        (Format the questions provided in the Input as a proper numbered Markdown list, e.g., "1. [Question]". Do NOT output a raw JSON array string. This must be the very last section.)
         """
 
         report = gateway.generate(prompt_agent3, "Output ONLY the Markdown report.")
