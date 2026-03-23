@@ -189,9 +189,92 @@ def scrape_google_trends(query):
 
 def scrape_crunchbase(query):
     """
-    Fallback: Use Serper/Exa Dorking since robust public Crunchbase scrapers without auth are unavailable.
+    Attempt to use Apify Actor PPUtGNTB6xB9dJ2di (Crunchbase Companies Scraper)
+    It does not require cookies, only a direct Crunchbase URL.
     """
-    return _scrape_crunchbase_fallback(query)
+    print(f"[Apify Bridge] Starting Crunchbase Actor (pratikdani) for '{query}'...", flush=True)
+    from apify_client import ApifyClient
+    client = ApifyClient(APIFY_TOKEN)
+    
+    # 1. We must first find the Crunchbase URL for this company using Search
+    import requests
+    target_url = None
+    serper_key = os.getenv("SERPER_API_KEY")
+    if serper_key:
+        try:
+            url = "https://google.serper.dev/search"
+            payload = {"q": f"site:crunchbase.com/organization {query}", "num": 3}
+            headers = {"X-API-Key": serper_key, "Content-Type": "application/json"}
+            resp = requests.post(url, json=payload, headers=headers, timeout=10)
+            for r in resp.json().get("organic", []):
+                link = r.get("link", "")
+                if "crunchbase.com/organization" in link:
+                    target_url = link
+                    break
+        except Exception as e:
+            print(f"[Apify Bridge] Serper URL discovery failed: {e}", flush=True)
+            
+    if not target_url:
+        print(f"[Apify Bridge] Could not locate a Crunchbase URL for {query}. Falling back...", flush=True)
+        return _scrape_crunchbase_fallback(query)
+        
+    print(f"[Apify Bridge] Located Crunchbase URL: {target_url}. Launching Scraper...", flush=True)
+    run_input = { "url": target_url }
+    
+    try:
+        # We use actor PPUtGNTB6xB9dJ2di (Crunchbase Companies Scraper)
+        run = client.actor("PPUtGNTB6xB9dJ2di").call(run_input=run_input, timeout_secs=120, memory_mbytes=1024)
+        print(f"[Apify Bridge] Crunchbase Actor Finished.", flush=True)
+        
+        dataset_items = client.dataset(run["defaultDatasetId"]).list_items().items
+        if not dataset_items:
+            print("[Apify Bridge] No Crunchbase data returned from actor. Falling back...", flush=True)
+            return _scrape_crunchbase_fallback(query)
+            
+        company_data = dataset_items[0]
+        
+        # Format the highly nested JSON into a dense string for the LLM
+        cb_summary = f"[CRUNCHBASE OFFICIAL RECORD: {query}]\n"
+        
+        # We recursively extract all string/number leaf nodes that contain "fund", "money", "investor", "round", "valuation", "name"
+        # to ensure we don't miss anything regardless of the actor's unknown JSON schema.
+        import json
+        important_keys = ["name", "description", "founded", "funding", "investor", "money", "valuation", "round", "amount", "currency", "total", "status", "stage", "employee"]
+        
+        def extract_important_data(data, prefix=""):
+            extracted = ""
+            if isinstance(data, dict):
+                for k, v in data.items():
+                    k_str = str(k).lower()
+                    if isinstance(v, (dict, list)):
+                        extracted += extract_important_data(v, prefix + str(k) + " -> ")
+                    elif isinstance(v, (str, int, float)) and v:
+                        # Only keep if the key looks like business info
+                        if any(ik in k_str for ik in important_keys) or len(str(v)) > 20:
+                            extracted += f"- {prefix}{k}: {v}\n"
+            elif isinstance(data, list):
+                for i, item in enumerate(data):
+                    extracted += extract_important_data(item, prefix + f"[{i}] -> ")
+            return extracted
+            
+        extracted_text = extract_important_data(company_data)
+        
+        # If extraction is too thin, dump standard JSON (truncated)
+        if len(extracted_text) < 100:
+            extracted_text = json.dumps(company_data, indent=2)[:3000]
+            
+        cb_summary += extracted_text[:4000] # Limit to 4k chars to avoid token blowout
+        
+        return [{
+            "title": f"Crunchbase Profile: {company_data.get('name', query)}",
+            "url": target_url,
+            "content": cb_summary,
+            "source": "Crunchbase Data"
+        }]
+        
+    except Exception as e:
+        print(f"[Apify Bridge] Crunchbase Actor Failed: {e}. Attempting fallback...", flush=True)
+        return _scrape_crunchbase_fallback(query)
 
 def _scrape_crunchbase_fallback(query):
     import requests
