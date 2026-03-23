@@ -1396,7 +1396,7 @@ class ResearchEngine:
         {{
             "executive_summary": "Company overview and mission",
             "product_features": [],
-            "competitors": [{{"name": "", "features": "", "pricing": ""}}],
+            "competitors": [{{"name": "", "features": "State Data Undisclosed if unknown", "pricing": "State Data Undisclosed if unknown"}}],
             "social_sentiment": "Summary of real user sentiment",
             "business_model": "Revenue and pricing strategy",
             "traction_and_risks": "Funding, traffic, and legal risks",
@@ -1468,7 +1468,7 @@ class ResearchEngine:
         CRITICAL VC ANALYSIS CONSTRAINTS (ANTI-FLUFF):
         1. NO HALLUCINATIONS: Do NOT invent raw facts, names, numbers, or fictional competitors.
         2. STRICT ENTITY ALIGNMENT: Ensure the narrative strictly aligns with the "Official Business Description" provided. Do not mix narratives of similar-sounding companies. If a source claims {self.company} does something radically different from its official description, IGNORE IT.
-        3. HONEST SCARCITY: If specific factual data (e.g., funding, traction, pricing) is missing from the Input for the correct company, you MUST explicitly state "Data Undisclosed" or "Not publicly available". Do NOT try to hide the lack of data with generic industry boilerplate.
+        3. HONEST SCARCITY: If specific factual data (e.g., funding, traction, pricing, or competitor features) is missing from the Input for the correct company, you MUST explicitly state "Data Undisclosed" or "Not publicly available". Do NOT leave empty spaces in tables or try to hide the lack of data with generic industry boilerplate.
         4. DEDUCTIVE DEPTH (How to expand without fluff): While you cannot invent facts, you MUST provide deep strategic commentary on the implications of the information you *do* have. For example:
            - If they are a stealth startup, analyze what challenges a stealth startup in this specific niche will inevitably face.
            - If their tech stack is known but revenue isn't, analyze the commercial viability and typical go-to-market motion for that tech stack.
