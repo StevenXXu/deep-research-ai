@@ -621,8 +621,8 @@ class ResearchEngine:
         company_words = [w.lower() for w in self.company.split() if len(w) > 2]
         
         for s in self.sources:
-            # Always keep official sources
-            if s.get("source") in ["Scrapling (Home Page)", "Scrapling (Subpage)", "Apify", "Upload", "Coresignal Data"]:
+            # Always keep official sources and micro-agents
+            if s.get("source") in ["Scrapling (Home Page)", "Scrapling (Subpage)", "Apify", "Upload", "Coresignal Data", "Recursive Comps Engine"]:
                 filtered_sources.append(s)
                 continue
                 
