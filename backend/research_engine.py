@@ -626,8 +626,8 @@ class ResearchEngine:
                 filtered_sources.append(s)
                 continue
                 
-            content = (s.get("title", "") + " " + s.get("content", "")).lower()
-            url = s.get("url", "").lower()
+            content = (str(s.get("title", "")) + " " + str(s.get("content", ""))).lower()
+            url = str(s.get("url", "")).lower()
             
             # Rule 1: Official Root Domain Check (Strict TLD matching)
             if self.is_official_url(url):
