@@ -1472,6 +1472,7 @@ class ResearchEngine:
         3. For example, if {self.company} is "Wavemotion AI" (domain: wavemotionai.com), and a source talks about "WaveForms AI" raising $40M, YOU MUST IGNORE IT. Do not attribute data from similarly named companies to {self.company}.
         4. If you only find data about wrong companies, leave the JSON fields empty. DO NOT HALLUCINATE.
         5. For the 'founding_team' array, MUST extract the 'linkedin_url' if provided in the text (look for "[FOUNDER LINKEDIN]" or "LinkedIn: ").
+        6. EXCEPTION FOR COMPETITORS: You will see sources tagged with "[COMPETITOR DEEP DIVE: <name>]". These are explicitly gathered intelligence about competitors. YOU MUST USE THESE to richly populate the `competitors` array with their Capitalization, Target Segment, Core Moat, and Pricing Signal. Do NOT ignore competitor data.
         
         Constraints:
         - Output ONLY valid JSON. No markdown wrappers.
@@ -1482,7 +1483,7 @@ class ResearchEngine:
         {{
             "executive_summary": "Company overview and mission",
             "product_features": [],
-            "competitors": [{{"name": "", "capitalization": "State Data Undisclosed if unknown", "target_segment": "State Data Undisclosed if unknown", "core_moat": "State Data Undisclosed if unknown", "pricing_signal": "State Data Undisclosed if unknown"}}],
+            "competitors": [{{"name": "Comp A", "capitalization": "Data Undisclosed", "target_segment": "Data Undisclosed", "core_moat": "Data Undisclosed", "pricing_signal": "Data Undisclosed"}}],
             "social_sentiment": "Summary of real user sentiment",
             "business_model": "Revenue and pricing strategy",
             "traction_and_risks": "Funding, traffic, and legal risks",
