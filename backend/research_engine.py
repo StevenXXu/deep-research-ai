@@ -1622,7 +1622,7 @@ class ResearchEngine:
         (Analyze the macro industry status quo. What existing solutions does {self.company} aim to replace? CRUCIAL DEEP TECH: What historical physical/chemical/engineering bottlenecks prevented this specific technology path from scaling in the past 10 years? Why did others fail?)
 
         ### Pain Points
-        (Analyze 2-4 specific pain points in this market. If {self.company} has not published their exact metrics, analyze the *typical* quantifiable impacts in this sector. Explain why existing solutions fail.)
+        (Analyze 2-4 specific pain points in this market. Output them as a clean bulleted list. Ensure proper markdown spacing around bold text. If {self.company} has not published exact metrics, analyze the *typical* quantifiable impacts in this sector. Explain why existing solutions fail.)
 
         ## Company Overview & Solution
         ### What They Do
@@ -1644,10 +1644,10 @@ class ResearchEngine:
         ## Business Model
         ## Traction & Risks
         ## Founding Team & Team-to-Moat Fit
-        (List the team. MUST include a [Team-to-Moat Fit Assessment]: Cross-examine the founders' academic/engineering backgrounds against the core technology's historical bottlenecks. Do they have the actual pedigree to solve this? Explicitly output [MATCH] or [RED FLAG] with your justification.)
+        (List the team and their LinkedIn URLs. At the end of the list, write a bolded paragraph starting with **Team-to-Moat Fit Assessment:** Cross-examine the founders' academic/engineering backgrounds against the core technology's historical bottlenecks. Do they have the actual pedigree to solve this? Explicitly output [MATCH] or [RED FLAG] with your justification. Do NOT use markdown brackets like [Team-to-Moat Fit Assessment] as headers.)
         
         ## Data Consistency Check & Ultimate Verdict
-        (Point out conflicting PR vs reality. Finally, act as a Deep Tech VC Partner: give your [Ultimate Verdict]. Is this a PR stunt, a science experiment, or a viable investment? Why?)
+        (Point out conflicting PR vs reality based on the data. Then, start a new paragraph with **Ultimate Verdict:** Act as a Deep Tech VC Partner. Is this a PR stunt, a science experiment, or a viable investment? Why? Do NOT use markdown brackets like [Ultimate Verdict].)
         ## Exit Strategy & M&A Landscape
 
         ## Due Diligence Interrogation
