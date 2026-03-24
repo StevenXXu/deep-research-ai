@@ -33,3 +33,37 @@ def scrape_with_firecrawl(url):
     except Exception as e:
         print(f"[Firecrawl] Exception scraping {url}: {e}", flush=True)
     return None
+
+def map_website(url, search_query="team or founders or about us or leadership or product or solutions"):
+    api_key = os.getenv("FIRECRAWL_API_KEY")
+    if not api_key:
+        return None
+    
+    print(f"[Firecrawl] Mapping {url} with semantic search: '{search_query}'...", flush=True)
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "url": url,
+        "search": search_query,
+        "limit": 10
+    }
+    try:
+        response = requests.post("https://api.firecrawl.dev/v2/map", headers=headers, json=payload, timeout=60)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("success") or data.get("status") == "success":
+                links = data.get("links", [])
+                extracted = []
+                for link in links:
+                    if isinstance(link, dict) and link.get("url"):
+                        extracted.append(link.get("url"))
+                    elif isinstance(link, str):
+                        extracted.append(link)
+                return extracted
+        else:
+            print(f"[Firecrawl] Map Error: {response.status_code} {response.text}", flush=True)
+    except Exception as e:
+        print(f"[Firecrawl] Map Exception for {url}: {e}", flush=True)
+    return None

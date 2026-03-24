@@ -408,22 +408,39 @@ class ResearchEngine:
             self.log(f"Scrapling: Extracted {len(clean_text)} chars from {self.url}")
 
             # Attempt to fetch deeper core pages (About, Product, Team, etc.)
-            raw_links = page.css("a::attr(href)").getall()
+            golden_urls = []
+            site_mapped_urls = []
             
-            # Use SiteMapper to determine the optimal pages to scrape
-            mapper = SiteMapper(self.url)
-            site_map_data = mapper.map_site(raw_links)
+            import firecrawl_bridge as firecrawl
+            if os.getenv("FIRECRAWL_API_KEY"):
+                self.log("Firecrawl Map: Scanning site for hidden team/product pages...")
+                fc_links = firecrawl.map_website(self.url)
+                if fc_links:
+                    self.log(f"Firecrawl Map: Found {len(fc_links)} semantic matches.")
+                    # Deduplicate and remove exact homepage
+                    seen = set([self.url.strip("/").lower(), self.url.lower()])
+                    for link in fc_links:
+                        cl = link.strip("/").lower()
+                        if cl not in seen:
+                            seen.add(cl)
+                            golden_urls.append({"url": link, "category": "Firecrawl Map"})
             
-            if site_map_data.get("is_single_page_site"):
-                self.log("SiteMapper: Single Page Site detected. Adding Vaporware risk flag.")
-                self.sources.append({
-                    "title": "System Alert - Single Page App",
-                    "url": self.url,
-                    "content": "[SYSTEM ALERT] Network topology analysis indicates this target has an extremely shallow site structure (1 or 0 internal sub-pages). It lacks dedicated pages for Team, Pricing, or Product Docs. In your report, aggressively note this as a potential 'Vaporware' or 'Early-stage' risk indicator.",
-                    "source": "Upload"
-                })
-            
-            golden_urls = site_map_data.get("golden_urls_selected", [])
+            # Fallback to local SiteMapper if Firecrawl Map failed or not configured
+            if not golden_urls:
+                raw_links = page.css("a::attr(href)").getall()
+                mapper = SiteMapper(self.url)
+                site_map_data = mapper.map_site(raw_links)
+                
+                if site_map_data.get("is_single_page_site"):
+                    self.log("SiteMapper: Single Page Site detected. Adding Vaporware risk flag.")
+                    self.sources.append({
+                        "title": "System Alert - Single Page App",
+                        "url": self.url,
+                        "content": "[SYSTEM ALERT] Network topology analysis indicates this target has an extremely shallow site structure (1 or 0 internal sub-pages). It lacks dedicated pages for Team, Pricing, or Product Docs. In your report, aggressively note this as a potential 'Vaporware' or 'Early-stage' risk indicator.",
+                        "source": "Upload"
+                    })
+                
+                golden_urls = site_map_data.get("golden_urls_selected", [])
             fetched_count = 1
 
             # Scrape top 3-4 golden URLs
