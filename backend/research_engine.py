@@ -1368,6 +1368,40 @@ class ResearchEngine:
         )
         self.sources = clean_sources
 
+    def phase_3h_macro_tech(self):
+        """Phase 3H: Global Tech Panorama & Historical Graveyard"""
+        self.log("Phase 3H: Scanning Global Tech Panorama & Historical Graveyard...")
+        
+        core_tech = getattr(self, "exact_niche_phrase", "") or getattr(self, "company_one_liner", "")
+        if not core_tech:
+            keywords = getattr(self, "truth_keywords", [])
+            core_tech = " ".join(keywords[:2]) if keywords else self.domain
+            
+        if len(core_tech) > 40:
+            core_tech = core_tech[:40]
+            
+        queries = [
+            f'"{core_tech}" why it failed OR commercialization bottleneck OR historical challenges',
+            f'"{core_tech}" vs alternative technologies pros cons',
+        ]
+        
+        team = getattr(self, "official_team", [])
+        if team:
+            founder_name = team[0].get("name", "")
+            if founder_name:
+                queries.append(f'"{founder_name}" "{self.company}" background education PhD engineering')
+                
+        for q in queries:
+            try:
+                res = self.search_tavily(q, 2, depth="basic")
+                if res:
+                    for r in res:
+                        r["content"] = "[INDUSTRY TECH CONTEXT] " + str(r.get("content", ""))
+                        r["source"] = "Macro Tech Scan"
+                    self.sources.extend(res)
+            except Exception as e:
+                self.log(f"Macro tech search failed for {q}: {e}")
+
     def phase_audit_consistency(self):
         """Phase 3.5: Audit sources for identity mismatch (e.g. wrong company with same name)"""
         # 1. First run the Strict Source Filter globally over ALL sources gathered in Phase 3
@@ -1480,6 +1514,11 @@ class ResearchEngine:
         5. For the 'founding_team' array, MUST extract the 'linkedin_url' if provided in the text (look for "[FOUNDER LINKEDIN]" or "LinkedIn: ").
         6. EXCEPTION FOR COMPETITORS: You will see sources tagged with "[COMPETITOR DEEP DIVE: <name>]". These are explicitly gathered intelligence about competitors. YOU MUST USE THESE to richly populate the `competitors` array with their Capitalization, Target Segment, Core Moat, and Pricing Signal. Do NOT ignore competitor data.
         
+        [DEEP TECH MANDATES]
+        - No Adjectives: Strip marketing fluff. Focus on exact physics/mechanisms.
+        - The Graveyard (Historical Bottlenecks): Identify what physical/chemical/engineering bottlenecks prevented this technology from scaling in the past 10 years.
+        - Team-to-Moat Fit: Analyze if the founders have the actual scientific/engineering pedigree to solve this. Note [MATCH] or [RED FLAG].
+
         Constraints:
         - Output ONLY valid JSON. No markdown wrappers.
         - Ignore data about fictional characters (e.g., novels, games).
@@ -1518,8 +1557,9 @@ class ResearchEngine:
 
         Constraints:
         - Output ONLY a JSON list of 5 strings. No markdown wrappers.
-        - Base questions strictly on the weaknesses, funding gaps, or missing data in the Input.
-        - Do not ask generic questions ("What is your vision?").
+        - Questions MUST target historical physical/engineering bottlenecks, specific environmental parameters, cycle life, or cost-per-unit metrics.
+        - Cross-examine the team's depth against the actual technological barriers.
+        - Do NOT ask generic go-to-market strategies or market size questions.
 
         Output Format:
         [
@@ -1577,8 +1617,8 @@ class ResearchEngine:
         (Provide a sharp, 2-3 paragraph summary. Deduce a SWOT Analysis based on your expert evaluation of the facts, ensuring you highlight strategic implications even if not explicitly stated. Include a Markdown table: | Strengths | Weaknesses | Opportunities | Threats |)
 
         ## The Problem
-        ### Current/Traditional Solutions
-        (Analyze the macro industry status quo. What existing solutions or traditional approaches does {self.company} aim to replace?)
+        ### Current/Traditional Solutions & Historical Graveyard
+        (Analyze the macro industry status quo. What existing solutions does {self.company} aim to replace? CRUCIAL DEEP TECH: What historical physical/chemical/engineering bottlenecks prevented this specific technology path from scaling in the past 10 years? Why did others fail?)
 
         ### Pain Points
         (Analyze 2-4 specific pain points in this market. If {self.company} has not published their exact metrics, analyze the *typical* quantifiable impacts in this sector. Explain why existing solutions fail.)
@@ -1590,18 +1630,23 @@ class ResearchEngine:
         ### How They Solve The Pain Points
         (Create a mapping table: | Pain Point | Their Solution | Impact |)
 
-        ## Product Deep Dive
+        ## Product Deep Dive & First Principles
+        (Explain exactly HOW the technology works at a physical/chemical/engineering level. What is the actual mechanism? Strip all marketing fluff. How does this mechanism attempt to bypass the "Historical Graveyard" mentioned above?)
+        
         ## Market Landscape
         (Markdown table: | Competitor | Capitalization (Funding/Valuation) | Target Segment | Core Moat / Wedge | Pricing Signal |)
         
-        ### Strategic White-Space
-        (Write a 200-word strategic deduction analyzing the gap {self.company} can exploit based on the competitors' positioning.)
+        ### Strategic Tech-Path White-Space
+        (Write a strategic deduction analyzing the gap {self.company} can exploit. Focus on "Alternative Technologies" vs their chosen tech path. What are the Trade-offs of their physics/engineering choice compared to competitors?)
         
         ## Social Sentiment & Risk
         ## Business Model
         ## Traction & Risks
-        ## Founding Team & Track Record
-        ## Data Consistency Check & Hidden Signals
+        ## Founding Team & Team-to-Moat Fit
+        (List the team. MUST include a [Team-to-Moat Fit Assessment]: Cross-examine the founders' academic/engineering backgrounds against the core technology's historical bottlenecks. Do they have the actual pedigree to solve this? Explicitly output [MATCH] or [RED FLAG] with your justification.)
+        
+        ## Data Consistency Check & Ultimate Verdict
+        (Point out conflicting PR vs reality. Finally, act as a Deep Tech VC Partner: give your [Ultimate Verdict]. Is this a PR stunt, a science experiment, or a viable investment? Why?)
         ## Exit Strategy & M&A Landscape
 
         ## Due Diligence Interrogation
@@ -1702,6 +1747,7 @@ class ResearchEngine:
         self.phase_2_gap_analysis()
         self.phase_3_deep_dive()
         self.phase_3g_recursive_comps()
+        self.phase_3h_macro_tech()
         self.phase_audit_consistency()  # New Audit Step
         return self.phase_4_synthesis()
 
