@@ -413,10 +413,28 @@ class ResearchEngine:
             
             import firecrawl_bridge as firecrawl
             if os.getenv("FIRECRAWL_API_KEY"):
-                self.log("Firecrawl Map: Scanning site for hidden team/product pages...")
+                self.log("Firecrawl Map: Scanning site for hidden team/product pages (limit 100)...")
                 fc_links = firecrawl.map_website(self.url)
                 if fc_links:
                     self.log(f"Firecrawl Map: Found {len(fc_links)} semantic matches.")
+                    
+                    # 1. Physical URL Keyword Forcing
+                    # We re-sort the 100 results manually to guarantee hard matches (like 'who-we-are') float to the top
+                    priority_keywords = ["who-we-are", "about", "team", "leadership", "founder", "company", "product", "technology", "solution"]
+                    
+                    def score_url(u):
+                        u_lower = u.lower()
+                        score = 0
+                        for kw in priority_keywords:
+                            if kw in u_lower:
+                                score += 10
+                        # Penalize blogs, news, authors
+                        if any(bad in u_lower for bad in ["blog", "news", "post", "author", "category", "tag"]):
+                            score -= 20
+                        return score
+                        
+                    fc_links.sort(key=score_url, reverse=True)
+                    
                     # Deduplicate and remove exact homepage
                     seen = set([self.url.strip("/").lower(), self.url.lower()])
                     for link in fc_links:

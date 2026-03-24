@@ -34,7 +34,7 @@ def scrape_with_firecrawl(url):
         print(f"[Firecrawl] Exception scraping {url}: {e}", flush=True)
     return None
 
-def map_website(url, search_query="team or founders or about us or leadership or product or solutions"):
+def map_website(url, search_query="about company team leadership product solutions who-we-are"):
     api_key = os.getenv("FIRECRAWL_API_KEY")
     if not api_key:
         return None
@@ -47,7 +47,7 @@ def map_website(url, search_query="team or founders or about us or leadership or
     payload = {
         "url": url,
         "search": search_query,
-        "limit": 10
+        "limit": 100
     }
     try:
         response = requests.post("https://api.firecrawl.dev/v2/map", headers=headers, json=payload, timeout=60)
