@@ -479,51 +479,51 @@ class ResearchEngine:
                 import xcrawl_bridge as xcrawl
                 if os.getenv("XCRAWL_API_KEY"):
                     self.log("Falling back to xCrawl Deep Crawl (Map + Scrape)...")
-                try:
-                    # 1. Map the site to get URLs
-                    urls = xcrawl.map_site(self.url, limit=10)
-                    if not urls:
-                        urls = [self.url] # Fallback to homepage
+                    try:
+                        # 1. Map the site to get URLs
+                        urls = xcrawl.map_site(self.url, limit=10)
+                        if not urls:
+                            urls = [self.url] # Fallback to homepage
+                            
+                        # Target top 5 URLs prioritizing about/team/product pages
+                        golden_urls = []
+                        for u in urls:
+                            u_lower = u.lower()
+                            if any(x in u_lower for x in ["about", "team", "product", "platform", "solution", "founder", "leadership", "technology"]):
+                                golden_urls.append(u)
+                                
+                        # Combine homepage with top golden URLs (max 5 total)
+                        if self.url not in golden_urls:
+                            golden_urls.insert(0, self.url)
+                        target_urls = golden_urls[:5]
                         
-                    # Target top 5 URLs prioritizing about/team/product pages
-                    golden_urls = []
-                    for u in urls:
-                        u_lower = u.lower()
-                        if any(x in u_lower for x in ["about", "team", "product", "platform", "solution", "founder", "leadership", "technology"]):
-                            golden_urls.append(u)
-                            
-                    # Combine homepage with top golden URLs (max 5 total)
-                    if self.url not in golden_urls:
-                        golden_urls.insert(0, self.url)
-                    target_urls = golden_urls[:5]
-                    
-                    self.log(f"xCrawl: Mapped {len(urls)} URLs. Scraping top {len(target_urls)} golden pages...")
-                    
-                    site_data = []
-                    for t_url in target_urls:
-                        try:
-                            self.log(f"xCrawl: Scraping {t_url}...")
-                            page_data = xcrawl.scrape_url(t_url)
-                            if page_data and page_data.get("content"):
-                                site_data.append(page_data)
-                        except Exception as e_sc:
-                            self.log(f"xCrawl Scrape Error on {t_url}: {e_sc}")
-                            
-                    self.sources.extend(site_data)
-                    self.log(f"xCrawl: Extracted {len(site_data)} pages from official site.")
-                except Exception as e2:
-                    self.log(f"xCrawl Map/Crawl Error: {e2}")
-            else:
-                self.log("Falling back to Apify Deep Crawl... (XCRAWL_API_KEY not found)")
-                try:
-                    site_data = apify.scrape_website_content(
-                        self.url, scraper_config=self.scraper_config
-                    )
-                    self.sources.extend(site_data)
-                    self.usage["apify_runs"] += 1
-                    self.log(f"Apify: Extracted {len(site_data)} pages from official site.")
-                except Exception as e2:
-                    self.log(f"Apify Site Crawl Error: {e2}")
+                        self.log(f"xCrawl: Mapped {len(urls)} URLs. Scraping top {len(target_urls)} golden pages...")
+                        
+                        site_data = []
+                        for t_url in target_urls:
+                            try:
+                                self.log(f"xCrawl: Scraping {t_url}...")
+                                page_data = xcrawl.scrape_url(t_url)
+                                if page_data and page_data.get("content"):
+                                    site_data.append(page_data)
+                            except Exception as e_sc:
+                                self.log(f"xCrawl Scrape Error on {t_url}: {e_sc}")
+                                
+                        self.sources.extend(site_data)
+                        self.log(f"xCrawl: Extracted {len(site_data)} pages from official site.")
+                    except Exception as e2:
+                        self.log(f"xCrawl Map/Crawl Error: {e2}")
+                else:
+                    self.log("Falling back to Apify Deep Crawl... (XCRAWL_API_KEY not found)")
+                    try:
+                        site_data = apify.scrape_website_content(
+                            self.url, scraper_config=self.scraper_config
+                        )
+                        self.sources.extend(site_data)
+                        self.usage["apify_runs"] += 1
+                        self.log(f"Apify: Extracted {len(site_data)} pages from official site.")
+                    except Exception as e2:
+                        self.log(f"Apify Site Crawl Error: {e2}")
 
         # B. Uploaded Doc
         if self.document_content:
