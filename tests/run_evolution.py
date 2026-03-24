@@ -28,7 +28,7 @@ def run_full_eval(dataset):
         url = f"https://www.{domain}"
         
         # Initialize engine (mocking user_id/report_id for standalone run)
-        engine = ResearchEngine(url, language="english", user_id="evolver_agent", report_id=f"eval_{int(time.time())}")
+        engine = ResearchEngine(url, language="english")
         
         try:
             # Run the pipeline (This costs real API credits!)
