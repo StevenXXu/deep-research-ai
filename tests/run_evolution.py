@@ -3,6 +3,8 @@ import json
 import shutil
 import sys
 import time
+from dotenv import load_dotenv
+load_dotenv()
 
 # Add backend to path so we can import the engine and gateway
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
