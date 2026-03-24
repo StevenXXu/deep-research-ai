@@ -1507,7 +1507,7 @@ class ResearchEngine:
         {context_blob}
 
         CRITICAL ENTITY FILTERING (ANTI-HALLUCINATION):
-        1. YOU MUST IGNORE any sources or paragraphs that are clearly about a different company with a similar name. 
+        1. ALIAS & PARENT TOLERANCE: If a source discusses a parent company, subsidiary, rebrand, or major partner (e.g., "SpaceX" for "ThemeSpaceX"), DO NOT ignore it. Extract the relevant context but clearly label the relationship. ONLY ignore completely unrelated companies that happen to share a similar name. 
         2. Specifically, look at the Official Business Description provided above. If a source describes a company doing something completely different (e.g., if official is "Architectural Code Compliance" and source talks about "Kubernetes Security" or "Work Prioritization"), YOU MUST REJECT THE SOURCE ENTIRELY, even if the name matches exactly.
         3. For example, if {self.company} is "Wavemotion AI" (domain: wavemotionai.com), and a source talks about "WaveForms AI" raising $40M, YOU MUST IGNORE IT. Do not attribute data from similarly named companies to {self.company}.
         4. If you only find data about wrong companies, leave the JSON fields empty. DO NOT HALLUCINATE.
@@ -1607,7 +1607,8 @@ class ResearchEngine:
            - If their tech stack is known but revenue isn't, analyze the commercial viability and typical go-to-market motion for that tech stack.
         5. Do NOT write a References section at the end.
         6. Do NOT number the headers.
-        7. For the "Founding Team & Track Record" section, you MUST include any LinkedIn URLs found in the Input facts. If the team is hidden, state "Founding Team Undisclosed".
+        7. BAN ON SPECULATION: Do NOT use words like "likely", "probably", or "expected to" to guess their mechanisms. If exact details are missing, state "Implementation Undisclosed". Do not fill gaps with generic industry boilerplate.
+        8. For the "Founding Team & Track Record" section, you MUST include any LinkedIn URLs found in the Input facts. If the team is hidden, state "Founding Team Undisclosed".
 
         Output Format:
         Must include EXACTLY these sections with these headers in this EXACT order:
