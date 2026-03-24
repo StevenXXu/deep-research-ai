@@ -1282,7 +1282,7 @@ class ResearchEngine:
                     self.sources.append({
                         "title": f"Verified Executive: {name}",
                         "url": "https://" + self.domain,
-                        "content": f"[OFFICIAL EXECUTIVE NO LINKEDIN: {name}] Role: {role}. This person is a verified founder or key executive based on the official company website. Their LinkedIn profile is currently undisclosed or unverified.",
+                        "content": f"[OFFICIAL EXECUTIVE NO LINKEDIN: {name}] Role: {f.get('title', f.get('role', 'Executive'))}. This person is a verified founder or key executive based on the official company website. Their LinkedIn profile is currently undisclosed or unverified.",
                         "source": "Scrapling (Subpage)" # Treat as official source to pass firewall
                     })
             else:
