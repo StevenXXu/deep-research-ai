@@ -676,7 +676,7 @@ class ResearchEngine:
         
         for s in self.sources:
             # Always keep official sources and micro-agents
-            if s.get("source") in ["Scrapling (Home Page)", "Scrapling (Subpage)", "Apify", "Upload", "Coresignal Data", "Recursive Comps Engine"]:
+            if s.get("source") in ["Scrapling (Home Page)", "Scrapling (Subpage)", "Apify", "Upload", "Coresignal Data", "Recursive Comps Engine", "Macro Tech Scan"]:
                 filtered_sources.append(s)
                 continue
                 
@@ -1354,6 +1354,7 @@ class ResearchEngine:
                 "Upload",
                 "OSINT X-Ray",
                 "Recursive Comps Engine",
+                "Macro Tech Scan",
             ]:
                 clean_sources.append(s)
                 continue
@@ -1478,7 +1479,7 @@ class ResearchEngine:
         for i, s in enumerate(self.sources):
             # Physical shield: completely hide competitor and financial data from the LLM auditor
             content = str(s.get("content", ""))
-            if s.get("source") == "Recursive Comps Engine" or "[COMPETITOR DEEP DIVE]" in content or "[CRUNCHBASE" in content or "[PITCHBOOK" in content:
+            if s.get("source") in ["Recursive Comps Engine", "Macro Tech Scan"] or "[COMPETITOR DEEP DIVE]" in content or "[CRUNCHBASE" in content or "[PITCHBOOK" in content or "[INDUSTRY TECH CONTEXT]" in content or "[FOUNDER TRACK RECORD]" in content:
                 continue
                 
             source_list.append(
