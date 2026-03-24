@@ -4,7 +4,9 @@ import shutil
 import sys
 import time
 from dotenv import load_dotenv
-load_dotenv()
+import os
+    env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend', '.env'))
+    load_dotenv(env_path)
 
 # Add backend to path so we can import the engine and gateway
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
