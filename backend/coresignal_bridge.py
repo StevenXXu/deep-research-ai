@@ -166,33 +166,39 @@ def extract_key_executives(company_name: str, domain: str) -> list:
     clean_domain = domain.lower().replace("https://", "").replace("http://", "").replace("www.", "").strip("/")
 
     # Query for members currently at this company with executive titles
+    # V2 API requires nested queries for the experience array
     payload = {
         "query": {
-            "bool": {
-                "must": [
-                    {
-                        "bool": {
-                            "should": [
-                                { "match": { "experience_company_name": company_name } },
-                                { "match": { "experience_company_website": clean_domain } }
-                            ],
-                            "minimum_should_match": 1
-                        }
-                    },
-                    {
-                        "bool": {
-                            "should": [
-                                { "match": { "title": "founder" } },
-                                { "match": { "title": "co-founder" } },
-                                { "match": { "title": "ceo" } },
-                                { "match": { "title": "chief executive officer" } },
-                                { "match": { "title": "cto" } },
-                                { "match": { "title": "chief technology officer" } }
-                            ],
-                            "minimum_should_match": 1
-                        }
+            "nested": {
+                "path": "experience",
+                "query": {
+                    "bool": {
+                        "must": [
+                            {
+                                "bool": {
+                                    "should": [
+                                        { "match": { "experience.company_name": company_name } },
+                                        { "match": { "experience.company_website": clean_domain } }
+                                    ],
+                                    "minimum_should_match": 1
+                                }
+                            },
+                            {
+                                "bool": {
+                                    "should": [
+                                        { "match": { "experience.title": "founder" } },
+                                        { "match": { "experience.title": "co-founder" } },
+                                        { "match": { "experience.title": "ceo" } },
+                                        { "match": { "experience.title": "chief executive officer" } },
+                                        { "match": { "experience.title": "cto" } },
+                                        { "match": { "experience.title": "chief technology officer" } }
+                                    ],
+                                    "minimum_should_match": 1
+                                }
+                            }
+                        ]
                     }
-                ]
+                }
             }
         }
     }
@@ -231,10 +237,18 @@ def extract_key_executives(company_name: str, domain: str) -> list:
             for hit in processed_hits[:5]:
                 source = hit.get("_source", hit) if isinstance(hit, dict) else hit
                 if source and isinstance(source, dict):
-                    name = source.get("name", "")
-                    title = source.get("title", "")
+                    name = source.get("full_name", source.get("name", ""))
+                    
+                    # Try to get the actual title from experience
+                    title = source.get("headline", source.get("title", ""))
+                    for exp in source.get("experience", []):
+                        if str(exp.get("company_name", "")).lower() == company_name.lower() or str(exp.get("company_website", "")).lower() == clean_domain.lower():
+                            if exp.get("title"):
+                                title = exp.get("title")
+                                break
+                    
                     summary = source.get("summary", "")
-                    linkedin_url = source.get("url", "")
+                    linkedin_url = source.get("profile_url", source.get("url", ""))
                     
                     if name and title:
                         summary_str = summary[:200] + "..." if summary and len(summary) > 200 else summary
