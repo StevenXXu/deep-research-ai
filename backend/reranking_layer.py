@@ -29,6 +29,9 @@ class Source:
     content: str
     source: str  # Exa, Tavily, Brave, Scrapling, etc.
     score: float = 0.0  # Initial retrieval score if available
+
+    def __lt__(self, other):
+        return self.score < getattr(other, 'score', 0.0)
     
     def to_dict(self) -> Dict[str, Any]:
         return {
