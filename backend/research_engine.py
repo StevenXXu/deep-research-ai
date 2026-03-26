@@ -1596,6 +1596,7 @@ class ResearchEngine:
             3. Translate table headers properly.
             4. If a term is a specific product name or proper noun (like 'Cloudflare', 'Series A'), keep the English term or use industry-standard terminology.
             5. Ensure the tone is objective, professional, and native to an investment memo.
+            6. LANGUAGE LOCK: If the target language is "Chinese" or "Simplified Chinese", you MUST write the entire report in Simplified Chinese (简体中文). Do NOT use Traditional Chinese (繁体中文) under any circumstances.
 
             Original Report:
             {report}
