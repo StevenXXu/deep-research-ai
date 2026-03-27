@@ -1037,7 +1037,7 @@ class ResearchEngine:
             ).strftime("%Y%md")
             # Wayback Availability API
             url = f"http://archive.org/wayback/available?url={self.domain}&timestamp={target_date}"
-            res = requests.get(url, timeout=5).json()
+            res = requests.get(url, timeout=15).json()
 
             if res.get("archived_snapshots") and res["archived_snapshots"].get(
                 "closest"
@@ -1201,6 +1201,17 @@ class ResearchEngine:
                     founders = []
 
             # --- END FOUNDER TRIANGULATION PROTOCOL ---
+
+            # Deduplicate Founders (prevent ['Paul Riley', 'Paul Riley'])
+            unique_founders = []
+            seen_names = set()
+            for f in founders:
+                if isinstance(f, dict):
+                    name = str(f.get("name", "")).strip().title()
+                    if name and name.lower() not in seen_names:
+                        seen_names.add(name.lower())
+                        unique_founders.append(f)
+            founders = unique_founders
 
             if not founders:
                 self.log("No founders identified. Skipping targeted search.")

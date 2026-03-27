@@ -23,3 +23,5 @@ scrapling[all]
 # Utilities
 markdown
 pydantic
+
+numpy>=1.24.0
