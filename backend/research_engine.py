@@ -1525,6 +1525,13 @@ class ResearchEngine:
         # Create Citation Map (Markdown Links)
         citations = []
         context_blob = ""
+        # Create Global Person Name Index
+        global_person_index = "\n[GLOBAL PERSON NAME INDEX]\n"
+        if getattr(self, 'official_team', None):
+            for t in self.official_team:
+                global_person_index += f"- {t.get('name', '')}\n"
+        global_person_index += "[END INDEX]\n\n"
+        
         for i, s in enumerate(unique_sources):
             ref_num = i + 1
             raw_title = s.get("title") or "Unknown Source"
@@ -1533,7 +1540,9 @@ class ResearchEngine:
             citations.append(f"[{ref_num}] [{title}]({url})")
 
             content = s.get("content") or ""
-            context_blob += f"Source [{ref_num}]: {str(content)[:2000]}\n\n"
+                        # Prepend GLOBAL PERSON NAME INDEX to first source so Agent 1 always sees all names
+            prefix = global_person_index if i == 0 and 'global_person_index' in locals() else ""
+            context_blob += "Source [%d]:%s %s\n\n" % (ref_num, prefix, str(content)[:16000])
 
         self.usage["llm_input_chars"] += len(context_blob)
 
@@ -1650,6 +1659,13 @@ class ResearchEngine:
         printed_count = 0
         
         # Only print references that Agent 1 verified as useful (or official domain links)
+        # Create Global Person Name Index
+        global_person_index = "\n[GLOBAL PERSON NAME INDEX]\n"
+        if getattr(self, 'official_team', None):
+            for t in self.official_team:
+                global_person_index += f"- {t.get('name', '')}\n"
+        global_person_index += "[END INDEX]\n\n"
+        
         for i, s in enumerate(unique_sources):
             ref_num = i + 1
             url = s.get("url", "#").lower()

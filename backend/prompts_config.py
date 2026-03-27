@@ -29,22 +29,26 @@ Input:
 {context_blob}
 
 CRITICAL ENTITY FILTERING (ANTI-HALLUCINATION):
-1. ALIAS & PARENT TOLERANCE: If a source discusses a parent company, subsidiary, rebrand, or major partner (e.g., "SpaceX" for "ThemeSpaceX"), DO NOT ignore it. Extract the relevant context but clearly label the relationship. ONLY ignore completely unrelated companies that happen to share a similar name. 
+1. ALIAS & PARENT TOLERANCE: If a source discusses a parent company, subsidiary, rebrand, or major partner (e.g., "SpaceX" for "ThemeSpaceX"), DO NOT ignore it. Extract the relevant context but clearly label the relationship. ONLY ignore completely unrelated companies that happen to share a similar name.
 2. Specifically, look at the Official Business Description provided above. If a source describes a company doing something completely different (e.g., if official is "Architectural Code Compliance" and source talks about "Kubernetes Security" or "Work Prioritization"), YOU MUST REJECT THE SOURCE ENTIRELY, even if the name matches exactly.
 3. For example, if {company} is "Wavemotion AI" (domain: wavemotionai.com), and a source talks about "WaveForms AI" raising $40M, YOU MUST IGNORE IT. Do not attribute data from similarly named companies to {company}.
-4. If you only find data about wrong companies, leave the JSON fields empty. DO NOT HALLUCINATE.
-5. For the 'founding_team' array, MUST extract the 'linkedin_url' if provided in the text (look for "[FOUNDER LINKEDIN]"). If the text says "[OFFICIAL EXECUTIVE NO LINKEDIN]", extract the name and role, and explicitly set linkedin_url to "Not Available".
+4. If you only find data about wrong companies, leave the JSON fields empty. DO NOT HALLUCINATE. Return empty strings/lists.
+5. For the 'founding_team' array, MUST extract the 'linkedin_url' if provided in the text (look for "[FOUNDER LINKEDIN]"). If the text says "[OFFICIAL EXECUTIVE NO LINKEDIN]", extract the name and role, and explicitly set linkedin_url to "Not Available". UNDER NO CIRCUMSTANCES SHOULD YOU DROP A FOUNDER IF THEIR CREDENTIALS CANNOT BE FULLY VERIFIED. EXTRACT ALL AVAILABLE DATA. IF THE TEXT PROVIDES ONLY A NAME AND NO CONTEXT, INCLUDE THE NAME AND SET BACKGROUND AND LINKEDIN URL TO "Data Undisclosed". If the text says "[VERIFIED FOUNDER]", it means the founder's details are confirmed.
 6. EXCEPTION FOR COMPETITORS: You will see sources tagged with "[COMPETITOR DEEP DIVE: <name>]". These are explicitly gathered intelligence about competitors. YOU MUST USE THESE to richly populate the `competitors` array with their Capitalization, Target Segment, Core Moat, and Pricing Signal. Do NOT ignore competitor data.
 
 [DEEP TECH MANDATES]
-- No Adjectives: Strip marketing fluff. Focus on exact physics/mechanisms.
-- The Graveyard (Historical Bottlenecks): Identify what physical/chemical/engineering bottlenecks prevented this technology from scaling in the past 10 years.
-- Team-to-Moat Fit: Analyze if the founders have the actual scientific/engineering pedigree to solve this. Note [MATCH] or [RED FLAG].
+- No Adjectives: Strip marketing fluff. Focus on exact physics/mechanisms, chemical formulas, materials, and quantifiable performance metrics. Include specific figures (e.g., wavelengths, voltages, flow rates) where available.
+- The Graveyard (Historical Bottlenecks): Identify what physical/chemical/engineering bottlenecks prevented this technology from scaling in the past 10 years. Be specific. Examples: "Limited battery cycle life," "low-yield manufacturing processes," "thermal runaway issues," "reliance on conflict minerals," "inefficient energy conversion rates". IF NO DATA IS AVAILABLE, STATE "Data Undisclosed".
+- Team-to-Moat Fit: Analyze if the founders have the actual scientific/engineering pedigree to solve this. Note [MATCH] or [RED FLAG]. If a founder is listed as "Advisor," their role is HIGHLY suspect.
+- IF YOU ARE UNSURE OF A FOUNDER'S CREDENTIALS FROM THE CURRENT SOURCE, DO NOT DROP THEM. EXTRACT WHAT YOU CAN.
 
 Constraints:
 - Output ONLY valid JSON. No markdown wrappers.
 - Ignore data about fictional characters (e.g., novels, games).
 - If a section lacks data for the specific target company, return an empty string or empty list.
+- DO NOT INCLUDE DATA FROM BLOG POSTS OR PRESS RELEASES THAT ARE NOT PRIMARY SOURCES (e.g., reprints on other sites). PRIORITIZE ACADEMIC PAPERS, PATENTS, AND OFFICIAL COMPANY WEBSITES. UNDER NO CIRCUMSTANCES SHOULD PRESS RELEASES THAT CONTAIN QUANTIFIABLE METRICS (e.g., "increased efficiency by X%") BE IGNORED.
+- If a figure is provided (e.g. "efficiency increased by 15%"), you MUST include the original value if it is available as well (e.g. "Efficiency increased from 70% to 85%").
+- ABSOLUTELY NO SPECULATION: Do NOT fill in missing information with guesses or assumptions. If the data isn't explicitly in the source, leave the field blank or state "Data Undisclosed."
 
 Output Format:
 {{
@@ -71,6 +75,10 @@ Constraints:
 - Questions MUST target historical physical/engineering bottlenecks, specific environmental parameters, cycle life, or cost-per-unit metrics.
 - Cross-examine the team's depth against the actual technological barriers.
 - Do NOT ask generic go-to-market strategies or market size questions.
+- Questions MUST reference specific technical claims made in the {facts_json} provided. For instance, if they claim "99.999% uptime," ask about the underlying architecture and redundancy measures. If they cite a specific efficiency benchmark, ask about the measurement methodology AND the statistical significance of the data (e.g., sample size, error bars).
+- Prioritize questions that uncover potential failure modes or limitations of the technology that are not explicitly disclosed. If a company claims to bypass a traditional historical bottleneck, ask for SPECIFIC experimental data validating the claim, including error bars and potential confounding factors.
+- If the facts mention a specific material or component, demand the exact supplier and batch number used in their tests.
+- Each question must probe a different aspect of the technology or its limitations.
 
 Output Format:
 [
@@ -99,7 +107,9 @@ CRITICAL VC ANALYSIS CONSTRAINTS (ANTI-FLUFF):
 5. Do NOT write a References section at the end.
 6. Do NOT number the headers.
 7. BAN ON SPECULATION: Do NOT use words like "likely", "probably", or "expected to" to guess their mechanisms. If exact details are missing, state "Implementation Undisclosed". Do not fill gaps with generic industry boilerplate.
-8. For the "Founding Team & Track Record" section, you MUST include any LinkedIn URLs found in the Input facts. If the team is hidden, state "Founding Team Undisclosed".
+8. For the "Founding Team & Track Record" section, you MUST include any LinkedIn URLs found in the Input facts. If the team is hidden, state "Founding Team Undisclosed". If a founder's credentials appear weak based on the facts, flag it explicitly in the **Team-to-Moat Fit Assessment**. UNDER NO CIRCUMSTANCES SHOULD YOU OMIT A FOUNDER LISTED IN THE INPUT DATA.
+9. IF THE INPUT DATA CONTAINS CONTRADICTORY INFORMATION (e.g. conflicting funding amounts), YOU MUST FLAG THIS EXPLICITLY IN THE "DATA CONSISTENCY CHECK" SECTION.
+10. If the Input Data provides experimental conditions, include those.
 
 Output Format:
 Must include EXACTLY these sections with these headers in this EXACT order:
@@ -110,7 +120,7 @@ Must include EXACTLY these sections with these headers in this EXACT order:
 
 ## The Problem
 ### Current/Traditional Solutions & Historical Graveyard
-(Analyze the macro industry status quo. What existing solutions does {company} aim to replace? CRUCIAL DEEP TECH: What historical physical/chemical/engineering bottlenecks prevented this specific technology path from scaling in the past 10 years? Why did others fail?)
+(Analyze the macro industry status quo. What existing solutions does {company} aim to replace? CRUCIAL DEEP TECH: What historical physical/chemical/engineering bottlenecks prevented this specific technology path from scaling in the past 10 years? Why did others fail? Be specific with materials science limitations, thermodynamic constraints, or manufacturing yield challenges. Include specific examples with scientific literature if possible. If no data available, state "Data Undisclosed".)
 
 ### Pain Points
 (Analyze 2-4 specific pain points in this market. Output them as a clean bulleted list. Ensure proper markdown spacing around bold text. If {company} has not published exact metrics, analyze the *typical* quantifiable impacts in this sector. Explain why existing solutions fail.)
@@ -123,22 +133,22 @@ Must include EXACTLY these sections with these headers in this EXACT order:
 (Create a mapping table: | Pain Point | Their Solution | Impact |)
 
 ## Product Deep Dive & First Principles
-(Explain exactly HOW the technology works at a physical/chemical/engineering level. What is the actual mechanism? Strip all marketing fluff. How does this mechanism attempt to bypass the "Historical Graveyard" mentioned above?)
+(Explain exactly HOW the technology works at a physical/chemical/engineering level. What is the actual mechanism? Strip all marketing fluff. How does this mechanism attempt to bypass the "Historical Graveyard" mentioned above? What are the core chemical reactions, quantum phenomena, or aerodynamic principles at play? Be precise. Include specific values like energy levels, chemical formulas, and reaction rates where available. If information regarding a specific mechanism is not available, include "Mechanism Undisclosed". Include specific manufacturing processes if provided.)
 
 ## Market Landscape
 (Markdown table: | Competitor | Capitalization (Funding/Valuation) | Target Segment | Core Moat / Wedge | Pricing Signal |)
 
 ### Strategic Tech-Path White-Space
-(Write a strategic deduction analyzing the gap {company} can exploit. Focus on "Alternative Technologies" vs their chosen tech path. What are the Trade-offs of their physics/engineering choice compared to competitors?)
+(Write a strategic deduction analyzing the gap {company} can exploit. Focus on "Alternative Technologies" vs their chosen tech path. What are the Trade-offs of their physics/engineering choice compared to competitors? For example, compare the energy density of their battery chemistry to existing lithium-ion solutions. Include a discussion of potential second-order effects of their technology (e.g., supply chain vulnerabilities, environmental impact).
 
 ## Social Sentiment & Risk
 ## Business Model
 ## Traction & Risks
 ## Founding Team & Team-to-Moat Fit
-(List the team and their LinkedIn URLs. At the end of the list, write a bolded paragraph starting with **Team-to-Moat Fit Assessment:** Cross-examine the founders' academic/engineering backgrounds against the core technology's historical bottlenecks. Do they have the actual pedigree to solve this? Explicitly output [MATCH] or [RED FLAG] with your justification. Do NOT use markdown brackets like [Team-to-Moat Fit Assessment] as headers.)
+(List the team and their LinkedIn URLs. At the end of the list, write a bolded paragraph starting with **Team-to-Moat Fit Assessment:** Cross-examine the founders' academic/engineering backgrounds against the core technology's historical bottlenecks. Do they have the actual pedigree to solve this? Explicitly output [MATCH] or [RED FLAG] with your justification. If a founder's background seems unrelated to the core technology, or if they are listed as an "Advisor" with no direct engineering experience, this should be a RED FLAG. Do NOT use markdown brackets like [Team-to-Moat Fit Assessment] as headers.)
 
 ## Data Consistency Check & Ultimate Verdict
-(Point out conflicting PR vs reality based on the data. Then, start a new paragraph with **Ultimate Verdict:** Act as a Deep Tech VC Partner. Is this a PR stunt, a science experiment, or a viable investment? Why? Do NOT use markdown brackets like [Ultimate Verdict].)
+(Point out conflicting PR vs reality based on the data. Then, start a new paragraph with **Ultimate Verdict:** Act as a Deep Tech VC Partner. Is this a PR stunt, a science experiment, or a viable investment? Why? What are the key technological risks that could derail the project? Do NOT use markdown brackets like [Ultimate Verdict].)
 ## Exit Strategy & M&A Landscape
 
 ## Due Diligence Interrogation
