@@ -11,7 +11,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from exa_py import Exa
 import apify_bridge as apify
-import coresignal_bridge as cs_bridge
+import apollo_bridge as cs_bridge
 from scraper_config import ScraperConfig
 from core.scrapers.site_mapper import SiteMapper
 
@@ -335,16 +335,16 @@ class ResearchEngine:
     def phase_1_broad_scan(self):
         self.log(f"Phase 1: Broad Scan for '{self.company}'...")
 
-        # --- PRE-FLIGHT: Coresignal Domain Anchoring ---
-        self.log("Pre-flight: Querying Coresignal for exact entity match...")
+        # --- PRE-FLIGHT: Apollo/Exa Intelligence Integration ---
+        self.log("Pre-flight: Querying Apollo/Exa for exact entity match...")
         cs_facts = cs_bridge.extract_company_facts(self.domain)
         
         if cs_facts and "true_name" in cs_facts:
             self.company = cs_facts["true_name"]
-            self.log(f"Coresignal Confirmed Entity: {self.company}")
+            self.log(f"Apollo Confirmed Entity: {self.company}")
             
             # Format the data into a high-density "Ground Truth" block
-            cs_source_content = f"Official Company Record (via Coresignal Data Intelligence):\n"
+            cs_source_content = f"Official Company Record (via Apollo/Exa Intelligence):\n"
             for k, v in cs_facts.items():
                 cs_source_content += f"- {str(k).replace('_', ' ').capitalize()}: {v}\n"
                 
@@ -360,11 +360,11 @@ class ResearchEngine:
                 "title": f"{self.company} (Corporate Record)",
                 "url": cs_facts.get("linkedin_url", f"https://{self.domain}"),
                 "content": cs_source_content,
-                "source": "Coresignal Data"
+                "source": "Apollo/Exa Data"
             })
-            self.log("Injected Coresignal data as Ground Truth Source.")
+            self.log("Injected Apollo/Exa data as Ground Truth Source.")
         else:
-            self.log("Coresignal found no exact match. Proceeding with standard web scraping.")
+            self.log("Apollo/Exa found no exact match. Proceeding with standard web scraping.")
 
         # A. Official Site Extract (Scrapling -> Apify Fallback)
         # DISABLED: Evomi removed due to 30s timeout limitation
@@ -576,7 +576,7 @@ class ResearchEngine:
         official_texts = [
             s["content"][:10000]
             for s in self.sources
-            if s["source"] in ["Scrapling (Home Page)", "Scrapling (Subpage)", "Apify", "Upload", "Coresignal Data"]
+            if s["source"] in ["Scrapling (Home Page)", "Scrapling (Subpage)", "Apify", "Upload", "Apollo/Exa Data"]
         ]
         
         self.exact_niche_phrase = ""
@@ -676,7 +676,7 @@ class ResearchEngine:
         
         for s in self.sources:
             # Always keep official sources and micro-agents
-            if s.get("source") in ["Scrapling (Home Page)", "Scrapling (Subpage)", "Apify", "Upload", "Coresignal Data", "Recursive Comps Engine", "Macro Tech Scan"]:
+            if s.get("source") in ["Scrapling (Home Page)", "Scrapling (Subpage)", "Apify", "Upload", "Apollo/Exa Data", "Recursive Comps Engine", "Macro Tech Scan"]:
                 filtered_sources.append(s)
                 continue
                 
@@ -776,7 +776,7 @@ class ResearchEngine:
             s
             for s in self.sources
             if s["source"]
-            in ["Coresignal Data", "Scrapling (Home Page)", "Scrapling (Subpage)", "Apify", "Upload"]
+            in ["Apollo/Exa Data", "Scrapling (Home Page)", "Scrapling (Subpage)", "Apify", "Upload"]
         ]
         # Increased context limit to 3000 chars per page to ensure team names and deep tech aren't truncated
         official_context = "\n".join(
@@ -824,12 +824,12 @@ class ResearchEngine:
                 ],
             )
             
-            # Only update official_team if Coresignal didn't already find them
+            # Only update official_team if Apollo/Exa didn't already find them
             llm_team = data.get("founding_team", [])
             if not getattr(self, "official_team", None):
                 self.official_team = llm_team
             elif llm_team:
-                # Merge logic could go here, but Coresignal data is usually higher quality and contains LinkedIn URLs
+                # Merge logic could go here, but Apollo/Exa data is usually higher quality and contains LinkedIn URLs
                 pass
 
             self.log(f"Ground Truth Team: {self.official_team}")
@@ -1302,7 +1302,7 @@ class ResearchEngine:
                     "title": f"LinkedIn Profile: {name}",
                     "url": linkedin_url,
                     "content": f"[FOUNDER LINKEDIN: {name}] {linkedin_url} - {f.get('summary', '')}",
-                    "source": "Coresignal Data"
+                    "source": "Apollo/Exa Data"
                 })
 
             # Background Search
@@ -1359,7 +1359,7 @@ class ResearchEngine:
         for s in self.sources:
             # 1. Exempt Official/Safe Sources
             if s.get("source") in [
-                "Coresignal Data",
+                "Apollo/Exa Data",
                 "Scrapling (Home Page)",
                 "Scrapling (Subpage)",
                 "Upload",
