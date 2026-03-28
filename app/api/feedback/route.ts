@@ -11,8 +11,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
     }
 
-    const resendApiKey = process.env.RESEND_API_KEY;
+    const resendApiKey = process.env.RESEND_API_KEY || process.env.NEXT_PUBLIC_RESEND_API_KEY;
+    
     if (!resendApiKey) {
+      console.error("Feedback Route: RESEND_API_KEY is missing in the environment variables.");
       return NextResponse.json({ error: "Resend API key missing on server" }, { status: 500 });
     }
 
@@ -39,7 +41,9 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         from: 'SoloAnalyst Feedback <onboarding@resend.dev>',
-        to: ['steve.x.xu@gmail.com', 'stevexxu@outlook.com'],
+        // In Resend free tier, you can ONLY send to your registered email address.
+        // The logs showed stevexxu@outlook.com was successful, so we use exactly that.
+        to: ['stevexxu@outlook.com'],
         subject: `[SoloAnalyst] New ${type || 'Feedback'} Report`,
         html: htmlContent
       })
@@ -47,13 +51,13 @@ export async function POST(req: Request) {
 
     if (!res.ok) {
       const text = await res.text();
-      console.error("Resend API Error:", text);
-      return NextResponse.json({ error: "Failed to send email via Resend" }, { status: 500 });
+      console.error("Resend API Error details:", res.status, text);
+      return NextResponse.json({ error: `Resend API Error: ${text}` }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (e: any) {
-    console.error("Feedback route error:", e);
+    console.error("Feedback route exception:", e);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
