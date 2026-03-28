@@ -51,14 +51,19 @@ export default function DashboardLayout({
         })
       });
       
-      if (!res.ok) throw new Error('Failed to submit');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+      }
       
       setFeedbackStatus('success');
       setTimeout(() => {
         setIsFeedbackModalOpen(false);
       }, 2000);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error("Feedback submission error:", err.message);
+      // We can optionally show this exact error to the user, but for now we log it clearly
+      alert("Error submitting feedback: " + err.message);
       setFeedbackStatus('error');
     } finally {
       setIsSubmittingFeedback(false);
