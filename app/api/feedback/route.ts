@@ -3,7 +3,16 @@ import { auth } from "@clerk/nextjs/server";
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
+    let userId = 'Anonymous';
+    try {
+        const authData = await auth();
+        if (authData && authData.userId) {
+            userId = authData.userId;
+        }
+    } catch (authError) {
+        console.error("Auth error during feedback submission:", authError);
+    }
+    
     const body = await req.json();
     const { type, message, email } = body;
 
@@ -23,7 +32,7 @@ export async function POST(req: Request) {
     const htmlContent = `
       <h2>New SoloAnalyst Feedback</h2>
       <p><strong>Type:</strong> ${type || 'Feedback'}</p>
-      <p><strong>User ID:</strong> ${userId || 'Anonymous'}</p>
+      <p><strong>User ID:</strong> ${userId}</p>
       <p><strong>User Email (Client Provided):</strong> ${email || 'Not provided'}</p>
       <br/>
       <p><strong>Message:</strong></p>
@@ -41,8 +50,6 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         from: 'SoloAnalyst Feedback <onboarding@resend.dev>',
-        // In Resend free tier, you can ONLY send to your registered email address.
-        // The logs showed stevexxu@outlook.com was successful, so we use exactly that.
         to: ['stevexxu@outlook.com'],
         subject: `[SoloAnalyst] New ${type || 'Feedback'} Report`,
         html: htmlContent
@@ -58,6 +65,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (e: any) {
     console.error("Feedback route exception:", e);
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    return NextResponse.json({ error: e.message || "Unknown server error" }, { status: 500 });
   }
 }
