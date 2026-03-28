@@ -81,7 +81,7 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row justify-center gap-8 sm:gap-16 items-center">
               <div className="text-gray-900 text-xl font-bold">👼 Angel Investors</div>
               <div className="text-gray-900 text-xl font-bold">📊 M&A Analysts</div>
-              <div className="text-gray-900 text-xl font-bold">🚀 Startup Founders</div>
+              <div className="text-gray-900 text-xl font-bold">💼 Strategic BDs</div>
             </div>
           </div>
         </div>
@@ -188,7 +188,7 @@ export default function LandingPage() {
             <h2 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl mb-8">The Table is Flipped.</h2>
             <div className="space-y-6 text-lg leading-8 text-gray-600 bg-white p-8 sm:p-10 rounded-2xl shadow-sm border border-gray-200">
               <p>
-                For solo investors and startup founders, time is your most expensive asset.
+                For solo investors and dealmakers, time is your most expensive asset.
               </p>
               <p>
                 You look at dozens of companies a week. You don't have the time to spend 4 hours running deep diligence on every single one before the first meeting. But walking into a call blind, armed with nothing but a polished Pitch Deck and a Google search, is how bad deals are made.
