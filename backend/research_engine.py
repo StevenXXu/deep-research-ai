@@ -1265,13 +1265,18 @@ class ResearchEngine:
             # Direct LinkedIn URL Sniffing using Dorking
             linkedin_url = f.get("linkedin_url", "")
             if not linkedin_url:
-                q_li = f'"{name}" {self.company} site:linkedin.com/in'
+                # Strip academic/courtesy prefixes to improve match rate
+                import re
+                clean_name = re.sub(r'^(dr\.?|prof\.?|mr\.?|ms\.?|mrs\.?)\s+', '', name, flags=re.IGNORECASE).strip()
+                
+                # Multi-level Dorking Strategy
+                q_li = f'"{clean_name}" "{self.company}" site:linkedin.com/in'
                 li_res = self.search_tavily(q_li, 3)
                 if not li_res:
                     li_res = self.search_brave(q_li, 3)
                     
                 valid_li_res = []
-                name_parts = [p.lower() for p in name.split() if len(p) > 2]
+                name_parts = [p.lower() for p in clean_name.split() if len(p) > 2]
                 
                 for r in li_res:
                     url_lower = r.get('url', '').lower()

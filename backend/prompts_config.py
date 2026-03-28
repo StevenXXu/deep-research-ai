@@ -34,7 +34,7 @@ CRITICAL ENTITY FILTERING (ANTI-HALLUCINATION):
 3. For example, if {company} is "Wavemotion AI" (domain: wavemotionai.com), and a source talks about "WaveForms AI" raising $40M, YOU MUST IGNORE IT. Do not attribute data from similarly named companies to {company}.
 4. If you only find data about wrong companies, leave the JSON fields empty. DO NOT HALLUCINATE. Return empty strings/lists.
 5. For the 'founding_team' array, MUST extract the 'linkedin_url' if provided in the text (look for "[FOUNDER LINKEDIN]"). If the text says "[OFFICIAL EXECUTIVE NO LINKEDIN]", extract the name and role, and explicitly set linkedin_url to "Not Available". UNDER NO CIRCUMSTANCES SHOULD YOU DROP A FOUNDER IF THEIR CREDENTIALS CANNOT BE FULLY VERIFIED. EXTRACT ALL AVAILABLE DATA. IF THE TEXT PROVIDES ONLY A NAME AND NO CONTEXT, INCLUDE THE NAME AND SET BACKGROUND AND LINKEDIN URL TO "Data Undisclosed". If the text says "[VERIFIED FOUNDER]", it means the founder's details are confirmed.
-6. EXCEPTION FOR COMPETITORS: You will see sources tagged with "[COMPETITOR DEEP DIVE: <name>]". These are explicitly gathered intelligence about competitors. YOU MUST USE THESE to richly populate the `competitors` array with their Capitalization, Target Segment, Core Moat, and Pricing Signal. Do NOT ignore competitor data.
+6. EXCEPTION FOR COMPETITORS: You will see sources tagged with "[COMPETITOR DEEP DIVE: <name>]". These are explicitly gathered intelligence about competitors. YOU MUST USE THESE to richly populate the `competitors` array with their Capitalization, Target Segment, Core Moat, and Pricing Signal. Do NOT ignore competitor data. IF NO COMPETITOR DATA IS FOUND IN THE TEXT, RETURN AN EMPTY LIST []. DO NOT INVENT COMPETITORS FROM YOUR PRE-TRAINED KNOWLEDGE.
 
 [DEEP TECH MANDATES]
 - No Adjectives: Strip marketing fluff. Focus on exact physics/mechanisms, chemical formulas, materials, and quantifiable performance metrics. Include specific figures (e.g., wavelengths, voltages, flow rates) where available.
@@ -137,6 +137,7 @@ Must include EXACTLY these sections with these headers in this EXACT order:
 
 ## Market Landscape
 (Markdown table: | Competitor | Capitalization (Funding/Valuation) | Target Segment | Core Moat / Wedge | Pricing Signal |)
+CRITICAL: If the Input Data does NOT explicitly list competitors in the competitors array, DO NOT invent them using your pre-trained knowledge. Simply state "No direct competitors identified in current data footprint" instead of generating a table.
 
 ### Strategic Tech-Path White-Space
 (Write a strategic deduction analyzing the gap {company} can exploit. Focus on "Alternative Technologies" vs their chosen tech path. What are the Trade-offs of their physics/engineering choice compared to competitors? For example, compare the energy density of their battery chemistry to existing lithium-ion solutions. Include a discussion of potential second-order effects of their technology (e.g., supply chain vulnerabilities, environmental impact).
