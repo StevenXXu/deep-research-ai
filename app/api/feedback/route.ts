@@ -49,8 +49,8 @@ export async function POST(req: Request) {
         'Authorization': `Bearer ${resendApiKey}`
       },
       body: JSON.stringify({
-        from: 'SoloAnalyst Feedback <onboarding@resend.dev>',
-        to: ['stevexxu@outlook.com'],
+        from: 'SoloAnalyst Feedback <research@soloanalyst.com>',
+        to: ['stevexxu@outlook.com', 'steve.x.xu@gmail.com'],
         subject: `[SoloAnalyst] New ${type || 'Feedback'} Report`,
         html: htmlContent
       })
