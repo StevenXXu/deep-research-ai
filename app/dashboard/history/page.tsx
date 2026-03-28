@@ -30,9 +30,9 @@ export default function HistoryPage() {
                   'X-User-ID': user!.id
               }
           });
-          
+
           if (!res.ok) throw new Error("Failed to fetch history");
-          
+
           const data = await res.json();
           setReports(data || []);
       } catch (e) {
@@ -50,7 +50,7 @@ export default function HistoryPage() {
     if (hasProcessing) {
         interval = setInterval(fetchReports, 5000);
     }
-    
+
     return () => {
         if (interval) clearInterval(interval);
     }
@@ -69,75 +69,90 @@ export default function HistoryPage() {
   };
 
   const getStatusIcon = (status: string) => {
-    if (status === "completed") return <CheckCircle className="w-5 h-5 text-green-500" />;
-    if (status === "failed") return <AlertCircle className="w-5 h-5 text-red-500" />;
-    if (status?.startsWith("processing")) return <div className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>;
-    return <Clock className="w-5 h-5 text-yellow-500" />;
+    if (status === "completed") return <CheckCircle className="w-4 h-4 text-emerald-600" />;
+    if (status === "failed") return <AlertCircle className="w-4 h-4 text-red-600" />;
+    if (status?.startsWith("processing")) return <div className="w-4 h-4 border-2 border-zinc-300 border-t-zinc-700 rounded-full animate-spin"></div>;
+    return <Clock className="w-4 h-4 text-amber-600" />;
+  };
+
+  const getStatusBadge = (status: string) => {
+    if (status === "completed") return "bg-emerald-50 text-emerald-700 border border-emerald-200";
+    if (status === "failed") return "bg-red-50 text-red-700 border border-red-200";
+    if (status?.startsWith("processing")) return "bg-amber-50 text-amber-700 border border-amber-200";
+    return "bg-zinc-100 text-zinc-600 border border-zinc-200";
   };
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Research History</h1>
-        <p className="mt-2 text-gray-600">Your past investment memos and analysis reports.</p>
+        <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">Research History</h1>
+        <p className="mt-2 text-zinc-500">Your past investment memos and analysis reports.</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
-        <div className="inline-block min-w-full align-middle">
-          {loading ? (
-          <div className="p-8 text-center text-gray-500">Loading history...</div>
+      <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="p-12 text-center text-zinc-400 text-sm">Loading history...</div>
         ) : reports.length === 0 ? (
           <div className="p-12 text-center">
-            <FileText className="mx-auto h-12 w-12 text-gray-300" />
-            <h3 className="mt-2 text-sm font-semibold text-gray-900">No reports yet</h3>
-            <p className="mt-1 text-sm text-gray-500">Get started by creating a new research task.</p>
+            <FileText className="mx-auto h-10 w-10 text-zinc-300" />
+            <h3 className="mt-3 text-sm font-semibold text-zinc-700">No reports yet</h3>
+            <p className="mt-1 text-sm text-zinc-400">Get started by creating a new research task.</p>
           </div>
         ) : (
-          <div className="w-full overflow-x-auto"><table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {reports.map((report) => (
-                <tr key={report.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 max-w-xs truncate">
-                    {report.target_url}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(report.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex items-center gap-2">
-                        {getStatusIcon(report.status)}
-                        <span className="capitalize">{report.status?.replace(':', ' ')}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end items-center gap-4">
-                        {report.status === 'completed' && (
-                            <>
-                                <button onClick={() => handleDownloadMD(report)} className="text-gray-400 hover:text-gray-600 transition-colors p-1" title="Download Markdown">
-                                    <Download className="w-4 h-4" />
-                                </button>
-                                <Link href={`/dashboard/history/${report.id}`} className="text-indigo-600 hover:text-indigo-900 font-semibold text-xs border border-indigo-200 rounded px-3 py-1 hover:bg-indigo-50">
-                                    View Report
-                                </Link>
-                            </>
-                        )}
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-zinc-100">
+              <thead>
+                <tr className="bg-zinc-50/50">
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500">Target</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500">Status</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-zinc-500">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {reports.map((report) => (
+                  <tr key={report.id} className="hover:bg-zinc-50/60 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-zinc-900 max-w-xs truncate">
+                      {report.target_url}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-400">
+                      {new Date(report.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(report.status)}
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold capitalize ${getStatusBadge(report.status)}`}>
+                          {report.status?.replace(':', ' ')}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <div className="flex justify-end items-center gap-3">
+                          {report.status === 'completed' && (
+                              <>
+                                  <button
+                                    onClick={() => handleDownloadMD(report)}
+                                    className="text-zinc-400 hover:text-zinc-700 p-1.5 hover:bg-zinc-100 rounded transition-colors"
+                                    title="Download Markdown"
+                                  >
+                                      <Download className="w-4 h-4" />
+                                  </button>
+                                  <Link
+                                    href={`/dashboard/history/${report.id}`}
+                                    className="text-xs font-semibold text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 border border-zinc-200 rounded px-3 py-1.5 transition-colors"
+                                  >
+                                      View Report
+                                  </Link>
+                              </>
+                          )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
-        </div>
       </div>
     </div>
   );

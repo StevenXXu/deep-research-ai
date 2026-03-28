@@ -14,20 +14,20 @@ export default function BillingPage() {
   // Load current status via API (Bypasses RLS issues)
   useEffect(() => {
       if (!user) return;
-      
+
       async function fetchBillingStatus() {
           try {
               const res = await fetch("/api/billing/status", {
                   headers: { 'X-User-ID': user!.id }
               });
-              
+
               if (res.ok) {
                   const data = await res.json();
                   setCredits(data.credits_remaining ?? 0);
                   setPlan(data.subscription_status ?? "free");
               }
           } catch (e) {
-              console.error("Billing fetch error", e);
+              console.error("Billing fetch error:", e);
           }
       }
       fetchBillingStatus();
@@ -40,12 +40,12 @@ export default function BillingPage() {
       const response = await fetch("/api/billing/checkout", {
           headers: { 'X-User-ID': user!.id }
       });
-      
+
       if (!response.ok) {
           const errText = await response.text();
           throw new Error(errText || response.statusText);
       }
-      
+
       const data = await response.json();
       window.location.href = data.url; // Redirect to Stripe
     } catch (error) {
@@ -59,65 +59,85 @@ export default function BillingPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Subscription & Credits</h1>
-        <p className="mt-2 text-gray-600">Manage your plan and usage.</p>
+        <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">Subscription & Credits</h1>
+        <p className="mt-2 text-zinc-500">Manage your plan and usage.</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
-        {/* Current Usage Card */}
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Current Usage</h3>
+
+        {/* Current Usage Card — Premium Receipt Style */}
+        <div className="bg-white p-8 rounded-xl border border-zinc-200 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-4">Current Usage</div>
             <div className="flex items-end gap-2 mb-2">
-                <span className="text-5xl font-bold text-indigo-600">{credits}</span>
-                <span className="text-gray-500 mb-2">credits remaining</span>
+                <span className="text-5xl font-bold text-zinc-900">{credits}</span>
+                <span className="text-zinc-500 mb-1.5">credits remaining</span>
             </div>
-            <p className="text-sm text-gray-500">Each report costs 1 credit.</p>
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm font-medium text-gray-900">Current Plan: <span className="capitalize font-bold text-indigo-600">{plan === 'active' ? 'Pro' : (plan || 'Free Trial')}</span></div>
+            <p className="text-sm text-zinc-400">Each report costs 1 credit.</p>
+            <div className="mt-6 p-4 bg-zinc-50 rounded-lg border border-zinc-100">
+                <div className="text-sm font-medium text-zinc-700">
+                  Current Plan:
+                  <span className="ml-2 capitalize font-bold text-zinc-900">
+                    {plan === 'active' ? 'Pro' : (plan || 'Free Trial')}
+                  </span>
+                </div>
             </div>
         </div>
 
-        {/* Upgrade / Top-up Card */}
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-indigo-100 ring-1 ring-indigo-500 relative">
-            {plan !== 'active' && <div className="absolute top-0 right-0 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg">RECOMMENDED</div>}
-            
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <Zap className="w-5 h-5 text-indigo-500" /> {plan === 'active' ? "Credit Refill" : "Pro Plan"}
-            </h3>
-            
-            <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-gray-900">$29</span>
-                {plan !== 'active' && <span className="text-gray-500">/month</span>}
+        {/* Upgrade Card — Dark Premium */}
+        <div className="bg-zinc-900 p-8 rounded-xl flex flex-col relative">
+            {/* Recommended badge */}
+            {plan !== 'active' && (
+              <div className="absolute top-0 right-0 bg-white text-zinc-900 text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg">
+                RECOMMENDED
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 mb-4">
+                <Zap className="w-5 h-5 text-zinc-400" />
+                <h3 className="text-base font-semibold text-white">
+                  {plan === 'active' ? "Credit Refill" : "Pro Plan"}
+                </h3>
             </div>
-            
-            <p className="mt-2 text-sm text-gray-500">
-                {plan === 'active' ? "Add 20 more credits to your account immediately." : "For active investors & founders."}
+
+            <div className="flex items-baseline gap-1">
+                <span className="text-4xl font-bold text-white">$29</span>
+                {plan !== 'active' && <span className="text-zinc-400 text-sm">/month</span>}
+            </div>
+
+            <p className="mt-2 text-sm text-zinc-400">
+                {plan === 'active'
+                  ? "Add 20 more credits to your account immediately."
+                  : "For active investors & founders."}
             </p>
-            
-            <ul className="mt-6 space-y-3 text-sm text-gray-600">
+
+            <ul className="mt-6 space-y-3 text-sm text-zinc-300">
                 {plan === 'active' ? (
                     <>
-                        <li className="flex gap-2"><Check className="w-5 h-5 text-indigo-500 flex-shrink-0" /> +20 Additional Credits</li>
-                        <li className="flex gap-2"><Check className="w-5 h-5 text-indigo-500 flex-shrink-0" /> Never expire while active</li>
-                        <li className="flex gap-2"><Check className="w-5 h-5 text-indigo-500 flex-shrink-0" /> Available instantly</li>
+                        <li className="flex gap-2"><Check className="w-4 h-4 text-zinc-500 flex-shrink-0 mt-0.5" /> +20 Additional Credits</li>
+                        <li className="flex gap-2"><Check className="w-4 h-4 text-zinc-500 flex-shrink-0 mt-0.5" /> Never expire while active</li>
+                        <li className="flex gap-2"><Check className="w-4 h-4 text-zinc-500 flex-shrink-0 mt-0.5" /> Available instantly</li>
                     </>
                 ) : (
-                    ['20 Credits per month', 'Priority Processing', 'PDF Exports', 'Email Delivery'].map((feat) => (
-                        <li key={feat} className="flex gap-2">
-                            <Check className="w-5 h-5 text-indigo-500 flex-shrink-0" /> {feat}
-                        </li>
-                    ))
+                    <>
+                        <li className="flex gap-2"><Check className="w-4 h-4 text-zinc-500 flex-shrink-0 mt-0.5" /> 20 Credits per month</li>
+                        <li className="flex gap-2"><Check className="w-4 h-4 text-zinc-500 flex-shrink-0 mt-0.5" /> Priority Processing</li>
+                        <li className="flex gap-2"><Check className="w-4 h-4 text-zinc-500 flex-shrink-0 mt-0.5" /> PDF Exports</li>
+                        <li className="flex gap-2"><Check className="w-4 h-4 text-zinc-500 flex-shrink-0 mt-0.5" /> Email Delivery</li>
+                    </>
                 )}
             </ul>
 
             <button
                 onClick={handleUpgrade}
                 disabled={loading}
-                className="mt-8 w-full block bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg text-center transition-colors disabled:opacity-50"
+                className="mt-8 w-full bg-white text-zinc-900 font-semibold py-3 px-4 rounded-lg text-center transition-colors hover:bg-zinc-200 disabled:opacity-50 text-sm"
             >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (plan === 'active' ? "Buy 20 Credits" : "Upgrade to Pro")}
+                {loading
+                  ? <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                  : (plan === 'active' ? "Buy 20 Credits" : "Upgrade to Pro")}
             </button>
         </div>
+
       </div>
     </div>
   );
