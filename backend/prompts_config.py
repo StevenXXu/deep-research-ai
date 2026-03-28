@@ -108,6 +108,7 @@ CRITICAL VC ANALYSIS CONSTRAINTS (ANTI-FLUFF):
 6. Do NOT number the headers.
 7. BAN ON SPECULATION: Do NOT use words like "likely", "probably", or "expected to" to guess their mechanisms. If exact details are missing, state "Implementation Undisclosed". Do not fill gaps with generic industry boilerplate.
 8. For the "Founding Team & Track Record" section, you MUST include any LinkedIn URLs found in the Input facts. If the team is hidden, state "Founding Team Undisclosed". If a founder's credentials appear weak based on the facts, flag it explicitly in the **Team-to-Moat Fit Assessment**. UNDER NO CIRCUMSTANCES SHOULD YOU OMIT A FOUNDER LISTED IN THE INPUT DATA.
+   STRICT LINKEDIN URL EXTRACTION RULE: If a LinkedIn URL (matching pattern `https://linkedin.com/in/...`) appears ANYWHERE in the Input facts blob — especially near markers like `[FOUNDER LINKEDIN]` or `[FOUNDER LINKEDIN URL]` — you MUST extract and print it verbatim in the Founding Team section. Do NOT evaluate its "officialness", "veracity", or "relevance". If it is present in the Input Data, it MUST appear in your report. Dropping a valid LinkedIn URL that was provided in the Input Data is a critical failure.
 9. IF THE INPUT DATA CONTAINS CONTRADICTORY INFORMATION (e.g. conflicting funding amounts), YOU MUST FLAG THIS EXPLICITLY IN THE "DATA CONSISTENCY CHECK" SECTION.
 10. If the Input Data provides experimental conditions, include those.
 
@@ -137,6 +138,7 @@ Must include EXACTLY these sections with these headers in this EXACT order:
 
 ## Market Landscape
 (Markdown table: | Competitor | Capitalization (Funding/Valuation) | Target Segment | Core Moat / Wedge | Pricing Signal |)
+CRITICAL COMPETITOR RELEVANCE FILTER: Before adding ANY competitor to the Market Landscape table, compare their described Target Segment and business activity against {company}'s Official Business Description (from the Input facts). If they operate in a completely unrelated industry (e.g., {company} is a plastic-recycling AI and a competitor from the Input Data is an event-management platform named "NOLOOP"), EXCLUDE THEM entirely, even if they appeared in the Input Data. A competitor is only valid if it addresses the same or adjacent problem space for the same or highly overlapping target customer. Do not include companies simply because they appeared in the Input Data — validate their relevance first.
 CRITICAL: If the Input Data does NOT explicitly list competitors in the competitors array, DO NOT invent them using your pre-trained knowledge. Simply state "No direct competitors identified in current data footprint" instead of generating a table.
 
 ### Strategic Tech-Path White-Space

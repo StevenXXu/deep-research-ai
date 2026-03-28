@@ -355,7 +355,46 @@ class ResearchEngine:
                 cs_source_content += "\nKey Executives Identified:\n"
                 for exe in executives:
                     cs_source_content += f"- {exe['name']} | Title: {exe['title']} | LinkedIn: {exe['linkedin_url']}\n  Bio: {exe['summary']}\n"
-            
+            else:
+                # FIX 1: Mercor-style unicorn fallback — Apollo/Exa returned [] because no "About" page found.
+                # Fall back to Brave/Tavily LinkedIn dorking to extract founder/CEO names from search snippets.
+                self.log("Apollo/Exa returned no executives. Attempting LinkedIn dorking fallback...")
+                founder_results = []
+                # Try Brave first
+                founder_results = self.search_brave(
+                    f'site:linkedin.com/in "Founder" OR "CEO" {self.company}', num=5
+                )
+                if not founder_results and TAVILY_KEY:
+                    founder_results = self.search_tavily(
+                        f'site:linkedin.com/in "Founder" OR "CEO" {self.company}', num=5
+                    )
+                if founder_results:
+                    self.log(f"LinkedIn dorking found {len(founder_results)} results.")
+                    extracted_executives = []
+                    for r in founder_results:
+                        snippet = r.get("content", "") + " " + r.get("title", "")
+                        # Extract name: look for "Name | Title" or "Name - Title" patterns
+                        name_match = re.search(r'([A-Z][a-z]+ [A-Z][a-z]+(?:\s+(?:Jr\.|Sr\.|III|IV))?)', snippet)
+                        title_keywords = ["Founder", "CEO", "Co-Founder", "Co-Founder & CEO", "Chief Executive"]
+                        title_match = next((kw for kw in title_keywords if kw in snippet), "Founder/CEO")
+                        linkedin_match = re.search(r'(https?://(www\.)?linkedin\.com/in/[\w-]+)', r.get("url", ""))
+                        if name_match:
+                            name = name_match.group(1).strip()
+                            extracted_executives.append({
+                                "name": name,
+                                "title": title_match,
+                                "linkedin_url": linkedin_match.group(0) if linkedin_match else "Not Available",
+                                "summary": r.get("content", "")[:200]
+                            })
+                    if extracted_executives:
+                        self.official_team = extracted_executives
+                        self.log(f"LinkedIn dorking extracted {len(extracted_executives)} executives: {[e['name'] for e in extracted_executives]}")
+                        cs_source_content += "\nKey Executives Identified (via LinkedIn Dorking):\n"
+                        for exe in extracted_executives:
+                            cs_source_content += f"- {exe['name']} | Title: {exe['title']} | LinkedIn: {exe['linkedin_url']}\n  Bio: {exe['summary']}\n"
+                else:
+                    self.log("LinkedIn dorking returned no results. Team will be resolved in later phases.")
+
             self.sources.append({
                 "title": f"{self.company} (Corporate Record)",
                 "url": cs_facts.get("linkedin_url", f"https://{self.domain}"),
